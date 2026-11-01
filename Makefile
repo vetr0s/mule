@@ -4,7 +4,7 @@
 #
 #    make            -> debug build   (build/debug/main)
 #    make release    -> release build (build/release/main)
-#    make run        -> build + run debug
+#    make run        -> build + run debug on data/pg2554.txt (ARGS=... to change)
 #    make test       -> build + run every tests/test_*.c
 #    make test T=x   -> run only the tests named x (space-separated list)
 #    make docs       -> Doxygen HTML reference (build/docs/html/index.html)
@@ -74,8 +74,9 @@ all: debug compile_commands.json
 debug:   $(DEBUG_BIN)
 release: $(RELEASE_BIN)
 
+ARGS ?= data/pg2554.txt
 run: debug
-	./$(DEBUG_BIN)
+	./$(DEBUG_BIN) $(ARGS)
 
 $(DEBUG_BIN): main.c
 	@mkdir -p $(@D)

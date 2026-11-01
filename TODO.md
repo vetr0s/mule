@@ -107,9 +107,9 @@ This replaces `scanf`. Do not build a format-string scanner. `printf` with
       `b = a; a = (Str){};`.
 - [ ] Add `sv_find_last`, `sv_trim_left`, `sv_trim_right` and an ASCII
       `sv_eq_ignore_case` when a real caller needs them, and not before.
-- [ ] `main.c` only prints `argv`. Replace it with a real program, such as a
-      word-frequency counter once the hash map exists. It doubles as an
-      integration test.
+- [x] `main.c` is a word counter built on every module, and `bench-scale`
+      times it.
+- [ ] Turn `main.c` into a word-frequency counter once the hash map exists.
 - [ ] `notes/modern-c-guide.html` exercises 2 and 3 ask for `sv_find` and
       `sv_trim`, which already exist. Rewrite or drop them.
 - [ ] Run `make test` on Linux with gcc and sanitizers in CI.
