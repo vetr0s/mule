@@ -3,30 +3,17 @@
 A personal standard library for C, in the spirit of stb. `str` is the first
 module. This file tracks what comes next and what the existing code still needs.
 
-## Decide before the second module
+## Decided
 
-The second module is where shared conventions get fixed. Settle these before
-writing the logger, or the logger will settle them by accident.
-
-- [ ] Commit the current work. The tree has about 1,100 lines of uncommitted
-      changes.
-- [ ] Packaging. Pick one of two layouts: stb-style single headers with a
-      `#define X_IMPLEMENTATION` switch, or `.h`/`.c` pairs with the current
-      unity build. Every module follows the choice.
-- [ ] A shared base header. It holds what every module needs: `countof`,
-      `ASSERT` and `PANIC`, attribute macros, common includes. Today `str.h`
-      carries these alone, and the logger would duplicate them.
-- [ ] Allocation. Every `Str` calls `realloc` directly. Decide whether modules
-      take an allocator. Build the arena first, then decide whether `Str` gets
-      an allocator field.
-- [ ] Error convention. `str` returns `bool`, and a failed call leaves its
-      argument unchanged. Write this down as the rule for every module, and
-      list the places it bends.
-- [ ] Naming. One prefix per module, such as `str_`, `sv_` and `log_`. Never
-      name anything plain `log`, because `math.h` already declares it.
-- [ ] Platforms. Today the code builds on macOS with clang. Linux with gcc is
-      cheap to add. Windows is the hard one: MSVC lacks `<stdckdint.h>` and
-      most C23 attributes. Pick clang-cl, MinGW, or no Windows.
+- [x] Packaging: `.h`/`.c` pairs with a unity build, one folder per module
+      under `src/`. The layout rules live in `src/base/base.h`.
+- [x] A shared `src/base/base.h`, included first by every header.
+- [x] Allocation: `Str` gets an allocator pointer, null meaning the libc
+      heap. The arena comes next, and every module uses it.
+- [x] Errors: functions return `bool`, and a failed call leaves its argument
+      unchanged. Macros only where a function cannot do the job.
+- [x] Naming: one prefix per module. Never name anything plain `log`.
+- [x] Platforms: Unix with clang 17+ or gcc 13+.
 
 ## Modules, in build order
 

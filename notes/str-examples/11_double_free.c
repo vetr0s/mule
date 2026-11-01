@@ -1,5 +1,5 @@
 /* Bug on purpose: copying a Str struct makes two owners of one buffer. */
-#include "str.c"
+#include "str/str.c"
 
 #include <stdlib.h>
 

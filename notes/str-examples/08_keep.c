@@ -1,5 +1,5 @@
 /* Together: copy a view into its own Str when it must outlive its source. */
-#include "str.c"
+#include "str/str.c"
 
 #include <stdio.h>
 #include <stdlib.h>

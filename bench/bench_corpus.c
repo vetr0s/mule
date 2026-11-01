@@ -26,7 +26,7 @@
  */
 #include "bench.h"
 
-#include "str.c"
+#include "str/str.c"
 
 #include <math.h>
 #include <string.h>

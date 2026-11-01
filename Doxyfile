@@ -4,6 +4,7 @@
 PROJECT_NAME           = ctest
 OUTPUT_DIRECTORY       = build/docs
 INPUT                  = src
+RECURSIVE              = YES
 FILE_PATTERNS          = *.h
 EXAMPLE_PATH           = tests
 OPTIMIZE_OUTPUT_FOR_C  = YES

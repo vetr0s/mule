@@ -1,5 +1,5 @@
 /* Together: write your own function with views in and a Str out. */
-#include "str.c"
+#include "str/str.c"
 
 #include <stdio.h>
 #include <stdlib.h>

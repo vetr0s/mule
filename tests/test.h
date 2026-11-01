@@ -27,7 +27,7 @@
 #ifndef TEST_H
 #define TEST_H
 
-#define _POSIX_C_SOURCE 200809L /* alarm() under -std=c23 */
+#include "base/base.h" /* first: it sets the POSIX feature macros */
 
 #include <signal.h>
 #include <stdio.h>

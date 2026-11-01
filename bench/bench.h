@@ -1,8 +1,8 @@
-/* Helpers shared by the benchmarks in bench/. Include this first: it defines
- * _POSIX_C_SOURCE, which only takes effect before any system header. */
+/* Helpers shared by the benchmarks in bench/. Include this first: it pulls in
+ * base.h, whose feature macros only take effect before any system header. */
 #pragma once
 
-#define _POSIX_C_SOURCE 200809L /* clock_gettime under -std=c23 */
+#include "base/base.h" /* first: it sets the POSIX feature macros */
 
 #include <stdio.h>
 #include <stdlib.h>

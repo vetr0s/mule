@@ -1,5 +1,5 @@
 /* StrView on its own: inspect and slice text without allocating. */
-#include "str.c"
+#include "str/str.c"
 
 #include <stdio.h>
 #include <stdlib.h>

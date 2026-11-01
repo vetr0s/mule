@@ -1,5 +1,5 @@
 /* Str on its own: build a string, read it, free it. */
-#include "str.c"
+#include "str/str.c"
 
 #include <stdio.h>
 #include <stdlib.h>

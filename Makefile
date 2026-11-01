@@ -1,5 +1,5 @@
 # ---------------------------------------------------------------------------
-#  Unity build: main.c #includes every src/*.c, so each binary is a single
+#  Unity build: main.c #includes every src/*/*.c, so each binary is a single
 #  translation unit compiled in one compiler invocation.
 #
 #    make            -> debug build   (build/debug/main)
@@ -26,7 +26,6 @@ TEST_SRCS := $(wildcard tests/test_*.c)
 BENCH_SRCS := $(wildcard bench/bench_*.c)
 
 # --- Flags -----------------------------------------------------------------
-STD  := -std=c23
 WARN := -Wall -Wextra -Wpedantic -Wshadow -Wconversion -Wsign-conversion \
         -Wdouble-promotion -Wformat=2 -Wundef \
         -Wcast-align -Wcast-qual -Wnull-dereference -Wstrict-prototypes \
@@ -38,6 +37,9 @@ CPPFLAGS += -Isrc -MMD -MP
 # Keep each flag in $(1) only if $(CC) compiles and links with it silently.
 cc-options = $(strip $(foreach f,$(1),$(shell echo 'int main(void){return 0;}' | \
                $(CC) $(f) -x c - -o /dev/null 2>&1 | grep -q . || echo '$(f)')))
+
+# gcc 13 only knows the draft name for C23.
+STD := $(or $(call cc-options,-std=c23),-std=c2x)
 
 # GCC-only warnings, and hardening that only applies to ELF/GNU ld.
 GCC_WARN   := -Wformat-overflow=2 -Wduplicated-cond -Wduplicated-branches \
@@ -165,7 +167,7 @@ bench-scale: $(BUILD)/bench/bench_corpus $(RELEASE_BIN) $(SCALE_TEXT) \
 	    -L kind text,seq -L mib $(subst $(space),$(comma),$(SCALE_MIB)) \
 	    '$(RELEASE_BIN) $(BUILD)/scale/{kind}-{mib}M'
 
-# clangd reads this for include paths and -std; src/*.c resolve via main.c.
+# clangd reads this for include paths and -std; src/*/*.c resolve via main.c.
 compile_commands.json: Makefile $(TEST_SRCS) $(BENCH_SRCS)
 	@printf '[' > $@; sep=; \
 	for f in main.c $(TEST_SRCS) $(BENCH_SRCS); do \
@@ -175,13 +177,13 @@ compile_commands.json: Makefile $(TEST_SRCS) $(BENCH_SRCS)
 	    sep=,; \
 	done; printf '\n]\n' >> $@
 
-# HTML API reference from the doc comments in src/*.h (needs doxygen).
+# HTML API reference from the doc comments in src/*/*.h (needs doxygen).
 docs:
 	doxygen Doxyfile
 	@echo "open $(BUILD)/docs/html/index.html"
 
 format:
-	clang-format -i main.c $(wildcard src/*.[ch] tests/*.[ch] bench/*.[ch])
+	clang-format -i main.c $(wildcard src/*/*.[ch] tests/*.[ch] bench/*.[ch])
 
 clean:
 	rm -rf $(BUILD)

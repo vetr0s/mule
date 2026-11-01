@@ -1,5 +1,5 @@
 /* Together: one Str owns the file, views walk its lines. */
-#include "str.c"
+#include "str/str.c"
 
 #include <stdio.h>
 #include <stdlib.h>

@@ -318,7 +318,7 @@ dd { margin: 0; }
 
 <h2 id="run">Running the examples</h2>
 
-<p>Run these from the repository root. The examples read <span class="path">data/pg2554.txt</span>, which is the Project Gutenberg text of <em>Crime and Punishment</em>. Each file includes <span class="path">src/str.c</span> directly, the same way <span class="path">main.c</span> does, so a single compiler call builds it.</p>
+<p>Run these from the repository root. The examples read <span class="path">data/pg2554.txt</span>, which is the Project Gutenberg text of <em>Crime and Punishment</em>. Each file includes <span class="path">src/str/str.c</span> directly, the same way <span class="path">main.c</span> does, so a single compiler call builds it.</p>
 
 <pre><code>cc -std=c23 -Isrc -fsanitize=address,undefined \
    notes/str-examples/01_build.c -o build/ex &amp;&amp; ./build/ex</code></pre>
@@ -363,7 +363,7 @@ StrView tail                         data ┘ len 10   tail = "Punishment"</code
 
 <p class="muted"><span class="path">notes/str-examples/01_build.c</span></p>
 <pre><code>/* Str on its own: build a string, read it, free it. */
-#include "str.c"
+#include "str/str.c"
 
 #include &lt;stdio.h&gt;
 #include &lt;stdlib.h&gt;
@@ -404,7 +404,7 @@ Rodion Raskolnikov, former student, age 23</code></pre>
 <p class="muted"><span class="path">notes/str-examples/02_reuse.c</span></p>
 <pre><code>/* Str on its own: clear and refill one buffer instead of allocating per line.
  */
-#include "str.c"
+#include "str/str.c"
 
 #include &lt;stdio.h&gt;
 #include &lt;stdlib.h&gt;
@@ -436,7 +436,7 @@ PART 3   capacity 15, data 0x6020000000f0</code></pre>
 
 <p class="muted"><span class="path">notes/str-examples/03_file.c</span></p>
 <pre><code>/* Str on its own: read a whole file into memory. */
-#include "str.c"
+#include "str/str.c"
 
 #include &lt;stdio.h&gt;
 #include &lt;stdlib.h&gt;
@@ -483,7 +483,7 @@ int main(int argc, char **argv) {
 
 <p class="muted"><span class="path">notes/str-examples/04_views.c</span></p>
 <pre><code>/* StrView on its own: inspect and slice text without allocating. */
-#include "str.c"
+#include "str/str.c"
 
 #include &lt;stdio.h&gt;
 #include &lt;stdlib.h&gt;
@@ -534,7 +534,7 @@ verbose on</code></pre>
 
 <p class="muted"><span class="path">notes/str-examples/05_split.c</span></p>
 <pre><code>/* StrView on its own: split fields and tokens. */
-#include "str.c"
+#include "str/str.c"
 
 #include &lt;stdio.h&gt;
 #include &lt;stdlib.h&gt;
@@ -587,7 +587,7 @@ word  [restless]</code></pre>
 
 <p class="muted"><span class="path">notes/str-examples/06_sort.c</span></p>
 <pre><code>/* StrView on its own: sort an array of views with qsort. */
-#include "str.c"
+#include "str/str.c"
 
 #include &lt;stdio.h&gt;
 #include &lt;stdlib.h&gt;
@@ -620,7 +620,7 @@ Sonya</code></pre>
 
 <p class="muted"><span class="path">notes/str-examples/07_lines.c</span></p>
 <pre><code>/* Together: one Str owns the file, views walk its lines. */
-#include "str.c"
+#include "str/str.c"
 
 #include &lt;stdio.h&gt;
 #include &lt;stdlib.h&gt;
@@ -673,7 +673,7 @@ int main(void) {
 
 <p class="muted"><span class="path">notes/str-examples/08_keep.c</span></p>
 <pre><code>/* Together: copy a view into its own Str when it must outlive its source. */
-#include "str.c"
+#include "str/str.c"
 
 #include &lt;stdio.h&gt;
 #include &lt;stdlib.h&gt;
@@ -737,7 +737,7 @@ int main(void) {
 
 <p class="muted"><span class="path">notes/str-examples/09_replace.c</span></p>
 <pre><code>/* Together: write your own function with views in and a Str out. */
-#include "str.c"
+#include "str/str.c"
 
 #include &lt;stdio.h&gt;
 #include &lt;stdlib.h&gt;
@@ -802,7 +802,7 @@ int main(void) {
 
 <p class="muted"><span class="path">notes/str-examples/10_dangling.c</span></p>
 <pre><code>/* Bug on purpose: a view kept across a call that reallocates. */
-#include "str.c"
+#include "str/str.c"
 
 #include &lt;stdio.h&gt;
 #include &lt;stdlib.h&gt;
@@ -840,7 +840,7 @@ previously allocated by thread T0 here:
 
 <p class="muted"><span class="path">notes/str-examples/11_double_free.c</span></p>
 <pre><code>/* Bug on purpose: copying a Str struct makes two owners of one buffer. */
-#include "str.c"
+#include "str/str.c"
 
 #include &lt;stdlib.h&gt;
 
@@ -921,7 +921,7 @@ freed by thread T0 here:
   <li data-state="todo">Write <code>StrView path_basename(StrView path)</code> that returns everything after the last <code>/</code>. It returns a view, so it cannot fail. Test it on <code>""</code>, <code>"a"</code>, <code>"a/"</code> and <code>"/usr/lib/libc.so"</code>.</li>
 </ul>
 
-<p class="footer">Built from <span class="path">src/str.h</span>, <span class="path">src/str.c</span> and the eleven files in <span class="path">notes/str-examples/</span>. Each example was compiled with Apple clang 21 using <code>-std=c23 -Wall -Wextra -Wconversion -fsanitize=address,undefined</code> and run on 2026-10-31. Sanitizer reports are trimmed to the frames that name a source line.</p>
+<p class="footer">Built from <span class="path">src/str/str.h</span>, <span class="path">src/str/str.c</span> and the eleven files in <span class="path">notes/str-examples/</span>. Each example was compiled with Apple clang 21 using <code>-std=c23 -Wall -Wextra -Wconversion -fsanitize=address,undefined</code> and run on 2026-10-31. Sanitizer reports are trimmed to the frames that name a source line.</p>
 
 </main>
 </body>

@@ -347,12 +347,12 @@ old. They only look modern because courses skip them.</p>
 #include &lt;stdlib.h&gt;
 if (p == NULL) return false;
 
-/* This repo, src/str.c */
+/* This repo, src/str/str.c */
 if (p == nullptr) return false;</code></pre>
 
 <p>In C23, <code>bool</code>, <code>true</code> and <code>false</code> are
 keywords. <code>&lt;stdbool.h&gt;</code> is no longer needed. That is why
-<span class="path">src/str.h</span> uses <code>bool</code> without including
+<span class="path">src/str/str.h</span> uses <code>bool</code> without including
 anything for it.</p>
 
 <p><code>nullptr</code> replaces <code>NULL</code>. <code>NULL</code> is a
@@ -368,7 +368,7 @@ leading underscore still work.</p>
 
 <h2 id="zero">Zero is a valid state</h2>
 
-<p>This is the most important design idea in <span class="path">src/str.h</span>.
+<p>This is the most important design idea in <span class="path">src/str/str.h</span>.
 A <code>Str</code> that is all zero bytes is a real, empty string. It owns no
 memory. Every function accepts it.</p>
 
@@ -390,7 +390,7 @@ cannot fail, so the only failure points are the calls that grow it.
 <code>str_free</code> resets the struct to zero, so a double free becomes a
 no-op instead of heap corruption.</p>
 
-<p>Look at <code>str_grow_</code> in <span class="path">src/str.c</span>.
+<p>Look at <code>str_grow_</code> in <span class="path">src/str/str.c</span>.
 <code>realloc(nullptr, n)</code> behaves like <code>malloc(n)</code>. A zeroed
 <code>Str</code> therefore needs no special first-allocation path.</p>
 
@@ -652,7 +652,7 @@ is this repo's convention for internal names. <code>-Wmissing-prototypes</code>
 catches a function that is neither <code>static</code> nor declared in a
 header. That is usually one you forgot to hide.</p>
 
-<p><span class="path">src/str.h</span> uses <code>#pragma once</code>.
+<p><span class="path">src/str/str.h</span> uses <code>#pragma once</code>.
 <span class="path">tests/test.h</span> uses classic
 <code>#ifndef TEST_H</code> guards. They do the same job.
 <code>#pragma once</code> is not in the standard, but every compiler you will
@@ -702,7 +702,7 @@ gcc -c main.c -o main.o
 gcc str.o main.o -o main
 
 /* This repo: main.c */
-#include "str.c"</code></pre>
+#include "str/str.c"</code></pre>
 
 <p><code>main.c</code> includes the <code>.c</code> files directly. The whole
 program is one translation unit, compiled by one compiler invocation. The
@@ -747,7 +747,7 @@ line. Exercise 4 shows what that looks like.</p>
 
 <p><code>-MMD -MP</code> make the compiler write a <code>.d</code> file listing
 every header a source file included. The <code>Makefile</code> includes those
-files. Editing <span class="path">src/str.h</span> therefore rebuilds what
+files. Editing <span class="path">src/str/str.h</span> therefore rebuilds what
 depends on it, without anyone maintaining that list by hand.</p>
 
 <h2 id="testing">Testing beyond the happy path</h2>
@@ -780,7 +780,7 @@ three ways.</p>
 </dl>
 
 <p>A suite earns trust by failing when the code is wrong. Six bugs were
-planted in <span class="path">src/str.c</span> one at a time to check that it
+planted in <span class="path">src/str/str.c</span> one at a time to check that it
 does: <code>realloc</code> straight into <code>s-&gt;data</code>, a missing
 alias fix, a missing terminator, a <code>free</code> that forgets the buffer,
 an equality check that ignores length, and an unchecked addition. The suite
@@ -793,7 +793,7 @@ it.</p>
 
 <h2 id="docs">Doc comments</h2>
 
-<p>Public declarations in <span class="path">src/str.h</span> carry Doxygen
+<p>Public declarations in <span class="path">src/str/str.h</span> carry Doxygen
 comments. A comment that starts with <code>/**</code> is a doc comment.
 <code>/*</code> is an ordinary comment that Doxygen ignores.</p>
 
@@ -894,7 +894,7 @@ after each one.</p>
   least 1.</li>
   <li data-state="todo"><strong>Pick one header guard style.</strong> Make
   <span class="path">tests/test.h</span> and
-  <span class="path">src/str.h</span> agree.</li>
+  <span class="path">src/str/str.h</span> agree.</li>
   <li data-state="todo"><strong>Write <code>str_insert</code>.</strong> Insert
   a <code>StrView</code> at an index. Keep the strong guarantee: on failure the
   string is unchanged. Handle a view that points into the string itself. This
@@ -919,7 +919,7 @@ after each one.</p>
 </ul>
 
 <p class="footer">Built from <span class="path">main.c</span>,
-<span class="path">src/str.h</span>, <span class="path">src/str.c</span>,
+<span class="path">src/str/str.h</span>, <span class="path">src/str/str.c</span>,
 <span class="path">tests/test.h</span>, <span class="path">tests/test_str.c</span>,
 <span class="path">Makefile</span> and <span class="path">Doxyfile</span>.
 Code claims checked against Apple clang 21 with <code>-std=c23</code>.</p>

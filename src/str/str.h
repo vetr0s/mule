@@ -18,8 +18,8 @@
  * @snippet{trimleft} test_str.c build
  */
 
-#include <stddef.h>
-#include <stdint.h>
+#include "base/base.h"
+
 #include <stdio.h>
 
 /** Owned, growable byte string. Zero-initialise before first use. */

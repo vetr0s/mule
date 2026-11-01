@@ -1,5 +1,5 @@
 /* StrView on its own: sort an array of views with qsort. */
-#include "str.c"
+#include "str/str.c"
 
 #include <stdio.h>
 #include <stdlib.h>

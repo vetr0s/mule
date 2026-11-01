@@ -1,8 +1,7 @@
-#include "str.h"
+#include "str/str.h"
 
 #include <assert.h>
 #include <stdarg.h>
-#include <stdckdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

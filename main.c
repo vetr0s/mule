@@ -1,7 +1,7 @@
 /* Unity build: every implementation file is included here, so the whole
  * program is one translation unit (fast builds, whole-program optimisation). */
-#include "str.c"
-#include "str.h"
+#include "str/str.c"
+#include "str/str.h"
 
 #include <stdio.h>
 #include <stdlib.h>

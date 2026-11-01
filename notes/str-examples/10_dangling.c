@@ -1,5 +1,5 @@
 /* Bug on purpose: a view kept across a call that reallocates. */
-#include "str.c"
+#include "str/str.c"
 
 #include <stdio.h>
 #include <stdlib.h>
