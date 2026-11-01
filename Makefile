@@ -180,6 +180,7 @@ compile_commands.json: Makefile $(TEST_SRCS) $(BENCH_SRCS)
 
 # HTML API reference from the doc comments in src/*/*.h (needs doxygen).
 docs:
+	@mkdir -p $(BUILD)/docs # doxygen before 1.10 does not create parents
 	doxygen Doxyfile
 	@echo "open $(BUILD)/docs/html/index.html"
 
