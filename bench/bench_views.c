@@ -15,6 +15,7 @@
 
 #include "mem/mem.c"
 #include "str/str.c"
+#include "time/time.c"
 
 #include <string.h>
 
@@ -168,9 +169,9 @@ static double time_ms(const Side *side, Corpus *c, size_t *result) {
     double ms[REPS];
     for (int r = 0; r < REPS; r++) {
         if (side->prepare) side->prepare(c);
-        double t0 = now_ns();
+        double t0 = (double)time_now_ns();
         *result = side->run(c);
-        ms[r] = (now_ns() - t0) / 1e6;
+        ms[r] = ((double)time_now_ns() - t0) / 1e6;
         sink += *result;
     }
     return median(ms, REPS);

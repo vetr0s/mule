@@ -3,7 +3,7 @@
 Multi-Use Library Essentials. A small standard library for C23 in the
 spirit of stb. It is written to be read as well as used.
 
-It is early. Six modules exist, and `TODO.md` holds the roadmap.
+It is early. Seven modules exist, and `TODO.md` holds the roadmap.
 
 | Module | What it gives you |
 | --- | --- |
@@ -12,6 +12,7 @@ It is early. Six modules exist, and `TODO.md` holds the roadmap.
 | `arr` | `Arr(T)`, a growable array of any element type, with the same layout and rules as `Str`. |
 | `rand` | A seeded splitmix64 generator that gives the same sequence on every platform, with an unbiased `rand_below`. |
 | `str` | `Str`, an owned growable byte string, and `StrView`, a borrowed slice with search, split and trim. |
+| `time` | A monotonic nanosecond clock for timing code. |
 | `log` | Levelled messages with `file:line`, coloured when the terminal supports it, and an assert that stays in release builds. |
 
 ## A taste

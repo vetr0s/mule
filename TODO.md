@@ -68,8 +68,8 @@ modules still need.
 
 - [ ] `tests/test.h` becomes a module. Its allocation counting and
       out-of-memory injection are worth keeping in every project.
-- [ ] `bench/bench.h` becomes a module, with `now_ns` as the start of a time
-      module: monotonic clock, stopwatch, ISO timestamps for the logger.
+- [x] `src/time/`: `time_now_ns`, promoted from `bench/bench.h`.
+- [ ] Wall-clock ISO timestamps in `time`, for the logger.
 - [x] `src/rand/`: the tests' splitmix64, with an unbiased `rand_below`.
 
 ### Later

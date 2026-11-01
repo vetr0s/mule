@@ -28,6 +28,7 @@
 
 #include "mem/mem.c"
 #include "str/str.c"
+#include "time/time.c"
 
 #include <math.h>
 #include <string.h>
@@ -115,9 +116,9 @@ static double measure(const Workload *w, const Input *in, size_t *calls) {
     double ns[REPS];
     for (int r = 0; r < REPS; r++) {
         Str out = {};
-        double t0 = now_ns();
+        double t0 = (double)time_now_ns();
         *calls = w->run(in, &out);
-        ns[r] = now_ns() - t0;
+        ns[r] = (double)time_now_ns() - t0;
         sink += *calls + out.len;
 
         if (w->rebuilds && !str_eq(str_view(&out), in->text)) {

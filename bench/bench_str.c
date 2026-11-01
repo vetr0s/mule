@@ -13,6 +13,7 @@
 
 #include "mem/mem.c"
 #include "str/str.c"
+#include "time/time.c"
 
 #include <string.h>
 
@@ -112,9 +113,9 @@ int main(void) {
         const Case *k = &cases[c];
         double per_op[REPS];
         for (int r = 0; r < REPS; r++) {
-            double t0 = now_ns();
+            double t0 = (double)time_now_ns();
             sink += k->run(k->ops);
-            per_op[r] = (now_ns() - t0) / (double)k->ops;
+            per_op[r] = ((double)time_now_ns() - t0) / (double)k->ops;
         }
         double mid = median(per_op, REPS);
 

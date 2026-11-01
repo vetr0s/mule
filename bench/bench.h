@@ -6,7 +6,6 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <time.h>
 
 /* Every benchmark feeds its results here so the optimiser cannot drop work. */
 [[maybe_unused]] static volatile size_t sink;
@@ -16,12 +15,6 @@
         fputs("out of memory\n", stderr);
         exit(EXIT_FAILURE);
     }
-}
-
-[[maybe_unused]] static double now_ns(void) {
-    struct timespec ts;
-    clock_gettime(CLOCK_MONOTONIC, &ts);
-    return (double)ts.tv_sec * 1e9 + (double)ts.tv_nsec;
 }
 
 static int cmp_double(const void *a, const void *b) {
