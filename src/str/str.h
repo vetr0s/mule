@@ -25,6 +25,7 @@
 #include "base/base.h"
 #include "mem/mem.h"
 
+#include <stdarg.h>
 #include <stdio.h>
 
 /** Owned, growable byte string. Zero-initialise before first use. */
@@ -82,6 +83,9 @@ void str_clear(Str *s);
  *  @snippet{trimleft} test_str.c appendf */
 [[nodiscard]] bool str_appendf(Str *s, const char *fmt, ...)
     __attribute__((format(printf, 2, 3)));
+/** str_appendf for a `va_list`, like vprintf. @p ap is used up afterwards. */
+[[nodiscard]] bool str_vappendf(Str *s, const char *fmt, va_list ap)
+    __attribute__((format(printf, 2, 0)));
 /** Append everything left to read from @p f. On false, check ferror(f).
  *  @snippet{trimleft} test_str.c append_file */
 [[nodiscard]] bool str_append_file(Str *s, FILE *f);

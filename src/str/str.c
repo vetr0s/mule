@@ -116,8 +116,15 @@ bool str_append_cstr(Str *s, const char *cstr) {
 }
 
 bool str_appendf(Str *s, const char *fmt, ...) {
-    va_list ap, ap2;
+    va_list ap;
     va_start(ap, fmt);
+    bool ok = str_vappendf(s, fmt, ap);
+    va_end(ap);
+    return ok;
+}
+
+bool str_vappendf(Str *s, const char *fmt, va_list ap) {
+    va_list ap2;
     va_copy(ap2, ap);
 
     /* Format straight into the spare capacity; most calls fit and stop here. */
@@ -138,7 +145,6 @@ bool str_appendf(Str *s, const char *fmt, ...) {
     }
 
     va_end(ap2);
-    va_end(ap);
     return ok;
 }
 
