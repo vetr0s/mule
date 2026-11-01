@@ -11,6 +11,18 @@
 
 #include <stdint.h>
 
+#ifndef __has_feature
+#define __has_feature(x) 0
+#endif
+
+/* ASan replaces libmalloc, so footprint tests need a build without it. */
+#if defined(__APPLE__) && !__has_feature(address_sanitizer)
+#define MEM_FOOTPRINT_TESTS 1
+#include <mach/mach.h>
+#else
+#define MEM_FOOTPRINT_TESTS 0
+#endif
+
 /* --- Heap ---------------------------------------------------------------- */
 
 TEST(heap_realloc_and_free) {
@@ -24,6 +36,41 @@ TEST(heap_realloc_and_free) {
 }
 
 /* --- Arena --------------------------------------------------------------- */
+
+#if MEM_FOOTPRINT_TESTS
+/* Bytes of memory the kernel charges to this process right now. */
+static size_t footprint(void) {
+    task_vm_info_data_t info;
+    mach_msg_type_number_t n = TASK_VM_INFO_COUNT;
+    kern_return_t err = task_info(mach_task_self(), TASK_VM_INFO,
+                                  (task_info_t)&info, &n);
+    assert(err == KERN_SUCCESS);
+    return (size_t)info.phys_footprint;
+}
+
+/* macOS 26 libmalloc kept every large block grown by realloc dirty after
+ * free, so a buffer grown and freed in a loop leaked its size each pass. */
+TEST(heap_growth_returns_memory) {
+    enum : size_t { SIZE = 64 << 20, REPS = 8 };
+    size_t after_first = 0;
+    for (size_t r = 0; r < REPS; r++) {
+        char *p = nullptr;
+        size_t cap = 0;
+        while (cap < SIZE) {
+            size_t next = cap != 0 ? cap * 2 : 16;
+            char *q = mem_realloc(nullptr, p, cap, next);
+            REQUIRE(q != nullptr);
+            memset(q + cap, 1, next - cap);
+            p = q;
+            cap = next;
+        }
+        (void)mem_realloc(nullptr, p, cap, 0);
+        if (r == 0) after_first = footprint();
+    }
+    /* libmalloc may cache a freed block, but later passes must reuse it. */
+    CHECK(footprint() < after_first + SIZE);
+}
+#endif
 
 TEST(arena_alloc_and_free) {
     /* [arena] */
@@ -185,6 +232,9 @@ TEST(arena_oom_leaves_state) {
 int main(int argc, char **argv) {
     test_init(argc, argv);
     RUN(heap_realloc_and_free);
+#if MEM_FOOTPRINT_TESTS
+    RUN(heap_growth_returns_memory);
+#endif
     RUN(arena_alloc_and_free);
     RUN(arena_alignment);
     RUN(arena_large_request_gets_own_block);

@@ -68,10 +68,10 @@ The folder, include and naming rules live in the file comment of
 - AddressSanitizer on macOS does not detect leaks, and Apple clang ships no
   libFuzzer. The allocation counter in `test/test.h` covers leaks. Fuzzing needs
   Linux.
-- macOS libmalloc keeps a large block that grew through realloc resident
-  after free. Peak memory climbs by the block's size on every repeat, so
-  `bench_corpus` peaks near 8x its largest input. One malloc of the final
-  size does not climb. Check peak RSS before raising `SCALE_MIB`.
+- macOS 26 libmalloc keeps a large block grown by realloc dirty after free,
+  and never reuses it. `mem_realloc` grows by malloc and copy on Apple for
+  that reason. `heap_growth_returns_memory` only runs without ASan, because
+  ASan replaces libmalloc. Run `make test SANITIZE=` after touching it.
 
 ## Keeping this file current
 

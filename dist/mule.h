@@ -818,6 +818,17 @@ void *mem_realloc(const Allocator *a, void *old, size_t old_size,
         free(old);
         return nullptr;
     }
+#ifdef __APPLE__
+    /* macOS 26 keeps a large block grown by realloc dirty after free, so
+     * growing leaked memory. A fresh block and a copy returns it. */
+    if (old != nullptr && new_size > old_size) {
+        void *p = malloc(new_size);
+        if (p == nullptr) return nullptr;
+        memcpy(p, old, old_size);
+        free(old);
+        return p;
+    }
+#endif
     return realloc(old, new_size);
 }
 

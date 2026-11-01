@@ -133,8 +133,8 @@ PIZZACHILI    := https://pizzachili.dcc.uchile.cl/texts
 CORPUS_FILES  := $(CORPUS)/gutenberg.txt $(CORPUS)/english.200MB \
                  $(CORPUS)/sources.200MB $(CORPUS)/dblp.xml.200MB \
                  $(CORPUS)/enwik9
-# bench_corpus peaks near 8x the largest file on macOS, so 1000 MiB needs
-# about 8 GB. Override SCALE_MIB for bigger runs on a machine that has room.
+# bench_corpus peaks near 3.5x the largest file, so 4 GiB would need about
+# 14 GB. Override SCALE_MIB for bigger runs on a machine that has room.
 SCALE_MIB     ?= 10 100 1000
 SCALE_TEXT    := $(SCALE_MIB:%=$(BUILD)/scale/text-%M)
 SCALE_SEQ     := $(SCALE_MIB:%=$(BUILD)/scale/seq-%M)
