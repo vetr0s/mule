@@ -66,7 +66,8 @@ It prints `[mule]`, `[c23]` and `[4]`, each on its own line.
 - clang 17+ or gcc 13+.
 - `make`.
 - Optional: `doxygen` for `make docs`, `hyperfine` for `make bench-scale`,
-  and `clang-format` for `make format`.
+  and `clang-format` for `make format`. `make bench-corpus` downloads about
+  1.6 GB with `curl`, `gunzip` and `unzip`, and needs about 8 GB of RAM.
 
 ## Using it in a project
 

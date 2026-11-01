@@ -9,8 +9,9 @@
 #    make test T=x   -> run only the tests named x (space-separated list)
 #    make docs       -> Doxygen HTML reference (build/docs/html/index.html)
 #    make bench      -> micro-benchmarks of str_append and friends
-#    make bench-corpus -> benchmark on Gutenberg books and Pizza & Chili
-#                       source code and XML (downloaded on first use), and
+#    make bench-corpus -> benchmark on Gutenberg books, Pizza & Chili
+#                       English, source code and XML, and the 1 GB enwik9
+#                       Wikipedia dump (downloaded on first use), and
 #                       compare the StrView functions against string.h
 #    make bench-scale  -> benchmark on generated 10, 100 and 1000 MiB files
 #                       and time the main program on them with hyperfine
@@ -115,9 +116,12 @@ bench: $(BUILD)/bench/bench_str
 CORPUS        := data/corpus
 GUTENBERG_IDS := 2554 2701 1342 2600 2000
 PIZZACHILI    := https://pizzachili.dcc.uchile.cl/texts
-CORPUS_FILES  := $(CORPUS)/gutenberg.txt $(CORPUS)/sources.50MB \
-                 $(CORPUS)/dblp.xml.50MB
-SCALE_MIB     := 10 100 1000
+CORPUS_FILES  := $(CORPUS)/gutenberg.txt $(CORPUS)/english.200MB \
+                 $(CORPUS)/sources.200MB $(CORPUS)/dblp.xml.200MB \
+                 $(CORPUS)/enwik9
+# bench_corpus peaks near 8x the largest file on macOS, so 1000 MiB needs
+# about 8 GB. Override SCALE_MIB for bigger runs on a machine that has room.
+SCALE_MIB     ?= 10 100 1000
 SCALE_TEXT    := $(SCALE_MIB:%=$(BUILD)/scale/text-%M)
 SCALE_SEQ     := $(SCALE_MIB:%=$(BUILD)/scale/seq-%M)
 
@@ -137,13 +141,28 @@ $(CORPUS)/gutenberg.txt:
 	done
 	cat $(GUTENBERG_IDS:%=$(@D)/gutenberg/pg%.txt) > $@
 
-$(CORPUS)/sources.50MB:
+$(CORPUS)/english.200MB:
 	@mkdir -p $(@D)
-	curl -fsSL $(PIZZACHILI)/code/sources.50MB.gz | gunzip > $@
+	curl -fsSL $(PIZZACHILI)/nlang/english.200MB.gz | gunzip > $@.tmp
+	mv $@.tmp $@
 
-$(CORPUS)/dblp.xml.50MB:
+$(CORPUS)/sources.200MB:
 	@mkdir -p $(@D)
-	curl -fsSL $(PIZZACHILI)/xml/dblp.xml.50MB.gz | gunzip > $@
+	curl -fsSL $(PIZZACHILI)/code/sources.200MB.gz | gunzip > $@.tmp
+	mv $@.tmp $@
+
+$(CORPUS)/dblp.xml.200MB:
+	@mkdir -p $(@D)
+	curl -fsSL $(PIZZACHILI)/xml/dblp.xml.200MB.gz | gunzip > $@.tmp
+	mv $@.tmp $@
+
+# The first 10^9 bytes of English Wikipedia's XML, from the Hutter Prize.
+$(CORPUS)/enwik9:
+	@mkdir -p $(@D)
+	curl -fsSL -o $@.zip https://mattmahoney.net/dc/enwik9.zip
+	unzip -p $@.zip enwik9 > $@.tmp
+	rm $@.zip
+	mv $@.tmp $@
 
 # Exactly N MiB, cut with head -c. The loop stops once head closes the pipe.
 $(BUILD)/scale/text-%M: $(CORPUS)/gutenberg.txt
