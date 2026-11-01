@@ -43,8 +43,8 @@ modules still need.
 
 ### 4. Dynamic array
 
-- [ ] Typed through macros, so a growable array of any element type needs no
-      casts. Reuse the growth policy from `str_grow_`.
+- [x] `src/arr/`: `Arr(T)` with push, pop, insert, remove, reserve, clear
+      and free. It shares the `Str` layout and the allocator.
 
 ### 5. Hash map keyed by `StrView`
 

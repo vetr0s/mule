@@ -3,12 +3,13 @@
 Multi-Use Library Essentials. A small standard library for C23 in the
 spirit of stb. It is written to be read as well as used.
 
-It is early. Four modules exist, and `TODO.md` holds the roadmap.
+It is early. Five modules exist, and `TODO.md` holds the roadmap.
 
 | Module | What it gives you |
 | --- | --- |
 | `base` | The header every module includes first: feature macros and checked arithmetic. |
 | `mem` | An allocator interface and an arena that frees everything in one call. |
+| `arr` | `Arr(T)`, a growable array of any element type, with the same layout and rules as `Str`. |
 | `str` | `Str`, an owned growable byte string, and `StrView`, a borrowed slice with search, split and trim. |
 | `log` | Levelled messages with `file:line`, coloured when the terminal supports it, and an assert that stays in release builds. |
 
@@ -68,7 +69,7 @@ It prints `[mule]`, `[c23]` and `[4]`, each on its own line.
 
 Copy `src/` into your tree and add `-Isrc` to your compiler flags. In the one
 file that holds `main`, include the `.c` file of every module you use and of
-the modules it depends on. `str` needs `mem`, and `log` needs both. Every
+the modules it depends on. `arr` and `str` need `mem`, and `log` needs `mem` and `str`. Every
 other file includes only the headers it needs, such as `#include "str/str.h"`.
 
 ## Building this repository
