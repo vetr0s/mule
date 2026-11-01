@@ -25,6 +25,9 @@ The folder, include and naming rules live in the file comment of
 - Write a macro only for what a function cannot do: `sizeof` a literal,
   capture `__FILE__` and `__LINE__`, or work for any element type.
 - Mark every function whose result must be checked `[[nodiscard]]`.
+- A hot path that stores through `s->data` copies the fields it needs into
+  locals first, as `str_push` and `str_append` do. A `char` store may alias
+  any field of `*s`, so otherwise the compiler reloads them on every call.
 - Targets are Unix with clang 17+ or gcc 13+. A feature missing from either
   goes behind a fallback in `base.h`, the way `ckd_add` does.
 - Projects use `dist/mule.h`, which `tools/amalgamate.sh` joins from `src/`.
@@ -48,7 +51,12 @@ The folder, include and naming rules live in the file comment of
 - `make test`, `make release` and `make docs` all pass. `make release`
   builds with `-Werror`. `make docs` fails on any undocumented member.
 - When a public API changes, every file in `notes/str-examples/` still
-  compiles and `notes/str-and-strview.html` still matches it.
+  compiles with `cc -std=c23 -Isrc`. `10_dangling.c` and `11_double_free.c`
+  are bugs on purpose and only need to compile.
+- `notes/str-and-strview.html` is generated. Edit
+  `notes/str-and-strview.tmpl.html` or the examples, then run
+  `python3 tools/gen-guide.py`. It inlines each example and the
+  standard-html stylesheet from `~/.claude/skills/`.
 
 ## Known pitfalls
 
@@ -72,6 +80,18 @@ The folder, include and naming rules live in the file comment of
   and never reuses it. `mem_realloc` grows by malloc and copy on Apple for
   that reason. `heap_growth_returns_memory` only runs without ASan, because
   ASan replaces libmalloc. Run `make test SANITIZE=` after touching it.
+
+## Benchmarks
+
+- Compare a change by building the benchmark before and after it, then
+  running each binary several times. One run misleads, and a change
+  elsewhere can move a micro-benchmark 4x by shifting what gets inlined.
+  Explain a shift like that from the disassembly before accepting it.
+- Measure memory with `/usr/bin/time -l` on macOS. `bench_corpus` holds the
+  input and the rebuilt copy, and peaks near 3.5x its largest file.
+- `base.h` sets `_POSIX_C_SOURCE`, which hides BSD extensions on macOS,
+  such as `ru_maxrss` in `struct rusage`. Define `_DARWIN_C_SOURCE` before it
+  in a scratch probe. `<mach/mach.h>` works without it.
 
 ## Keeping this file current
 

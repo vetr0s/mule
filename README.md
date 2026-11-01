@@ -101,7 +101,7 @@ off.
 ```
 src/<module>/   one folder per module, holding <module>.h and usually <module>.c
 dist/mule.h     the single-header library, generated from src/ and committed
-tools/          the script that generates dist/mule.h
+tools/          generators for dist/mule.h and the notes guide
 tests/          one test file per module, and test_dist.c for dist/mule.h
 bench/          benchmarks against string.h
 notes/          guides for learning the library, with runnable examples
