@@ -1,0 +1,929 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Modern C, read through this repo</title>
+<style>
+/* ============================================================
+   Standard HTML house style for plans, audits, and design docs.
+   Deliberately project-agnostic: this never adopts a project's theme.
+   Plain document on a plain background. Legibility over decoration.
+   ============================================================ */
+
+:root {
+  --bg:        #fbfbf9;
+  --fg:        #1a1a1a;
+  --fg-muted:  #5c5c5c;
+  --rule:      #d4d4cf;
+  --surface:   #f0f0ec;
+  --link:      #0b4fa8;
+  --visited:   #6b3fa0;
+  --accent:    #8a5a00;
+  --good:      #1c6b2e;
+  --bad:       #a11b1b;
+  --measure:   72em;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg:       #101010;
+    --fg:       #e6e6e3;
+    --fg-muted: #9a9a95;
+    --rule:     #3a3a3a;
+    --surface:  #1c1c1c;
+    --link:     #89a6ff;
+    --visited:  #d98cff;
+    --accent:   #e0a33a;
+    --good:     #52c96a;
+    --bad:      #ff6b52;
+  }
+}
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-size: 17px;
+  line-height: 1.55;
+  color: var(--fg);
+  background: var(--bg);
+  margin: 0;
+  padding: 2.5rem 1.25rem 6rem;
+}
+
+/* Left-justified, not centered: the document hugs the left gutter and simply
+   stops at the measure. */
+main, .doc {
+  max-width: var(--measure);
+  margin: 0;
+}
+
+/* --- headings ------------------------------------------------ */
+
+h1, h2, h3, h4 {
+  line-height: 1.25;
+  font-weight: 600;
+  margin: 2.2em 0 0.6em;
+}
+h1 {
+  font-size: 1.9rem;
+  margin-top: 0;
+  padding-bottom: 0.3em;
+  border-bottom: 1px solid var(--rule);
+}
+h2 { font-size: 1.35rem; }
+h3 { font-size: 1.1rem; }
+h4 { font-size: 1rem; color: var(--fg-muted); }
+
+/* Byline directly under the h1: date, repo, commit, author. */
+.meta {
+  color: var(--fg-muted);
+  font-size: 0.875rem;
+  margin: -0.2em 0 2.5em;
+}
+.meta > * + *::before { content: " · "; }
+
+/* --- prose --------------------------------------------------- */
+
+p, ul, ol, dl, table, pre, blockquote { margin: 0 0 1.1em; }
+
+a          { color: var(--link); }
+a:visited  { color: var(--visited); }
+
+strong { font-weight: 600; }
+
+small, .muted { color: var(--fg-muted); font-size: 0.875rem; }
+
+hr {
+  border: 0;
+  border-top: 1px solid var(--rule);
+  margin: 2.5em 0;
+}
+
+blockquote {
+  margin-left: 0;
+  padding: 0.1em 0 0.1em 1em;
+  border-left: 3px solid var(--rule);
+  color: var(--fg-muted);
+}
+
+ul, ol { padding-left: 1.4em; }
+li { margin: 0.25em 0; }
+li > ul, li > ol { margin: 0.25em 0; }
+
+/* --- code ---------------------------------------------------- */
+
+code, kbd, samp, .path {
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 0.875em;
+}
+
+code {
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+  padding: 0.1em 0.3em;
+}
+
+/* File paths and identifiers: mono, but no box. */
+.path { color: var(--fg-muted); }
+
+pre {
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  padding: 0.75em 0.9em;
+  overflow-x: auto;
+  line-height: 1.45;
+}
+pre code {
+  background: none;
+  border: 0;
+  padding: 0;
+  font-size: 0.8125rem;
+}
+
+/* --- tables -------------------------------------------------- */
+
+table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 0.9375rem;
+}
+th, td {
+  border: 1px solid var(--rule);
+  padding: 0.45em 0.7em;
+  text-align: left;
+  vertical-align: top;
+}
+th {
+  background: var(--surface);
+  font-weight: 600;
+}
+
+/* Wide tables scroll inside their own box; the page never scrolls sideways. */
+.scroll { overflow-x: auto; margin: 0 0 1.1em; }
+.scroll table { margin: 0; }
+
+/* --- callouts ------------------------------------------------ */
+
+.note, .warn, .ok {
+  border: 1px solid var(--rule);
+  border-left: 4px solid var(--fg-muted);
+  background: var(--surface);
+  padding: 0.7em 0.9em;
+  margin: 0 0 1.1em;
+}
+.note > :last-child, .warn > :last-child, .ok > :last-child { margin-bottom: 0; }
+.warn { border-left-color: var(--accent); }
+.ok   { border-left-color: var(--good); }
+
+.note-label {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--fg-muted);
+  margin-bottom: 0.3em;
+}
+
+/* --- status tags --------------------------------------------- */
+
+.tag {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.75rem;
+  border: 1px solid currentColor;
+  border-radius: 3px;
+  padding: 0.05em 0.4em;
+  white-space: nowrap;
+  color: var(--fg-muted);
+}
+.tag-good { color: var(--good); }
+.tag-warn { color: var(--accent); }
+.tag-bad  { color: var(--bad); }
+
+/* --- task lists ---------------------------------------------- */
+
+/* <ul class="tasks"> with <li data-state="done|wip|todo"> */
+ul.tasks { list-style: none; padding-left: 0; }
+ul.tasks li {
+  padding-left: 1.9em;
+  position: relative;
+  margin: 0.4em 0;
+}
+ul.tasks li::before {
+  position: absolute;
+  left: 0;
+  font-family: ui-monospace, Menlo, monospace;
+  color: var(--fg-muted);
+  content: "[ ]";
+}
+ul.tasks li[data-state="done"]::before { content: "[x]"; color: var(--good); }
+ul.tasks li[data-state="wip"]::before  { content: "[~]"; color: var(--accent); }
+ul.tasks li[data-state="done"] { color: var(--fg-muted); }
+
+/* --- definition list (decisions, key/value facts) ------------- */
+
+dl { display: grid; grid-template-columns: minmax(8rem, max-content) 1fr; gap: 0.4em 1.2em; }
+dt { font-weight: 600; }
+dd { margin: 0; }
+
+/* --- table of contents --------------------------------------- */
+
+/* <nav class="toc"> wrapping a nested <ol> or <ul> of in-page links. */
+.toc {
+  border: 1px solid var(--rule);
+  background: var(--surface);
+  padding: 0.9em 1.1em;
+  margin: 0 0 2.2em;
+}
+.toc ol, .toc ul { list-style: none; padding-left: 0; margin: 0; }
+.toc li { margin: 0.15em 0; }
+.toc ol ol, .toc ul ul { padding-left: 1.1em; }
+.toc ol ol li, .toc ul ul li { font-size: 0.9375rem; }
+.toc a { text-decoration: none; }
+.toc a:hover { text-decoration: underline; }
+
+/* A long flat contents list reads better in columns once there is room. */
+@media (min-width: 52rem) {
+  .toc > ol, .toc > ul { columns: 2; column-gap: 2.5em; }
+  .toc > ol > li, .toc > ul > li { break-inside: avoid; }
+}
+
+/* Back-to-contents link at the foot of a section. */
+.backtotoc { font-size: 0.8125rem; color: var(--fg-muted); }
+
+/* --- footnotes / source trail -------------------------------- */
+
+.footer {
+  margin-top: 4rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--rule);
+  color: var(--fg-muted);
+  font-size: 0.8125rem;
+}
+
+@media (max-width: 34rem) {
+  body { font-size: 16px; padding: 1.5rem 1rem 4rem; }
+  dl { grid-template-columns: 1fr; gap: 0.15em; }
+  dd { margin-bottom: 0.6em; }
+}
+
+@media print {
+  :root { --bg: #fff; --fg: #000; }
+  body { font-size: 11pt; }
+  a { color: #000; }
+}
+</style>
+</head>
+<body>
+<main>
+
+<h1 id="contents">Modern C, read through this repo</h1>
+<p class="meta"><span>2026-10-31</span><span>ctest @ 8b6728b</span><span>Learning guide</span></p>
+
+<p>The code in this repo is C23. Most of what makes it look unfamiliar is not
+new syntax. It is a handful of habits. Strings carry their length. A zeroed
+struct is always a valid object. Every function that can fail says so in its
+return type. Arithmetic that can overflow is checked. The compiler is set up
+to reject anything sloppy. C23 adds a few keywords that make those habits
+cheaper to write. Each section below shows the version you would have written
+at university, the version in this repo, and the reason for the change. The
+last section gives exercises to do in this codebase.</p>
+
+<nav class="toc">
+  <ol>
+    <li><a href="#standards">Which C you are writing</a></li>
+    <li><a href="#keywords">Keywords that replaced headers</a></li>
+    <li><a href="#zero">Zero is a valid state</a></li>
+    <li><a href="#init">Initialisers and compound literals</a></li>
+    <li><a href="#strings">Strings that know their length</a></li>
+    <li><a href="#ownership">Owners and borrowers</a></li>
+    <li><a href="#errors">Errors in the return type</a></li>
+    <li><a href="#realloc">Growing a buffer correctly</a></li>
+    <li><a href="#overflow">Checked arithmetic</a></li>
+    <li><a href="#aliasing">Aliasing and memmove</a></li>
+    <li><a href="#varargs">Formatting into a buffer</a></li>
+    <li><a href="#prototypes">Prototypes, static, and headers</a></li>
+    <li><a href="#macros">Macros that behave</a></li>
+    <li><a href="#unity">The unity build</a></li>
+    <li><a href="#tooling">The compiler as a reviewer</a></li>
+    <li><a href="#testing">Testing beyond the happy path</a></li>
+    <li><a href="#docs">Doc comments</a></li>
+    <li><a href="#unused">C23 features this repo does not use yet</a></li>
+    <li><a href="#exercises">Exercises</a></li>
+    <li><a href="#reading">Further reading</a></li>
+  </ol>
+</nav>
+
+<h2 id="standards">Which C you are writing</h2>
+
+<p>The <code>Makefile</code> passes <code>-std=c23</code>. That flag decides
+which keywords exist and how some old syntax is read. University courses tend
+to teach C89 with a few C99 additions. That is why declarations at the top of
+every function and <code>#define TRUE 1</code> feel normal.</p>
+
+<div class="scroll">
+<table>
+  <thead><tr><th>Standard</th><th>What it added that you will see here</th></tr></thead>
+  <tbody>
+    <tr><td>C89</td><td>Prototypes, <code>const</code>, <code>void *</code>. The baseline most courses teach.</td></tr>
+    <tr><td>C99</td><td>Declarations anywhere, <code>//</code> comments, designated initialisers, compound literals, <code>va_copy</code>, <code>snprintf</code>.</td></tr>
+    <tr><td>C11</td><td><code>_Static_assert</code>, <code>_Generic</code>, threads, atomics.</td></tr>
+    <tr><td>C17</td><td>Defect fixes only.</td></tr>
+    <tr><td>C23</td><td><code>bool</code> and <code>nullptr</code> as keywords, <code>= {}</code>, <code>[[attributes]]</code>, <code>&lt;stdckdint.h&gt;</code>, <code>typeof</code>, <code>constexpr</code>, <code>auto</code>.</td></tr>
+  </tbody>
+</table>
+</div>
+
+<p>Designated initialisers and compound literals are C99. They are 27 years
+old. They only look modern because courses skip them.</p>
+
+<h2 id="keywords">Keywords that replaced headers</h2>
+
+<pre><code>/* University */
+#include &lt;stdbool.h&gt;      /* or: #define TRUE 1 */
+#include &lt;stdlib.h&gt;
+if (p == NULL) return false;
+
+/* This repo, src/str.c */
+if (p == nullptr) return false;</code></pre>
+
+<p>In C23, <code>bool</code>, <code>true</code> and <code>false</code> are
+keywords. <code>&lt;stdbool.h&gt;</code> is no longer needed. That is why
+<span class="path">src/str.h</span> uses <code>bool</code> without including
+anything for it.</p>
+
+<p><code>nullptr</code> replaces <code>NULL</code>. <code>NULL</code> is a
+macro that may expand to plain <code>0</code>. Passed through
+<code>...</code> to a variadic function, a <code>0</code> is an
+<code>int</code>, not a pointer. On a 64-bit target that is the wrong size.
+<code>nullptr</code> has its own type, <code>nullptr_t</code>, and is always
+a null pointer.</p>
+
+<p><code>static_assert</code>, <code>alignas</code>, <code>alignof</code> and
+<code>thread_local</code> also became keywords. Their C11 spellings with a
+leading underscore still work.</p>
+
+<h2 id="zero">Zero is a valid state</h2>
+
+<p>This is the most important design idea in <span class="path">src/str.h</span>.
+A <code>Str</code> that is all zero bytes is a real, empty string. It owns no
+memory. Every function accepts it.</p>
+
+<pre><code>/* University */
+Str *s = str_new();          /* mallocs the struct and a buffer */
+if (s == NULL) { ... }
+...
+str_destroy(s);
+s = NULL;                    /* easy to forget */
+
+/* This repo, main.c */
+Str s = {};                  /* valid, owns nothing, cannot fail */
+...
+str_free(&amp;s);                /* s is zero again, so a second free is harmless */</code></pre>
+
+<p>Three things follow from this. The struct lives on the stack, so there is
+one fewer allocation to fail and one fewer pointer to leak. Declaring a string
+cannot fail, so the only failure points are the calls that grow it.
+<code>str_free</code> resets the struct to zero, so a double free becomes a
+no-op instead of heap corruption.</p>
+
+<p>Look at <code>str_grow_</code> in <span class="path">src/str.c</span>.
+<code>realloc(nullptr, n)</code> behaves like <code>malloc(n)</code>. A zeroed
+<code>Str</code> therefore needs no special first-allocation path.</p>
+
+<h2 id="init">Initialisers and compound literals</h2>
+
+<pre><code>/* University */
+Str s;
+memset(&amp;s, 0, sizeof s);
+StrView v;
+v.data = "abc";
+v.len  = 3;
+
+/* This repo */
+Str s = {};                                   /* C23 empty initialiser */
+*s = (Str){};                                 /* reset through a pointer */
+return (StrView){ .data = cstr, .len = n };   /* build and return in one step */</code></pre>
+
+<p><code>= {}</code> zeroes every member. It is C23. <code>= {0}</code> does
+the same in C99. It reads as "set the first member to 0", and the rest are
+zeroed only as a side rule. The empty form says what it means. <code>memset</code> to zero
+happens to produce null pointers and <code>0.0</code> on every machine you
+will use, but the standard does not promise it.</p>
+
+<p><code>(Str){}</code> is a compound literal. It is an unnamed object of type
+<code>Str</code>. Assigning one through a pointer resets every field in one
+statement. When you later add a field, the reset still covers it.</p>
+
+<p>Designated initialisers like <code>.len = n</code> name the field they set.
+Reordering the struct cannot silently swap two values. Fields you leave out
+are zeroed.</p>
+
+<h2 id="strings">Strings that know their length</h2>
+
+<pre><code>/* University */
+char *s = malloc(strlen(a) + strlen(b) + 1);
+strcpy(s, a);
+strcat(s, b);      /* walks a again to find the end */
+
+/* This repo */
+Str s = {};
+if (!str_append(&amp;s, a) || !str_append(&amp;s, b)) { ... }
+printf("%.*s\n", STR_FMT(s));</code></pre>
+
+<p>A <code>char *</code> does not know its length. Every <code>strlen</code>
+and <code>strcat</code> scans for the terminator. A missing terminator turns
+into a read past the end. <code>Str</code> and <code>StrView</code> carry
+<code>len</code> next to the pointer. Length is O(1). Embedded zero bytes are
+allowed. A view of part of a string needs no copy.</p>
+
+<p><code>Str</code> still keeps a terminator after the content. That lets
+<code>str_cstr</code> hand the buffer to C APIs like <code>fopen</code>
+without copying. <code>len</code> is the source of truth. The terminator is
+there for compatibility.</p>
+
+<p><code>printf("%.*s", len, ptr)</code> prints exactly <code>len</code>
+bytes. The <code>*</code> takes the precision from the argument list.
+<code>STR_FMT</code> expands to those two arguments.</p>
+
+<p><code>SV("abc")</code> uses <code>sizeof</code> on the literal. A string
+literal is an array, so <code>sizeof</code> gives its size including the
+terminator. The length is computed at compile time.</p>
+
+<div class="warn">
+  <span class="note-label">Pitfall</span>
+  <code>SV(p)</code> with a <code>char *p</code> compiles. It gives
+  <code>sizeof(char *) - 1</code>, which is 7 on a 64-bit machine. Exercise 1
+  fixes this.
+</div>
+
+<h2 id="ownership">Owners and borrowers</h2>
+
+<p>C has no ownership in the type system. This repo encodes it in the type
+names. A <code>Str</code> owns its buffer and must be freed. A
+<code>StrView</code> borrows bytes owned by something else. It is never
+freed.</p>
+
+<p>A borrow has a lifetime. <code>str_view(&amp;s)</code> points into
+<code>s.data</code>. Any call that can reallocate <code>s</code> may move that
+buffer. The view then dangles. The doc comment on <code>str_view</code> says
+so. Rust's borrow checker enforces this rule at compile time. In C you hold
+it in your head, and AddressSanitizer catches you when you slip.</p>
+
+<p>Function signatures carry the same information.
+<code>const Str *</code> means the function reads and does not modify.
+<code>Str *</code> means it may modify or reallocate. A <code>StrView</code>
+passed by value means the function only reads the bytes.</p>
+
+<h2 id="errors">Errors in the return type</h2>
+
+<pre><code>/* University */
+char *s = malloc(n);
+strcpy(s, src);              /* crashes if malloc failed */
+
+/* or */
+if (s == NULL) { printf("error\n"); exit(1); }
+
+/* This repo */
+[[nodiscard]] bool str_append(Str *s, StrView v);
+
+if (!str_append(&amp;s, v)) { /* caller decides what failure means */ }</code></pre>
+
+<p>Every function that can allocate returns <code>bool</code>. The result goes
+through an out-parameter. A library never calls <code>exit</code>. The
+program decides what an error means, and a library cannot know that.</p>
+
+<p><code>[[nodiscard]]</code> is a C23 attribute. Ignoring the return value
+becomes a compiler warning. If you really mean to ignore it, write
+<code>(void)str_push(&amp;s, 'x');</code>. That cast tells the compiler and the
+reader that the value was dropped on purpose.</p>
+
+<p>The header also promises that on failure the string is left unchanged. This
+is the strong guarantee. <code>str_grow_</code> keeps it by writing
+<code>realloc</code>'s result to a temporary first. It only touches
+<code>s</code> once every step has succeeded. A caller can retry or carry on
+with the old contents.</p>
+
+<h2 id="realloc">Growing a buffer correctly</h2>
+
+<pre><code>/* University */
+buf = realloc(buf, size + 1);    /* on failure: buf is NULL, old block leaked */
+size += 1;                       /* grows by one each time: O(n^2) total copying */
+
+/* This repo, str_grow_ */
+size_t cap = s-&gt;capacity ? s-&gt;capacity : 15;
+while (cap &lt; needed) {
+    if (ckd_mul(&amp;cap, cap, 2)) { cap = needed; break; }
+}
+char *p = realloc(s-&gt;data, bytes);
+if (p == nullptr) return false;  /* s-&gt;data still valid */</code></pre>
+
+<p>Assigning <code>realloc</code> straight back to the same pointer is the most
+common memory bug in student C. When <code>realloc</code> fails it returns
+null and leaves the old block alive. The old pointer is now overwritten and
+the block leaks.</p>
+
+<p>Doubling the capacity makes appends amortised O(1). Growing by a fixed
+amount copies the whole buffer on every step. In the worst case, a 1000-byte
+string grown one byte at a time copies about 500,000 bytes. With doubling it
+copies under 2,000.</p>
+
+<p>Notice there is no cast on <code>realloc</code>. In C a
+<code>void *</code> converts to any object pointer implicitly. The cast is a
+C++ habit and only adds noise.</p>
+
+<h2 id="overflow">Checked arithmetic</h2>
+
+<pre><code>/* University */
+size_t bytes = cap + 1;              /* wraps to 0 if cap == SIZE_MAX */
+
+/* Careful C99 */
+if (cap &gt; SIZE_MAX - 1) return false;
+size_t bytes = cap + 1;
+
+/* This repo, C23 &lt;stdckdint.h&gt; */
+size_t bytes;
+if (ckd_add(&amp;bytes, cap, 1)) return false;</code></pre>
+
+<p><code>ckd_add</code>, <code>ckd_sub</code> and <code>ckd_mul</code> compute
+the exact result and return <code>true</code> if it did not fit. The result
+lands in the first argument. These are the checks you would write by hand,
+except they are correct for every type combination, and you cannot get the
+inequality backwards.</p>
+
+<p>Unsigned overflow wraps silently. Signed overflow is undefined behaviour.
+Either way, a size that wraps to a small number produces a small allocation
+followed by a large write. That is a classic heap overflow.</p>
+
+<h2 id="aliasing">Aliasing and memmove</h2>
+
+<p><code>str_append(&amp;s, str_view(&amp;s))</code> appends a string to itself.
+The view points into the buffer that is about to be reallocated.
+<code>str_append</code> handles it in two steps. It records the view's offset
+before growing. After growing it rebuilds the pointer from the new buffer.
+The copy then uses <code>memmove</code>, which is defined for overlapping
+ranges. <code>memcpy</code> is not.</p>
+
+<p>All of that only matters when the buffer grows. If the bytes already fit,
+nothing moves and the view stays valid. <code>str_append</code> checks for
+that first and skips the offset bookkeeping, the overflow check and the call
+to <code>str_grow_</code>. That fast path made a 16-byte append into a
+reserved buffer 62% faster. It now costs 0.72 ns against 0.51 ns for a bare
+<code>memcpy</code>. <code>make bench</code> measures it.</p>
+
+<div class="note">
+  <span class="note-label">A gray area worth knowing</span>
+  The aliasing check compares <code>v.data</code> against
+  <code>s-&gt;data</code> with <code>&gt;=</code> and <code>&lt;=</code>. The
+  standard only defines ordering comparisons between pointers into the same
+  object. When the view points elsewhere, the comparison is technically
+  undefined. It works on every flat-memory machine. Converting both to
+  <code>uintptr_t</code> first makes it implementation-defined instead. Real
+  C code has many such spots. Knowing where they are is part of writing C
+  well.
+</div>
+
+<h2 id="varargs">Formatting into a buffer</h2>
+
+<pre><code>/* University */
+char buf[256];
+sprintf(buf, fmt, ...);          /* overflows on long input */
+
+/* This repo, str_appendf */
+va_copy(ap2, ap);
+int n = vsnprintf(end, room, fmt, ap);          /* try the spare capacity */
+bool ok = n &gt;= 0 &amp;&amp; (size_t)n &lt; room;
+if (!ok) {
+    if (end != nullptr) *end = '\0';            /* undo the partial write */
+    if (n &gt;= 0 &amp;&amp; str_reserve(s, (size_t)n)) {
+        vsnprintf(s-&gt;data + s-&gt;len, (size_t)n + 1, fmt, ap2);
+        ok = true;
+    }
+}</code></pre>
+
+<p><code>vsnprintf</code> never writes more than the size it is given. It
+always returns how many characters the full output needs. The function
+formats straight into the spare capacity first. Most calls fit, and they are
+done after one pass. Only when the output does not fit does it grow the
+buffer and format a second time. An earlier version always measured first
+with a null buffer, then grew, then wrote. It formatted every call twice and
+was 46% slower.</p>
+
+<p>The failed attempt is not harmless. It wrote a truncated result over the
+terminator at <code>data[len]</code>. Restoring that byte keeps the promise
+that a failed call leaves the string unchanged. The out-of-memory test only
+caught a missing restore after it gained a starting state with some spare
+room, but not enough.</p>
+
+<p>A <code>va_list</code> can only be walked once. The first
+<code>vsnprintf</code> consumes <code>ap</code>. <code>va_copy</code> makes a
+second, independent cursor before that happens. Both need
+<code>va_end</code>.</p>
+
+<p><code>__attribute__((format(printf, 2, 3)))</code> on the declaration tells
+GCC and clang that argument 2 is a printf format and the arguments start at 3.
+The compiler then checks every call site, exactly as it does for
+<code>printf</code>. Try <code>str_appendf(&amp;s, "%d", "text")</code> and read
+the warning.</p>
+
+<h2 id="prototypes">Prototypes, static, and headers</h2>
+
+<pre><code>/* University */
+int main() { ... }
+void helper() { ... }
+
+/* This repo */
+int main(void) { ... }
+static bool str_grow_(Str *s, size_t needed) { ... }</code></pre>
+
+<p>Before C23, <code>int f()</code> meant "takes unspecified arguments". The
+compiler would accept <code>f(1, 2, 3)</code> without complaint. In C23 it
+finally means "takes no arguments". <code>(void)</code> means the same in
+every standard and is still the clearest spelling.
+<code>-Wstrict-prototypes</code> flags the old form.</p>
+
+<p><code>static</code> on a function gives it internal linkage. It is
+invisible outside its translation unit. <code>str_grow_</code> is an
+implementation detail, so it is <code>static</code>. The trailing underscore
+is this repo's convention for internal names. <code>-Wmissing-prototypes</code>
+catches a function that is neither <code>static</code> nor declared in a
+header. That is usually one you forgot to hide.</p>
+
+<p><span class="path">src/str.h</span> uses <code>#pragma once</code>.
+<span class="path">tests/test.h</span> uses classic
+<code>#ifndef TEST_H</code> guards. They do the same job.
+<code>#pragma once</code> is not in the standard, but every compiler you will
+meet supports it. Pick one per project. This repo has both, and making them
+consistent is a fine first commit.</p>
+
+<h2 id="macros">Macros that behave</h2>
+
+<p><span class="path">tests/test.h</span> is a small catalogue of macro
+technique.</p>
+
+<dl>
+  <dt><code>do { } while (0)</code></dt>
+  <dd>Turns a multi-statement macro into one statement. <code>REQUIRE</code>
+  and <code>RUN</code> use it. Without it, <code>if (x) REQUIRE(a); else
+  ...</code> breaks. With bare braces, the semicolon after the macro ends the
+  <code>if</code>, and the <code>else</code> has nothing to attach to.</dd>
+  <dt><code>#cond</code></dt>
+  <dd>Stringification. The <code>#</code> operator turns the macro argument's
+  source text into a string literal. That is how a failing check prints the
+  expression you wrote.</dd>
+  <dt><code>__FILE__</code>, <code>__LINE__</code></dt>
+  <dd>Expand at the call site, not at the definition. Every failure reports
+  the line of the <code>CHECK</code> that failed.</dd>
+  <dt>Thin macro, real function</dt>
+  <dd><code>CHECK_EQ_INT(a, b)</code> only forwards to
+  <code>test_eq_int_</code>, adding <code>#a</code>, <code>#b</code>,
+  <code>__FILE__</code> and <code>__LINE__</code>. Those are the only things a
+  function cannot capture. A function evaluates each argument exactly once. A
+  macro that used <code>(a)</code> twice would run <code>a</code>'s side
+  effects twice.</dd>
+  <dt>Redirecting a library call</dt>
+  <dd><code>#define realloc test_realloc_</code> after
+  <code>&lt;stdlib.h&gt;</code> renames every later call. The header is
+  already included, so its declaration of the real <code>realloc</code> is
+  untouched.</dd>
+  <dt>Parenthesised parameters</dt>
+  <dd><code>(s).len</code> in <code>STR_FMT</code>. Without the parentheses,
+  <code>STR_FMT(*p)</code> would parse as <code>*(p.len)</code>.</dd>
+</dl>
+
+<h2 id="unity">The unity build</h2>
+
+<pre><code>/* University: separate compilation */
+gcc -c str.c -o str.o
+gcc -c main.c -o main.o
+gcc str.o main.o -o main
+
+/* This repo: main.c */
+#include "str.c"</code></pre>
+
+<p><code>main.c</code> includes the <code>.c</code> files directly. The whole
+program is one translation unit, compiled by one compiler invocation. The
+<code>Makefile</code> calls this a unity build.</p>
+
+<p>The benefits are real. There is nothing to link. A full rebuild is a single
+fast command. The optimiser sees every function at once, so it can inline
+across what would have been file boundaries without LTO.</p>
+
+<p>The costs are real too. Every <code>static</code> name shares one namespace,
+so two files cannot both have a <code>static</code> helper with the same name.
+Any change rebuilds everything. That stops mattering once the project is
+large enough to want parallel builds. Separate compilation is still the norm
+for large projects. The unity build is a deliberate choice for small ones.</p>
+
+<h2 id="tooling">The compiler as a reviewer</h2>
+
+<p>University builds usually run <code>gcc main.c</code> or
+<code>gcc -Wall</code>. This repo turns on about twenty warnings. Debug builds
+link two runtime checkers. The idea is that the compiler finds bugs before you
+do.</p>
+
+<div class="scroll">
+<table>
+  <thead><tr><th>Flag</th><th>What it catches</th></tr></thead>
+  <tbody>
+    <tr><td><code>-Wconversion</code>, <code>-Wsign-conversion</code></td><td>Implicit narrowing, such as <code>size_t</code> to <code>int</code>, or a negative <code>int</code> becoming a huge <code>size_t</code>. This is why the code casts explicitly, as in <code>(size_t)n</code>.</td></tr>
+    <tr><td><code>-Wshadow</code></td><td>An inner variable hiding an outer one with the same name.</td></tr>
+    <tr><td><code>-Wformat=2</code></td><td>printf format strings that do not match their arguments, and non-literal format strings.</td></tr>
+    <tr><td><code>-Wwrite-strings</code></td><td>Treats string literals as <code>const char[]</code>, so <code>char *p = "x"</code> warns.</td></tr>
+    <tr><td><code>-Wvla</code></td><td>Variable-length arrays. A VLA sized from input can overflow the stack.</td></tr>
+    <tr><td><code>-fsanitize=address</code></td><td>Out-of-bounds access, use after free, double free, leaks. It runs at runtime in debug builds.</td></tr>
+    <tr><td><code>-fsanitize=undefined</code></td><td>Signed overflow, misaligned access, bad shifts, null dereference. Also runtime.</td></tr>
+    <tr><td><code>-Werror</code> (release only)</td><td>Turns every warning into an error, so a release build cannot ship with one.</td></tr>
+  </tbody>
+</table>
+</div>
+
+<p>The sanitizers are the biggest change from university C. A bug that would
+corrupt memory silently now stops the program with a stack trace naming the
+line. Exercise 4 shows what that looks like.</p>
+
+<p><code>-MMD -MP</code> make the compiler write a <code>.d</code> file listing
+every header a source file included. The <code>Makefile</code> includes those
+files. Editing <span class="path">src/str.h</span> therefore rebuilds what
+depends on it, without anyone maintaining that list by hand.</p>
+
+<h2 id="testing">Testing beyond the happy path</h2>
+
+<p>University tests usually call each function once with a normal input and
+check the output. That leaves the code most likely to be wrong untested: the
+error paths. <span class="path">tests/test_str.c</span> goes after them in
+three ways.</p>
+
+<dl>
+  <dt>Injected allocation failure</dt>
+  <dd><span class="path">tests/test.h</span> wraps the allocator.
+  <code>test_fail_alloc_after(k)</code> lets <code>k</code> allocations
+  succeed and fails the rest. <code>check_unchanged_on_oom</code> fails the
+  first allocation, then the second, and so on, and checks after every
+  failure that the string is byte-for-byte unchanged. That is how the
+  header's "on failure the string is left unchanged" promise gets
+  tested.</dd>
+  <dt>Leak counting</dt>
+  <dd>The same wrappers count live allocations. <code>RUN</code> fails any
+  test that ends with more than it started with. AddressSanitizer's leak
+  checker is not available on macOS, so this is the leak check you get
+  there.</dd>
+  <dt>A model</dt>
+  <dd><code>matches_model_under_random_ops</code> applies 20,000 random
+  operations to a <code>Str</code> and to a plain <code>char</code> array.
+  It compares them after every step. The array is too simple to be wrong, so
+  any difference is a bug in <code>Str</code>. The random generator is
+  seeded, so a failure reproduces exactly.</dd>
+</dl>
+
+<p>A suite earns trust by failing when the code is wrong. Six bugs were
+planted in <span class="path">src/str.c</span> one at a time to check that it
+does: <code>realloc</code> straight into <code>s-&gt;data</code>, a missing
+alias fix, a missing terminator, a <code>free</code> that forgets the buffer,
+an equality check that ignores length, and an unchecked addition. The suite
+caught all six. Try planting your own.</p>
+
+<p>Run one test by name with <code>make test T=self_append</code>. A
+<code>TEST</code> you forget to <code>RUN</code> is an unused
+<code>static</code> function, so <code>-Wunused-function</code> warns about
+it.</p>
+
+<h2 id="docs">Doc comments</h2>
+
+<p>Public declarations in <span class="path">src/str.h</span> carry Doxygen
+comments. A comment that starts with <code>/**</code> is a doc comment.
+<code>/*</code> is an ordinary comment that Doxygen ignores.</p>
+
+<pre><code>/** Append @p v. @p v may point into @p s itself. */
+[[nodiscard]] bool str_append(Str *s, StrView v);
+
+typedef struct Str {
+    size_t len;       /**&lt; Bytes of content, excluding the terminator. */
+} Str;</code></pre>
+
+<dl>
+  <dt><code>/** ... */</code></dt>
+  <dd>Documents the declaration that follows. The first sentence becomes the
+  one-line summary.</dd>
+  <dt><code>/**&lt; ... */</code></dt>
+  <dd>Documents the member to its left. Use it for struct fields.</dd>
+  <dt><code>@p name</code></dt>
+  <dd>Renders a parameter name in code font.</dd>
+  <dt><code>@param</code>, <code>@return</code></dt>
+  <dd>Full parameter and return sections. Use them when a one-line summary
+  cannot say it all.</dd>
+  <dt><code>@file</code></dt>
+  <dd>Required at the top of a header. Without it, Doxygen does not document
+  the free functions in that file.</dd>
+  <dt><code>@snippet{trimleft} test_str.c name</code></dt>
+  <dd>Pastes the lines between two <code>/* [name] */</code> markers in
+  <span class="path">tests/test_str.c</span>. <code>trimleft</code> strips the
+  indentation the test body adds.</dd>
+</dl>
+
+<p>The examples in the reference are snippets of the tests rather than
+<code>@code</code> blocks typed into the header. A typed example rots
+silently when the API changes. A snippet is compiled and run by
+<code>make test</code>. If someone renames a marker, <code>make docs</code>
+fails.</p>
+
+<p>Run <code>make docs</code> and open
+<span class="path">build/docs/html/index.html</span>. The build fails if any
+public declaration lacks a doc comment, so the reference cannot fall behind
+the header. clangd shows the same comments when you hover with
+<code>K</code> in Neovim.</p>
+
+<h2 id="unused">C23 features this repo does not use yet</h2>
+
+<div class="scroll">
+<table>
+  <thead><tr><th>Feature</th><th>Example</th><th>What it replaces</th></tr></thead>
+  <tbody>
+    <tr><td><code>constexpr</code></td><td><code>constexpr size_t MIN_CAP = 15;</code></td><td>A <code>#define</code> constant. It is typed, scoped, and visible in the debugger.</td></tr>
+    <tr><td><code>typeof</code></td><td><code>typeof(x) tmp = x;</code></td><td>The GNU extension of the same name. Useful in macros.</td></tr>
+    <tr><td><code>auto</code></td><td><code>auto v = str_view(&amp;s);</code></td><td>Spelling out a long type. Use it sparingly.</td></tr>
+    <tr><td><code>static_assert</code> without a message</td><td><code>static_assert(sizeof(Str) == 24);</code></td><td><code>_Static_assert(cond, "msg")</code>.</td></tr>
+    <tr><td><code>[[maybe_unused]]</code>, <code>[[fallthrough]]</code>, <code>[[deprecated]]</code></td><td><code>[[maybe_unused]] int x;</code></td><td><code>(void)x;</code> and <code>/* fallthrough */</code> comments.</td></tr>
+    <tr><td><code>[[gnu::format]]</code></td><td><code>[[nodiscard, gnu::format(printf, 2, 3)]]</code></td><td><code>__attribute__((format(...)))</code>. Same meaning, standard syntax.</td></tr>
+    <tr><td>Binary literals, digit separators</td><td><code>0b1010</code>, <code>1'000'000</code></td><td>Hex and counting zeros.</td></tr>
+    <tr><td><code>unreachable()</code></td><td>after a <code>switch</code> that covers every case</td><td><code>__builtin_unreachable()</code>.</td></tr>
+    <tr><td><code>#embed</code></td><td><code>static const char shader[] = {
+#embed "a.glsl"
+};</code></td><td>A build step that converts a file to a C array.</td></tr>
+    <tr><td><code>strdup</code>, <code>strndup</code></td><td><code>char *c = strdup(s);</code></td><td>Writing your own. They were POSIX and are now standard C.</td></tr>
+    <tr><td><code>memset_explicit</code></td><td>clearing a password buffer</td><td><code>memset</code>, which the optimiser may delete when the buffer is never read again.</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h2 id="exercises">Exercises</h2>
+
+<p>Each exercise is small and lands in this repo. Run <code>make test</code>
+after each one.</p>
+
+<ul class="tasks">
+  <li data-state="todo"><strong>Make <code>SV</code> reject pointers.</strong>
+  Change the macro body to <code>.data = "" lit ""</code>. Adjacent string
+  literals are concatenated, so a literal still works. A pointer is a syntax
+  error. Confirm that <code>SV(p)</code> no longer compiles.</li>
+  <li data-state="todo"><strong>Add <code>sv_find</code>.</strong> Return the
+  index of a byte in a <code>StrView</code>, or <code>SIZE_MAX</code> if it is
+  absent. Use <code>memchr</code>. Document it with a doc comment and add a
+  <code>TEST</code> for found, missing, and empty cases.</li>
+  <li data-state="todo"><strong>Add <code>sv_trim</code>.</strong> Return a
+  view without leading and trailing whitespace. It allocates nothing, so it
+  returns <code>StrView</code> rather than <code>bool</code>. Mark it
+  <code>[[nodiscard]]</code> anyway. Calling it and dropping the result is
+  always a bug.</li>
+  <li data-state="todo"><strong>Meet AddressSanitizer.</strong> In
+  <code>main.c</code>, take <code>StrView v = str_view(&amp;s);</code>, then
+  append enough bytes to force a realloc, then print <code>v</code>. Run
+  <code>make run</code> and read the report. Find the three stack traces: the
+  bad read, the free, and the original allocation.</li>
+  <li data-state="todo"><strong>Replace <code>__attribute__</code>.</strong>
+  Switch <code>str_appendf</code> to <code>[[nodiscard, gnu::format(printf, 2,
+  3)]]</code>. Check the format warning still fires. Then delete the three
+  preprocessor lines under "Hide GNU attributes" in <code>Doxyfile</code> and
+  check <code>make docs</code> still passes.</li>
+  <li data-state="todo"><strong>Turn the minimum capacity into a
+  <code>constexpr</code>.</strong> Replace the literal <code>15</code> in
+  <code>str_grow_</code>. Add a <code>static_assert</code> that it is at
+  least 1.</li>
+  <li data-state="todo"><strong>Pick one header guard style.</strong> Make
+  <span class="path">tests/test.h</span> and
+  <span class="path">src/str.h</span> agree.</li>
+  <li data-state="todo"><strong>Write <code>str_insert</code>.</strong> Insert
+  a <code>StrView</code> at an index. Keep the strong guarantee: on failure the
+  string is unchanged. Handle a view that points into the string itself. This
+  one combines growth, aliasing and <code>memmove</code>.</li>
+</ul>
+
+<h2 id="reading">Further reading</h2>
+
+<ul>
+  <li><a href="https://en.cppreference.com/w/c">cppreference C reference</a>.
+  Each page marks the standard that introduced the feature. Search it before
+  anything else.</li>
+  <li><a href="https://www.open-std.org/jtc1/sc22/wg14/www/docs/n3220.pdf">N3220</a>.
+  The working draft immediately after C23. It is the standard text in all but
+  name, and free.</li>
+  <li><em>Modern C</em> by Jens Gustedt. A book on the C this repo is written
+  in, by a member of the standards committee. The author makes a free edition
+  available.</li>
+  <li><code>man 3 printf</code>, <code>man 3 realloc</code>,
+  <code>man 3 memmove</code>. The man pages on your machine document exactly
+  the libc you link against.</li>
+</ul>
+
+<p class="footer">Built from <span class="path">main.c</span>,
+<span class="path">src/str.h</span>, <span class="path">src/str.c</span>,
+<span class="path">tests/test.h</span>, <span class="path">tests/test_str.c</span>,
+<span class="path">Makefile</span> and <span class="path">Doxyfile</span>.
+Code claims checked against Apple clang 21 with <code>-std=c23</code>.</p>
+
+</main>
+</body>
+</html>

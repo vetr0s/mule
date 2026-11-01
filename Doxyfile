@@ -1,0 +1,20 @@
+# Doxygen config for `make docs`. Only non-default settings are listed;
+# run `doxygen -x Doxyfile` to see what differs, `doxygen -g` for the rest.
+
+PROJECT_NAME           = ctest
+OUTPUT_DIRECTORY       = build/docs
+INPUT                  = src
+FILE_PATTERNS          = *.h
+EXAMPLE_PATH           = tests
+OPTIMIZE_OUTPUT_FOR_C  = YES
+JAVADOC_AUTOBRIEF      = YES
+GENERATE_LATEX         = NO
+QUIET                  = YES
+
+# Hide GNU attributes from the rendered signatures.
+MACRO_EXPANSION        = YES
+EXPAND_ONLY_PREDEF     = YES
+PREDEFINED             = "__attribute__(x)="
+
+# Every public declaration must be documented, or `make docs` fails.
+WARN_AS_ERROR          = FAIL_ON_WARNINGS
