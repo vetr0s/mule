@@ -89,11 +89,14 @@ bool str_push(Str *s, char c) {
 bool str_append(Str *s, StrView v) {
     if (v.len == 0) return true;
 
-    /* Fast path: it fits, so the buffer cannot move under `v`. */
-    if (s->data != nullptr && v.len <= s->capacity - s->len) {
-        memmove(s->data + s->len, v.data, v.len);
-        s->len += v.len;
-        s->data[s->len] = '\0';
+    /* Fast path: it fits, so the buffer cannot move under `v`. Locals, as in
+     * str_push, so the stores into `data` cannot force reloads of `*s`. */
+    char *data = s->data;
+    size_t len = s->len;
+    if (data != nullptr && v.len <= s->capacity - len) {
+        memmove(data + len, v.data, v.len);
+        data[len + v.len] = '\0';
+        s->len = len + v.len;
         return true;
     }
 
