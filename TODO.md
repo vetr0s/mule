@@ -36,10 +36,11 @@ module. This file tracks what comes next and what the existing code still needs.
 
 ### 2. Arena allocator
 
-- [ ] A bump allocator with aligned allocation and one call that frees
-      everything. Use checked arithmetic, as `str_grow_` does.
-- [ ] It suits parsing: allocate everything for one input in an arena, keep
-      `StrView`s into it, and free it all at the end.
+- [x] A bump allocator in `src/mem/` with aligned allocation and one call
+      that frees everything. `Str` draws from it through its `alloc` field.
+- [ ] Save and restore marks, so a function can free just what it allocated.
+- [ ] Replace the `malloc` macro hooks in `tests/test.h` with a failing
+      `Allocator`.
 
 ### 3. Input parsing, added to `str`
 

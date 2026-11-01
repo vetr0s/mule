@@ -1,4 +1,5 @@
 /* Bug on purpose: a view kept across a call that reallocates. */
+#include "mem/mem.c"
 #include "str/str.c"
 
 #include <stdio.h>

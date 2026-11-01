@@ -1,4 +1,5 @@
 /* Str on its own: build a string, read it, free it. */
+#include "mem/mem.c"
 #include "str/str.c"
 
 #include <stdio.h>

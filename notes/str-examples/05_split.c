@@ -1,4 +1,5 @@
 /* StrView on its own: split fields and tokens. */
+#include "mem/mem.c"
 #include "str/str.c"
 
 #include <stdio.h>

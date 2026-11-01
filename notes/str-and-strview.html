@@ -318,7 +318,7 @@ dd { margin: 0; }
 
 <h2 id="run">Running the examples</h2>
 
-<p>Run these from the repository root. The examples read <span class="path">data/pg2554.txt</span>, which is the Project Gutenberg text of <em>Crime and Punishment</em>. Each file includes <span class="path">src/str/str.c</span> directly, the same way <span class="path">main.c</span> does, so a single compiler call builds it.</p>
+<p>Run these from the repository root. The examples read <span class="path">data/pg2554.txt</span>, which is the Project Gutenberg text of <em>Crime and Punishment</em>. Each file includes <span class="path">src/mem/mem.c</span> and <span class="path">src/str/str.c</span> directly, the same way <span class="path">main.c</span> does, so a single compiler call builds it.</p>
 
 <pre><code>cc -std=c23 -Isrc -fsanitize=address,undefined \
    notes/str-examples/01_build.c -o build/ex &amp;&amp; ./build/ex</code></pre>
@@ -343,8 +343,8 @@ StrView tail                         data ┘ len 10   tail = "Punishment"</code
     <tr><th></th><th><code>Str</code></th><th><code>StrView</code></th></tr>
   </thead>
   <tbody>
-    <tr><td>Fields</td><td><code>data</code>, <code>len</code>, <code>capacity</code></td><td><code>data</code>, <code>len</code></td></tr>
-    <tr><td>Owns memory</td><td>Yes. Call <code>str_free</code> when done.</td><td>No. Never free it.</td></tr>
+    <tr><td>Fields</td><td><code>data</code>, <code>len</code>, <code>capacity</code>, <code>alloc</code></td><td><code>data</code>, <code>len</code></td></tr>
+    <tr><td>Owns memory</td><td>Yes. Call <code>str_free</code> when done. A <code>Str</code> in an arena is also freed by <code>arena_free</code>.</td><td>No. Never free it.</td></tr>
     <tr><td>Can change</td><td>Yes, through <code>str_*</code> calls.</td><td>No. The bytes are <code>const</code>.</td></tr>
     <tr><td>Calls can fail</td><td>Calls that may allocate return <code>bool</code>.</td><td>Never. No call allocates.</td></tr>
     <tr><td>NUL-terminated</td><td>Yes. <code>str_cstr</code> is safe to pass to C APIs.</td><td>Not in general. A slice ends mid-string.</td></tr>
@@ -363,6 +363,7 @@ StrView tail                         data ┘ len 10   tail = "Punishment"</code
 
 <p class="muted"><span class="path">notes/str-examples/01_build.c</span></p>
 <pre><code>/* Str on its own: build a string, read it, free it. */
+#include "mem/mem.c"
 #include "str/str.c"
 
 #include &lt;stdio.h&gt;
@@ -404,6 +405,7 @@ Rodion Raskolnikov, former student, age 23</code></pre>
 <p class="muted"><span class="path">notes/str-examples/02_reuse.c</span></p>
 <pre><code>/* Str on its own: clear and refill one buffer instead of allocating per line.
  */
+#include "mem/mem.c"
 #include "str/str.c"
 
 #include &lt;stdio.h&gt;
@@ -436,6 +438,7 @@ PART 3   capacity 15, data 0x6020000000f0</code></pre>
 
 <p class="muted"><span class="path">notes/str-examples/03_file.c</span></p>
 <pre><code>/* Str on its own: read a whole file into memory. */
+#include "mem/mem.c"
 #include "str/str.c"
 
 #include &lt;stdio.h&gt;
@@ -483,6 +486,7 @@ int main(int argc, char **argv) {
 
 <p class="muted"><span class="path">notes/str-examples/04_views.c</span></p>
 <pre><code>/* StrView on its own: inspect and slice text without allocating. */
+#include "mem/mem.c"
 #include "str/str.c"
 
 #include &lt;stdio.h&gt;
@@ -534,6 +538,7 @@ verbose on</code></pre>
 
 <p class="muted"><span class="path">notes/str-examples/05_split.c</span></p>
 <pre><code>/* StrView on its own: split fields and tokens. */
+#include "mem/mem.c"
 #include "str/str.c"
 
 #include &lt;stdio.h&gt;
@@ -587,6 +592,7 @@ word  [restless]</code></pre>
 
 <p class="muted"><span class="path">notes/str-examples/06_sort.c</span></p>
 <pre><code>/* StrView on its own: sort an array of views with qsort. */
+#include "mem/mem.c"
 #include "str/str.c"
 
 #include &lt;stdio.h&gt;
@@ -620,6 +626,7 @@ Sonya</code></pre>
 
 <p class="muted"><span class="path">notes/str-examples/07_lines.c</span></p>
 <pre><code>/* Together: one Str owns the file, views walk its lines. */
+#include "mem/mem.c"
 #include "str/str.c"
 
 #include &lt;stdio.h&gt;
@@ -673,6 +680,7 @@ int main(void) {
 
 <p class="muted"><span class="path">notes/str-examples/08_keep.c</span></p>
 <pre><code>/* Together: copy a view into its own Str when it must outlive its source. */
+#include "mem/mem.c"
 #include "str/str.c"
 
 #include &lt;stdio.h&gt;
@@ -737,6 +745,7 @@ int main(void) {
 
 <p class="muted"><span class="path">notes/str-examples/09_replace.c</span></p>
 <pre><code>/* Together: write your own function with views in and a Str out. */
+#include "mem/mem.c"
 #include "str/str.c"
 
 #include &lt;stdio.h&gt;
@@ -802,6 +811,7 @@ int main(void) {
 
 <p class="muted"><span class="path">notes/str-examples/10_dangling.c</span></p>
 <pre><code>/* Bug on purpose: a view kept across a call that reallocates. */
+#include "mem/mem.c"
 #include "str/str.c"
 
 #include &lt;stdio.h&gt;
@@ -840,6 +850,7 @@ previously allocated by thread T0 here:
 
 <p class="muted"><span class="path">notes/str-examples/11_double_free.c</span></p>
 <pre><code>/* Bug on purpose: copying a Str struct makes two owners of one buffer. */
+#include "mem/mem.c"
 #include "str/str.c"
 
 #include &lt;stdlib.h&gt;

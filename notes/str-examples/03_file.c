@@ -1,4 +1,5 @@
 /* Str on its own: read a whole file into memory. */
+#include "mem/mem.c"
 #include "str/str.c"
 
 #include <stdio.h>

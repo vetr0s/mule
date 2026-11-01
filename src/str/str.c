@@ -21,7 +21,8 @@ static bool str_grow_(Str *s, size_t needed) {
     size_t bytes;
     if (ckd_add(&bytes, cap, 1)) return false;
 
-    char *p = realloc(s->data, bytes);
+    size_t old = s->data != nullptr ? s->capacity + 1 : 0;
+    char *p = mem_realloc(s->alloc, s->data, old, bytes);
     if (p == nullptr) return false;
     if (s->data == nullptr) p[0] = '\0';
 
@@ -31,12 +32,12 @@ static bool str_grow_(Str *s, size_t needed) {
 }
 
 bool str_with_capacity(Str *s, size_t capacity) {
-    *s = (Str){};
+    *s = (Str){ .alloc = s->alloc };
     return str_grow_(s, capacity);
 }
 
 bool str_from(Str *s, StrView v) {
-    *s = (Str){};
+    *s = (Str){ .alloc = s->alloc };
     return str_append(s, v);
 }
 
@@ -45,8 +46,9 @@ bool str_from_cstr(Str *s, const char *cstr) {
 }
 
 void str_free(Str *s) {
-    free(s->data);
-    *s = (Str){};
+    if (s->data != nullptr)
+        (void)mem_realloc(s->alloc, s->data, s->capacity + 1, 0);
+    *s = (Str){ .alloc = s->alloc };
 }
 
 bool str_reserve(Str *s, size_t additional) {
@@ -57,7 +59,7 @@ bool str_reserve(Str *s, size_t additional) {
 
 bool str_shrink_to_fit(Str *s) {
     if (s->data == nullptr || s->capacity == s->len) return true;
-    char *p = realloc(s->data, s->len + 1);
+    char *p = mem_realloc(s->alloc, s->data, s->capacity + 1, s->len + 1);
     if (p == nullptr) return false;
     s->data = p;
     s->capacity = s->len;
@@ -142,7 +144,7 @@ bool str_appendf(Str *s, const char *fmt, ...) {
 
 bool str_append_file(Str *s, FILE *f) {
     /* Read into a scratch Str so a failure part-way leaves `s` untouched. */
-    Str tmp = {};
+    Str tmp = { .alloc = s->alloc };
     bool ok = true;
     for (;;) {
         if (!str_reserve(&tmp, 4096)) {

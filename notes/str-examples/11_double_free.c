@@ -1,4 +1,5 @@
 /* Bug on purpose: copying a Str struct makes two owners of one buffer. */
+#include "mem/mem.c"
 #include "str/str.c"
 
 #include <stdlib.h>

@@ -8,6 +8,7 @@
  */
 #include "test.h"
 
+#include "mem/mem.c"
 #include "str/str.c"
 
 #include <stdint.h>
@@ -234,6 +235,66 @@ TEST(self_append_slice) {
 }
 
 /* --- Access -------------------------------------------------------------- */
+
+/* --- Allocators --------------------------------------------------------- */
+
+TEST(arena_str) {
+    /* [arena_str] */
+    Arena arena = {};
+    Str s = { .alloc = arena_allocator(&arena) };
+    CHECK(str_append_cstr(&s, "lives in the arena"));
+    CHECK(str_appendf(&s, ", %d bytes", 18));
+    CHECK_EQ_STR(str_cstr(&s), "lives in the arena, 18 bytes");
+    arena_free(&arena); /* frees the string's bytes too */
+    /* [arena_str] */
+}
+
+TEST(arena_str_grows_in_place) {
+    Arena a = {};
+    Str s = { .alloc = arena_allocator(&a) };
+    for (int i = 0; i < 1000; i++) REQUIRE(str_push(&s, 'x'));
+    /* Every doubling extended the same allocation, so nothing was left behind.
+     */
+    CHECK(a.head->prev == nullptr);
+    CHECK_EQ_INT(a.head->used, s.capacity + 1);
+    arena_free(&a);
+}
+
+TEST(str_free_keeps_allocator) {
+    Arena a = {};
+    const Allocator *al = arena_allocator(&a);
+    Str s = { .alloc = al };
+    REQUIRE(str_with_capacity(&s, 100));
+    CHECK(s.alloc == al);
+    str_free(&s);
+    CHECK(s.alloc == al && s.data == nullptr);
+    CHECK_EQ_INT(a.head->used, 0); /* the newest allocation rolls back */
+
+    REQUIRE(str_from_cstr(&s, "reused"));
+    CHECK(s.alloc == al);
+    str_free(&s);
+    str_free(&s);
+    arena_free(&a);
+}
+
+TEST(arena_str_append_file) {
+    FILE *f = pattern_file(10000);
+    REQUIRE(f != nullptr);
+    Arena a = {};
+    Str s = { .alloc = arena_allocator(&a) };
+    REQUIRE(str_append_cstr(&s, "head:"));
+    CHECK(str_append_file(&s, f));
+    CHECK_EQ_INT(s.len, 5 + 10000);
+    CHECK(s.data[s.len] == '\0');
+
+    Str taken = { .alloc = s.alloc };
+    rewind(f);
+    CHECK(str_append_file(&taken, f));
+    CHECK_EQ_INT(taken.len, 10000);
+    CHECK(memcmp(taken.data, s.data + 5, 10000) == 0);
+    arena_free(&a);
+    fclose(f);
+}
 
 TEST(equality) {
     /* [eq] */
@@ -479,11 +540,11 @@ static uint64_t next_random(uint64_t *state) {
 
 /* Random operations on a Str, checked after every step against a plain array
  * that applies the same operations. */
-TEST(matches_model_under_random_ops) {
+static void check_against_model(const Allocator *alloc) {
     static const char pool[] = "the quick brown fox\0jumps over\tthe lazy dog";
     char model[512];
     size_t model_len = 0;
-    Str s = {};
+    Str s = { .alloc = alloc };
     uint64_t rng = 1;
 
     for (int step = 0; step < 20000; step++) {
@@ -544,6 +605,16 @@ TEST(matches_model_under_random_ops) {
         REQUIRE(same);
     }
     str_free(&s);
+}
+
+TEST(matches_model_under_random_ops) {
+    check_against_model(nullptr);
+}
+
+TEST(matches_model_in_arena) {
+    Arena arena = {};
+    check_against_model(arena_allocator(&arena));
+    arena_free(&arena);
 }
 
 /* Up to `max` random bytes from `alphabet`, NUL-terminated for string.h. */
@@ -621,6 +692,10 @@ int main(int argc, char **argv) {
     RUN(self_append);
     RUN(self_append_grows_repeatedly);
     RUN(self_append_slice);
+    RUN(arena_str);
+    RUN(arena_str_grows_in_place);
+    RUN(str_free_keeps_allocator);
+    RUN(arena_str_append_file);
     RUN(equality);
     RUN(fmt_prints_exact_bytes);
     RUN(find);
@@ -633,6 +708,7 @@ int main(int argc, char **argv) {
     RUN(oom_leaves_string_unchanged);
     RUN(oom_during_init_leaves_empty);
     RUN(matches_model_under_random_ops);
+    RUN(matches_model_in_arena);
     RUN(views_match_string_h);
     RUN(tokens_match_strtok);
     return TEST_REPORT();

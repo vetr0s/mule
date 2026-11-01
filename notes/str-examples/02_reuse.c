@@ -1,5 +1,6 @@
 /* Str on its own: clear and refill one buffer instead of allocating per line.
  */
+#include "mem/mem.c"
 #include "str/str.c"
 
 #include <stdio.h>

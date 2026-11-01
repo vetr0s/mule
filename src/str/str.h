@@ -1,7 +1,7 @@
 #pragma once
 /**
  * @file
- * @brief Str: an owned, growable, heap-allocated byte string.
+ * @brief Str: an owned, growable byte string.
  *
  *   - `data` is always NUL-terminated when non-null, so it can be passed to
  *     C APIs, but `len` is authoritative (embedded NULs are allowed).
@@ -9,6 +9,8 @@
  *     terminator (the allocation is `capacity + 1` bytes).
  *   - A zero-initialised Str (`Str s = {};`) is a valid empty string and owns
  *     no memory; every function accepts it.
+ *   - `alloc` says where the bytes live. Null means the libc heap. Set it
+ *     before the first allocation and leave it alone after; str_free keeps it.
  *   - Functions that may allocate return `bool` (false = out of memory, size
  *     overflow, or a read error). On failure the string is left unchanged.
  *
@@ -16,17 +18,21 @@
  * `make test`.
  *
  * @snippet{trimleft} test_str.c build
+ *
+ * @snippet{trimleft} test_str.c arena_str
  */
 
 #include "base/base.h"
+#include "mem/mem.h"
 
 #include <stdio.h>
 
 /** Owned, growable byte string. Zero-initialise before first use. */
 typedef struct Str {
-    char *data;      /**< Heap buffer, or null when nothing is allocated. */
+    char *data;      /**< Buffer, or null when nothing is allocated. */
     size_t len;      /**< Bytes of content, excluding the terminator. */
     size_t capacity; /**< Content bytes that fit before the next realloc. */
+    const Allocator *alloc; /**< Source of `data`. Null means the heap. */
 } Str;
 
 /** Non-owning view of bytes; handy for passing slices and literals around. */

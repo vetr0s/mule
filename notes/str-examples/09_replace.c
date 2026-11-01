@@ -1,4 +1,5 @@
 /* Together: write your own function with views in and a Str out. */
+#include "mem/mem.c"
 #include "str/str.c"
 
 #include <stdio.h>

@@ -1,5 +1,6 @@
 /* Unity build: every implementation file is included here, so the whole
  * program is one translation unit (fast builds, whole-program optimisation). */
+#include "mem/mem.c"
 #include "str/str.c"
 #include "str/str.h"
 

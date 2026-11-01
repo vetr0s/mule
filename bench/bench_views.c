@@ -13,6 +13,7 @@
  */
 #include "bench.h"
 
+#include "mem/mem.c"
 #include "str/str.c"
 
 #include <string.h>
