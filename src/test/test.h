@@ -1,38 +1,46 @@
-/* Minimal single-header test harness.
+#pragma once
+/**
+ * @file
+ * @brief Test: a small unit-test harness that catches leaks, hangs and
+ * out-of-memory bugs.
  *
- *   #include "test.h"      // first, so the allocator hooks below apply
- *   #include "log/log.c"   // test.h needs log, and log needs mem and str
- *   #include "mem/mem.c"
- *   #include "str/str.c"
- *   #include "thing.c"
+ * A test file is a program. Include this header first, then the `.c` files
+ * under test, then write tests and a main that runs them:
  *
- *   TEST(my_case) { CHECK(1 + 1 == 2); CHECK_EQ_INT(add(2, 2), 4); }
+ * @code
+ * #include "test/test.h"
  *
- *   int main(int argc, char **argv) {
- *       test_init(argc, argv);
- *       RUN(my_case);
- *       return TEST_REPORT();
- *   }
+ * #include "log/log.c"
+ * #include "mem/mem.c"
+ * #include "str/str.c"
  *
- * CHECK records a failure and carries on. REQUIRE records it and returns from
- * the test, for when the rest of the test would be meaningless.
+ * TEST(appends) {
+ *     Str s = {};
+ *     REQUIRE(str_append(&s, SV("mule")));
+ *     CHECK_EQ_STR(str_cstr(&s), "mule");
+ *     str_free(&s);
+ * }
  *
- * Every file included after this one has malloc, calloc, realloc and free
- * redirected to counting wrappers. RUN fails a test that ends with more live
- * allocations than it started with, which catches leaks on platforms without
- * LeakSanitizer. test_fail_alloc_after(n) lets n allocations succeed and fails
- * the rest, so out-of-memory paths can be tested deterministically.
+ * int main(int argc, char **argv) {
+ *     test_init(argc, argv);
+ *     RUN(appends);
+ *     return TEST_REPORT();
+ * }
+ * @endcode
  *
- * Results are coloured when stdout supports it, as decided by
- * log_color_enabled() in src/log/log.h.
- *
- * Pass test names as arguments to run only those tests. A test still running
- * after TEST_TIMEOUT_S seconds is reported as [HANG] and fails the run, so an
- * infinite loop in the code under test cannot stall `make test`.
+ *   - CHECK records a failure and carries on. REQUIRE records it and returns
+ *     from the test, for when the rest of it would be meaningless.
+ *   - Every file included after this one has malloc, calloc, realloc and free
+ *     redirected to counting wrappers. RUN fails a test that ends with more
+ *     live allocations than it started with, so leaks fail on every platform.
+ *   - test_fail_alloc_after() makes allocation fail on demand, so
+ *     out-of-memory paths can be tested deterministically.
+ *   - A test still running after #TEST_TIMEOUT_S seconds is reported as
+ *     `[HANG]` and fails the run.
+ *   - Pass test names as arguments to run only those tests.
+ *   - Results are coloured when stdout supports it, as log_color_enabled()
+ *     decides. The harness needs the log module, and log needs mem and str.
  */
-#ifndef TEST_H
-#define TEST_H
-
 #include "base/base.h" /* first: it sets the POSIX feature macros */
 #include "log/log.h"
 
@@ -43,9 +51,12 @@
 #include <unistd.h>
 
 #ifndef TEST_TIMEOUT_S
+/** Seconds before a running test counts as hung. Define it before the
+ *  include to change it. */
 #define TEST_TIMEOUT_S 10
 #endif
 
+/** @cond */
 static int test_failures_ = 0;
 static int test_checks_ = 0;
 static int test_cur_failed_ = 0;
@@ -59,9 +70,15 @@ static bool test_color_ = false; /* set once by test_init */
 static long test_live_allocs_ = 0;
 static long test_alloc_budget_ = -1; /* allocations left; -1 means no limit */
 
+/** @endcond */
+
+/** Let the next @p n allocations succeed and fail every one after. Pass -1
+ *  to stop failing. RUN resets it after each test. */
 [[maybe_unused]] static void test_fail_alloc_after(long n) {
     test_alloc_budget_ = n;
 }
+
+/** @cond */
 
 static bool test_alloc_allowed_(void) {
     if (test_alloc_budget_ == 0) return false;
@@ -181,29 +198,38 @@ static void test_print_bytes_(const char *p, size_t n) {
     return ok;
 }
 
+/** @endcond */
+
+/** Define a test. Run it from main with RUN. */
 #define TEST(name) static void name(void)
 
+/** Record a failure when @p cond is false, and carry on. */
 #define CHECK(cond) ((void)test_check_((cond), __FILE__, __LINE__, #cond))
 
+/** Record a failure when @p cond is false, and return from the test. */
 #define REQUIRE(cond)                                                          \
     do {                                                                       \
         if (!test_check_((cond), __FILE__, __LINE__, #cond)) return;           \
     } while (0)
 
+/** CHECK that two integers are equal, printing both values when not. */
 #define CHECK_EQ_INT(a, b)                                                     \
     ((void)test_eq_int_((long long)(a), (long long)(b), __FILE__, __LINE__,    \
                         #a, #b))
 
-/* Null-safe: two nulls are equal, a null and a string are not. */
+/** CHECK that two C strings are equal. Two nulls are equal, a null and a
+ *  string are not. */
 #define CHECK_EQ_STR(a, b)                                                     \
     ((void)test_eq_str_((a), (b), __FILE__, __LINE__, #a, #b))
 
-/* Compares lengths and bytes, so embedded NULs count. */
+/** CHECK that two byte ranges have the same length and bytes, embedded NULs
+ *  included. */
 #define CHECK_EQ_MEM(a, alen, b, blen)                                         \
     ((void)test_eq_mem_((a), (alen), (b), (blen), __FILE__, __LINE__, #a, #b))
 
 /* --- Running ------------------------------------------------------------- */
 
+/** @cond */
 /* SIGALRM handler, so only async-signal-safe calls: write and _exit. */
 static void test_timeout_(int sig) {
     (void)sig;
@@ -218,6 +244,9 @@ static void test_timeout_(int sig) {
     _exit(EXIT_FAILURE);
 }
 
+/** @endcond */
+
+/** Start a test program. Call it first in main with main's arguments. */
 [[maybe_unused]] static void test_init(int argc, char **argv) {
     test_argc_ = argc;
     test_argv_ = argv;
@@ -225,6 +254,7 @@ static void test_timeout_(int sig) {
     signal(SIGALRM, test_timeout_);
 }
 
+/** @cond */
 static void test_print_result_(const char *name) {
     const char *tag = test_cur_failed_ ? "FAIL" : " OK ";
     if (test_color_)
@@ -249,6 +279,10 @@ static bool test_selected_(const char *name) {
     return false;
 }
 
+/** @endcond */
+
+/** Run a test unless arguments name others, then print `[ OK ]` or `[FAIL]`.
+ *  A leak or a hang fails the test too. */
 #define RUN(name)                                                              \
     do {                                                                       \
         if (!test_selected_(#name)) break;                                     \
@@ -269,6 +303,6 @@ static bool test_selected_(const char *name) {
         fflush(stdout); /* keep finished results if a later test hangs */      \
     } while (0)
 
+/** Print the totals. Return it from main: it is nonzero when a test failed. */
 #define TEST_REPORT() test_report_(__FILE__)
 
-#endif /* TEST_H */

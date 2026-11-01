@@ -6,7 +6,7 @@
 #define _XOPEN_SOURCE 700 /* posix_openpt, for a real terminal to test on */
 #define LOG_LEVEL_MIN LOG_DEBUG /* so log_trace compiles out in this file */
 
-#include "test.h"
+#include "test/test.h"
 
 #include "log/log.c"
 #include "mem/mem.c"

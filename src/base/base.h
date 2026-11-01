@@ -4,7 +4,8 @@
  * @brief Base: what every MULE module needs, included before anything else.
  *
  * Layout rules for the library:
- *   - One folder per module under src/, holding `name.h` and `name.c`.
+ *   - One folder per module under src/, holding `name.h` and `name.c`. A
+ *     module of only macros and static functions is `name.h` alone.
  *   - Every header includes `base/base.h` first, and include paths are
  *     relative to src/ (`#include "str/str.h"`).
  *   - A `.c` file includes headers only, never another `.c`. Each program's

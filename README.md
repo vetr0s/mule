@@ -3,7 +3,7 @@
 Multi-Use Library Essentials. A small standard library for C23 in the
 spirit of stb. It is written to be read as well as used.
 
-It is early. Seven modules exist, and `TODO.md` holds the roadmap.
+It is early. Eight modules exist, and `TODO.md` holds the roadmap.
 
 | Module | What it gives you |
 | --- | --- |
@@ -14,6 +14,7 @@ It is early. Seven modules exist, and `TODO.md` holds the roadmap.
 | `str` | `Str`, an owned growable byte string, and `StrView`, a borrowed slice with search, split and trim. |
 | `time` | A monotonic nanosecond clock for timing code. |
 | `log` | Levelled messages with `file:line`, coloured when the terminal supports it, and an assert that stays in release builds. |
+| `test` | A unit-test harness that fails tests on leaks and hangs, and makes allocation fail on demand. |
 
 ## A taste
 
@@ -91,8 +92,8 @@ off.
 ## Layout
 
 ```
-src/<module>/   one folder per module, holding <module>.h and <module>.c
-tests/          one test file per module, plus the test.h harness
+src/<module>/   one folder per module, holding <module>.h and usually <module>.c
+tests/          one test file per module
 bench/          benchmarks against string.h
 notes/          guides for learning the library, with runnable examples
 main.c          a word counter built on every module

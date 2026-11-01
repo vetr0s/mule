@@ -6,7 +6,7 @@
  * name anywhere in this file, so never write one outside a marker. Renaming a
  * marker without updating str.h makes `make docs` fail.
  */
-#include "test.h"
+#include "test/test.h"
 
 #include "log/log.c"
 #include "mem/mem.c"

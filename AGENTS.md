@@ -31,7 +31,7 @@ The folder, include and naming rules live in the file comment of
 ## Tests and docs
 
 - Each module has `tests/test_<module>.c`, a unity file that includes
-  `test.h` first. `test.h` counts live allocations and fails a test that
+  `test/test.h` first. The harness counts live allocations and fails a test that
   leaks. `test_fail_alloc_after(n)` makes allocation fail on demand.
 - Every public declaration has a doc comment. Examples are regions of the
   test files pulled in with `@snippet`, so every documented example compiles
@@ -62,7 +62,7 @@ The folder, include and naming rules live in the file comment of
   file edited and rebuilt within one second looks up to date. Use `make -B`
   when a script edits and rebuilds in a loop, such as a mutation check.
 - AddressSanitizer on macOS does not detect leaks, and Apple clang ships no
-  libFuzzer. The allocation counter in `test.h` covers leaks. Fuzzing needs
+  libFuzzer. The allocation counter in `test/test.h` covers leaks. Fuzzing needs
   Linux.
 
 ## Keeping this file current

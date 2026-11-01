@@ -3,7 +3,7 @@
  * Bracketed names in comment pairs mark regions that src/rand/rand.h pulls
  * into the Doxygen reference with @snippet. See tests/test_str.c for the rules.
  */
-#include "test.h"
+#include "test/test.h"
 
 #include "log/log.c"
 #include "mem/mem.c"

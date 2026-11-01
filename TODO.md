@@ -32,7 +32,7 @@ modules still need.
 - [x] A bump allocator in `src/mem/` with aligned allocation and one call
       that frees everything. `Str` draws from it through its `alloc` field.
 - [ ] Save and restore marks, so a function can free just what it allocated.
-- [ ] Replace the `malloc` macro hooks in `tests/test.h` with a failing
+- [ ] Replace the `malloc` macro hooks in `src/test/test.h` with a failing
       `Allocator`.
 
 ### 3. Input parsing, added to `str`
@@ -66,8 +66,8 @@ modules still need.
 
 ### 8. Promote what already exists
 
-- [ ] `tests/test.h` becomes a module. Its allocation counting and
-      out-of-memory injection are worth keeping in every project.
+- [x] `src/test/`: the test harness, with its allocation counting and
+      out-of-memory injection.
 - [x] `src/time/`: `time_now_ns`, promoted from `bench/bench.h`.
 - [ ] Wall-clock ISO timestamps in `time`, for the logger.
 - [x] `src/rand/`: the tests' splitmix64, with an unbiased `rand_below`.
