@@ -1,7 +1,8 @@
 # TODO
 
-A personal standard library for C, in the spirit of stb. `str` is the first
-module. This file tracks what comes next and what the existing code still needs.
+MULE, Multi-User Library Essentials, is a personal standard library for C in
+the spirit of stb. This file tracks what comes next and what the existing
+modules still need.
 
 ## Decided
 

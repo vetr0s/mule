@@ -1,7 +1,8 @@
 # Doxygen config for `make docs`. Only non-default settings are listed;
 # run `doxygen -x Doxyfile` to see what differs, `doxygen -g` for the rest.
 
-PROJECT_NAME           = ctest
+PROJECT_NAME           = MULE
+PROJECT_BRIEF          = "Multi-User Library Essentials"
 OUTPUT_DIRECTORY       = build/docs
 INPUT                  = src
 RECURSIVE              = YES

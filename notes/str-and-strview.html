@@ -281,7 +281,7 @@ dd { margin: 0; }
 <main>
 
 <h1>Str and StrView in practice</h1>
-<p class="meta"><span>2026-10-31</span><span>ctest @ 8b6728b</span><span>Guide</span></p>
+<p class="meta"><span>2026-10-31</span><span>mule @ 8b6728b</span><span>Guide</span></p>
 
 <p><code>Str</code> owns its bytes and can grow. <code>StrView</code> borrows bytes that something else owns and never allocates. The working pattern is to put text into a <code>Str</code> once, then pass <code>StrView</code>s around to read it, search it and cut it. Copy a view into a new <code>Str</code> only when the bytes must outlive the owner. Every example below is a file in <span class="path">notes/str-examples/</span>. Each output block is the real output of running that file.</p>
 
