@@ -8,6 +8,7 @@
 #include "arr/arr.c"
 #include "log/log.c"
 #include "mem/mem.c"
+#include "rand/rand.c"
 #include "str/str.c"
 
 typedef Arr(int) IntArr;
@@ -134,23 +135,15 @@ TEST(arena_backed) {
     arena_free(&arena);
 }
 
-/* splitmix64, matching tests/test_str.c. */
-static uint64_t next_random(uint64_t *state) {
-    uint64_t z = (*state += 0x9E3779B97F4A7C15u);
-    z = (z ^ (z >> 30)) * 0xBF58476D1CE4E5B9u;
-    z = (z ^ (z >> 27)) * 0x94D049BB133111EBu;
-    return z ^ (z >> 31);
-}
-
 /* Random operations, checked after every step against a plain array. */
 static void check_against_model(const Allocator *alloc) {
     int model[600];
     size_t n = 0;
     IntArr a = { .alloc = alloc };
-    uint64_t rng = 3;
+    Rand rng = { 3 };
 
     for (int step = 0; step < 20000; step++) {
-        uint64_t r = next_random(&rng);
+        uint64_t r = rand_next(&rng);
         int v = (int)(r >> 32);
         bool ok = true;
         switch (r % 6) {

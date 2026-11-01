@@ -10,6 +10,7 @@
 
 #include "log/log.c"
 #include "mem/mem.c"
+#include "rand/rand.c"
 #include "str/str.c"
 
 #include <stdint.h>
@@ -713,25 +714,17 @@ TEST(oom_during_init_leaves_empty) {
 
 /* --- Model --------------------------------------------------------------- */
 
-/* splitmix64: tiny and identical on every platform, unlike rand(). */
-static uint64_t next_random(uint64_t *state) {
-    uint64_t z = (*state += 0x9E3779B97F4A7C15u);
-    z = (z ^ (z >> 30)) * 0xBF58476D1CE4E5B9u;
-    z = (z ^ (z >> 27)) * 0x94D049BB133111EBu;
-    return z ^ (z >> 31);
-}
-
 /* Random signed digit strings, checked against strtoll. */
 TEST(parse_i64_matches_strtoll) {
-    uint64_t rng = 7;
+    Rand rng = { 7 };
     char buf[32];
     for (int i = 0; i < 100000; i++) {
-        uint64_t r = next_random(&rng);
+        uint64_t r = rand_next(&rng);
         size_t n = 0;
         if (r & 1) buf[n++] = (r & 2) ? '-' : '+';
         size_t digits = 1 + (size_t)((r >> 2) % 20);
         for (size_t d = 0; d < digits; d++)
-            buf[n++] = (char)('0' + next_random(&rng) % 10);
+            buf[n++] = (char)('0' + rand_next(&rng) % 10);
         buf[n] = '\0';
 
         errno = 0;
@@ -753,14 +746,14 @@ static void check_against_model(const Allocator *alloc) {
     char model[512];
     size_t model_len = 0;
     Str s = { .alloc = alloc };
-    uint64_t rng = 1;
+    Rand rng = { 1 };
 
     for (int step = 0; step < 20000; step++) {
         if (model_len > 200) {
             str_clear(&s);
             model_len = 0;
         }
-        uint64_t r = next_random(&rng);
+        uint64_t r = rand_next(&rng);
         int op = (int)(r % 6);
         r /= 6;
         bool ok = true;
@@ -826,11 +819,11 @@ TEST(matches_model_in_arena) {
 }
 
 /* Up to `max` random bytes from `alphabet`, NUL-terminated for string.h. */
-static size_t random_text(uint64_t *rng, char *buf, size_t max,
+static size_t random_text(Rand *rng, char *buf, size_t max,
                           const char *alphabet) {
-    size_t n = (size_t)(next_random(rng) % (max + 1));
+    size_t n = (size_t)(rand_next(rng) % (max + 1));
     size_t k = strlen(alphabet);
-    for (size_t i = 0; i < n; i++) buf[i] = alphabet[next_random(rng) % k];
+    for (size_t i = 0; i < n; i++) buf[i] = alphabet[rand_next(rng) % k];
     buf[n] = '\0';
     return n;
 }
@@ -838,7 +831,7 @@ static size_t random_text(uint64_t *rng, char *buf, size_t max,
 /* sv_find, sv_find_byte and sv_cmp against strstr, strchr and strcmp. A
  * two-letter alphabet makes partial matches common. */
 TEST(views_match_string_h) {
-    uint64_t rng = 2;
+    Rand rng = { 2 };
     char hay[41], needle[6], other[41];
     for (int step = 0; step < 20000; step++) {
         StrView h = { hay, random_text(&rng, hay, 40, "ab") };
@@ -862,7 +855,7 @@ TEST(views_match_string_h) {
 
 /* sv_token_next against strtok on text with runs of mixed delimiters. */
 TEST(tokens_match_strtok) {
-    uint64_t rng = 3;
+    Rand rng = { 3 };
     char text[61], copy[61];
     for (int step = 0; step < 20000; step++) {
         size_t n = random_text(&rng, text, 60, "ab ,;");

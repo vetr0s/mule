@@ -70,7 +70,7 @@ modules still need.
       out-of-memory injection are worth keeping in every project.
 - [ ] `bench/bench.h` becomes a module, with `now_ns` as the start of a time
       module: monotonic clock, stopwatch, ISO timestamps for the logger.
-- [ ] `next_random` in `tests/test_str.c` becomes a seeded PRNG module.
+- [x] `src/rand/`: the tests' splitmix64, with an unbiased `rand_below`.
 
 ### Later
 
