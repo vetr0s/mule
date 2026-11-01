@@ -8,7 +8,8 @@
  *   - Every header includes `base/base.h` first, and include paths are
  *     relative to src/ (`#include "str/str.h"`).
  *   - A `.c` file includes headers only, never another `.c`. Each program's
- *     unity file includes every `.c` it needs, in dependency order.
+ *     unity file includes every `.c` it needs. Any order works, because
+ *     each `.c` includes the headers it uses, so clang-format may sort them.
  *   - The whole program is one translation unit, so `static` does not keep
  *     names apart. Static helpers carry the module prefix and a trailing `_`.
  *   - Something belongs here only once two modules use it.

@@ -58,6 +58,9 @@ The folder, include and naming rules live in the file comment of
   count, so give each macro a trailing `/**< ... */`.
 - In the Makefile, a `:=` variable that calls a function must come after the
   function's definition, or it expands to nothing.
+- macOS ships GNU Make 3.81, which compares timestamps to the second. A
+  file edited and rebuilt within one second looks up to date. Use `make -B`
+  when a script edits and rebuilds in a loop, such as a mutation check.
 - AddressSanitizer on macOS does not detect leaks, and Apple clang ships no
   libFuzzer. The allocation counter in `test.h` covers leaks. Fuzzing needs
   Linux.

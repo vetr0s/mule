@@ -20,22 +20,12 @@ modules still need.
 
 ### 1. Logger
 
-- [ ] Levels from trace to fatal. Set the threshold at runtime, plus a
-      compile-time floor (`LOG_LEVEL_MIN`) that removes the calls below it.
-- [ ] Macros that capture `__FILE__`, `__LINE__` and `__func__`.
-- [ ] Format strings checked by the compiler with `gnu::format`, the same way
-      `str_appendf` is checked.
-- [ ] Format each line into a reused `Str`, then write it with one `fwrite`.
-      stdio locks the stream for each call, so lines from different threads
-      do not interleave.
-- [x] Colour detection in `src/log/`: `log_color_enabled` honours
-      `NO_COLOR`, `CLICOLOR_FORCE`, `FORCE_COLOR`, `isatty` and `TERM`.
-      `test.h` colours its results with it.
-- [ ] Output to a `FILE *`, with `stderr` as the default.
-- [ ] Fatal flushes the log, then calls `abort`. Build `ASSERT` and `PANIC` on
-      top of it.
-- [ ] Tests write to `tmpfile()` and read the result back, like the
-      `append_file` tests.
+- [x] `src/log/`: `log_trace` to `log_fatal` and `log_assert`, a runtime
+      level, a compile-time floor, checked format strings, one `fwrite` per
+      line, coloured levels, and output to any `FILE *`.
+- [ ] Reuse a per-thread line buffer instead of allocating one per message,
+      if logging ever shows up in a profile.
+- [ ] Timestamps, once the time module exists.
 
 ### 2. Arena allocator
 

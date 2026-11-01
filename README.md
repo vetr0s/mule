@@ -10,7 +10,7 @@ It is early. Four modules exist, and `TODO.md` holds the roadmap.
 | `base` | The header every module includes first: feature macros and checked arithmetic. |
 | `mem` | An allocator interface and an arena that frees everything in one call. |
 | `str` | `Str`, an owned growable byte string, and `StrView`, a borrowed slice with search, split and trim. |
-| `log` | Terminal colour detection that honours `NO_COLOR`. Levels and log calls come next. |
+| `log` | Levelled messages with `file:line`, coloured when the terminal supports it, and an assert that stays in release builds. |
 
 ## A taste
 
@@ -67,9 +67,9 @@ It prints `[mule]`, `[c23]` and `[4]`, each on its own line.
 ## Using it in a project
 
 Copy `src/` into your tree and add `-Isrc` to your compiler flags. In the one
-file that holds `main`, include each module's `.c` file in dependency order:
-`log`, then `mem`, then `str`. Every other file includes only the headers it
-needs, such as `#include "str/str.h"`.
+file that holds `main`, include the `.c` file of every module you use and of
+the modules it depends on. `str` needs `mem`, and `log` needs both. Every
+other file includes only the headers it needs, such as `#include "str/str.h"`.
 
 ## Building this repository
 

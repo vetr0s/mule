@@ -1,7 +1,9 @@
 /* Minimal single-header test harness.
  *
  *   #include "test.h"      // first, so the allocator hooks below apply
- *   #include "log/log.c"   // test.h colours its output with it
+ *   #include "log/log.c"   // test.h needs log, and log needs mem and str
+ *   #include "mem/mem.c"
+ *   #include "str/str.c"
  *   #include "thing.c"
  *
  *   TEST(my_case) { CHECK(1 + 1 == 2); CHECK_EQ_INT(add(2, 2), 4); }
