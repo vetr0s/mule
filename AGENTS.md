@@ -54,6 +54,8 @@ The folder, include and naming rules live in the file comment of
   allocator's context points at it.
 - Doxygen reads both branches of an `#if`. Wrap internal macros in
   `/** @cond */` and `/** @endcond */`.
+- Doxygen wants a comment on each member. A `@name` group comment does not
+  count, so give each macro a trailing `/**< ... */`.
 - In the Makefile, a `:=` variable that calls a function must come after the
   function's definition, or it expands to nothing.
 - AddressSanitizer on macOS does not detect leaks, and Apple clang ships no

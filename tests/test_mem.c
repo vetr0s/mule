@@ -5,6 +5,7 @@
  */
 #include "test.h"
 
+#include "log/log.c"
 #include "mem/mem.c"
 
 #include <stdint.h>

@@ -1,6 +1,7 @@
 /* Minimal single-header test harness.
  *
  *   #include "test.h"      // first, so the allocator hooks below apply
+ *   #include "log/log.c"   // test.h colours its output with it
  *   #include "thing.c"
  *
  *   TEST(my_case) { CHECK(1 + 1 == 2); CHECK_EQ_INT(add(2, 2), 4); }
@@ -20,6 +21,9 @@
  * LeakSanitizer. test_fail_alloc_after(n) lets n allocations succeed and fails
  * the rest, so out-of-memory paths can be tested deterministically.
  *
+ * Results are coloured when stdout supports it, as decided by
+ * log_color_enabled() in src/log/log.h.
+ *
  * Pass test names as arguments to run only those tests. A test still running
  * after TEST_TIMEOUT_S seconds is reported as [HANG] and fails the run, so an
  * infinite loop in the code under test cannot stall `make test`.
@@ -28,6 +32,7 @@
 #define TEST_H
 
 #include "base/base.h" /* first: it sets the POSIX feature macros */
+#include "log/log.h"
 
 #include <signal.h>
 #include <stdio.h>
@@ -45,6 +50,7 @@ static int test_cur_failed_ = 0;
 static int test_argc_ = 0;
 static char **test_argv_ = nullptr;
 static const char *test_running_ = "";
+static bool test_color_ = false; /* set once by test_init */
 
 /* --- Allocator hooks ----------------------------------------------------- */
 
@@ -96,7 +102,10 @@ static bool test_alloc_allowed_(void) {
 
 static void test_fail_at_(const char *file, int line) {
     test_cur_failed_ = 1;
-    printf("  %s:%d: ", file, line);
+    if (test_color_)
+        printf("  " LOG_RED "%s:%d:" LOG_RESET " ", file, line);
+    else
+        printf("  %s:%d: ", file, line);
 }
 
 /* Print bytes as a C string literal, escaping anything unprintable. */
@@ -196,8 +205,12 @@ static void test_print_bytes_(const char *p, size_t n) {
 /* SIGALRM handler, so only async-signal-safe calls: write and _exit. */
 static void test_timeout_(int sig) {
     (void)sig;
-    static const char tag[] = "[HANG] ";
-    write(STDOUT_FILENO, tag, sizeof tag - 1);
+    static const char plain[] = "[HANG] ";
+    static const char color[] = LOG_YELLOW "[HANG]" LOG_RESET " ";
+    if (test_color_)
+        write(STDOUT_FILENO, color, sizeof color - 1);
+    else
+        write(STDOUT_FILENO, plain, sizeof plain - 1);
     write(STDOUT_FILENO, test_running_, strlen(test_running_));
     write(STDOUT_FILENO, "\n", 1);
     _exit(EXIT_FAILURE);
@@ -206,7 +219,24 @@ static void test_timeout_(int sig) {
 [[maybe_unused]] static void test_init(int argc, char **argv) {
     test_argc_ = argc;
     test_argv_ = argv;
+    test_color_ = log_color_enabled(stdout);
     signal(SIGALRM, test_timeout_);
+}
+
+static void test_print_result_(const char *name) {
+    const char *tag = test_cur_failed_ ? "FAIL" : " OK ";
+    if (test_color_)
+        printf("%s[%s]" LOG_RESET " %s\n",
+               test_cur_failed_ ? LOG_RED : LOG_GREEN, tag, name);
+    else
+        printf("[%s] %s\n", tag, name);
+}
+
+[[maybe_unused]] static int test_report_(const char *file) {
+    const char *on = test_color_ ? (test_failures_ ? LOG_RED : LOG_GREEN) : "";
+    printf("%s%s: %d check(s), %d failing test(s)%s\n", on, file, test_checks_,
+           test_failures_, test_color_ ? LOG_RESET : "");
+    return test_failures_ != 0;
 }
 
 static bool test_selected_(const char *name) {
@@ -233,13 +263,10 @@ static bool test_selected_(const char *name) {
                    test_live_allocs_ - live_before_);                          \
         }                                                                      \
         if (test_cur_failed_) test_failures_++;                                \
-        printf("[%s] %s\n", test_cur_failed_ ? "FAIL" : " OK ", #name);        \
+        test_print_result_(#name);                                             \
         fflush(stdout); /* keep finished results if a later test hangs */      \
     } while (0)
 
-#define TEST_REPORT()                                                          \
-    (printf("%s: %d check(s), %d failing test(s)\n", __FILE__, test_checks_,   \
-            test_failures_),                                                   \
-     test_failures_ != 0)
+#define TEST_REPORT() test_report_(__FILE__)
 
 #endif /* TEST_H */

@@ -28,8 +28,10 @@ modules still need.
 - [ ] Format each line into a reused `Str`, then write it with one `fwrite`.
       stdio locks the stream for each call, so lines from different threads
       do not interleave.
-- [ ] Output to a `FILE *`, with `stderr` as the default. Color only when
-      `isatty` says the output is a terminal.
+- [x] Colour detection in `src/log/`: `log_color_enabled` honours
+      `NO_COLOR`, `CLICOLOR_FORCE`, `FORCE_COLOR`, `isatty` and `TERM`.
+      `test.h` colours its results with it.
+- [ ] Output to a `FILE *`, with `stderr` as the default.
 - [ ] Fatal flushes the log, then calls `abort`. Build `ASSERT` and `PANIC` on
       top of it.
 - [ ] Tests write to `tmpfile()` and read the result back, like the
