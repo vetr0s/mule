@@ -429,6 +429,188 @@ TEST(tokens) {
     CHECK_SV(word, "abc");
 }
 
+/* --- Input -------------------------------------------------------------- */
+
+/* A temporary file holding `n` bytes of `bytes`, rewound. */
+static FILE *file_of(const char *bytes, size_t n) {
+    FILE *f = tmpfile();
+    if (f != nullptr) {
+        fwrite(bytes, 1, n, f);
+        rewind(f);
+    }
+    return f;
+}
+
+TEST(read_line) {
+    /* [read_line] */
+    FILE *f = tmpfile();
+    REQUIRE(f != nullptr);
+    fputs("first\nsecond\n", f);
+    rewind(f);
+
+    Str line = {};
+    size_t lines = 0, bytes = 0;
+    while (str_read_line(&line, f)) {
+        lines++;
+        bytes += line.len; /* "first", then "second": no newlines */
+    }
+    CHECK_EQ_INT(lines, 2);
+    CHECK_EQ_INT(bytes, 11);
+    str_free(&line);
+    fclose(f);
+    /* [read_line] */
+}
+
+TEST(read_line_edges) {
+    static const char text[] = "one\ntwo\r\n\nnul\0byte\nlast";
+    FILE *f = file_of(text, sizeof text - 1);
+    REQUIRE(f != nullptr);
+    Str s = {};
+    CHECK(str_read_line(&s, f));
+    CHECK_SV(str_view(&s), "one");
+    CHECK(str_read_line(&s, f));
+    CHECK_SV(str_view(&s), "two\r");
+    CHECK(str_read_line(&s, f));
+    CHECK_SV(str_view(&s), "");
+    CHECK(str_read_line(&s, f));
+    CHECK_SV(str_view(&s), "nul\0byte");
+    CHECK(str_read_line(&s, f));
+    CHECK_SV(str_view(&s), "last");
+
+    /* End of input leaves the last line in place. */
+    CHECK(!str_read_line(&s, f));
+    CHECK_SV(str_view(&s), "last");
+    CHECK(s.data[s.len] == '\0');
+    str_free(&s);
+    fclose(f);
+
+    /* An empty first line on a zeroed Str, then a line longer than any buffer.
+     */
+    char big[10001];
+    memset(big, 'x', sizeof big);
+    big[0] = '\n';
+    f = file_of(big, sizeof big);
+    REQUIRE(f != nullptr);
+    CHECK(str_read_line(&s, f));
+    CHECK_EQ_INT(s.len, 0);
+    CHECK_EQ_STR(str_cstr(&s), "");
+    CHECK(str_read_line(&s, f));
+    CHECK_EQ_INT(s.len, 10000);
+    CHECK(!str_read_line(&s, f));
+    str_free(&s);
+    fclose(f);
+
+    f = file_of("", 0);
+    REQUIRE(f != nullptr);
+    CHECK(!str_read_line(&s, f));
+    CHECK(s.data == nullptr);
+    fclose(f);
+}
+
+TEST(read_line_oom_keeps_contents) {
+    char big[5000];
+    memset(big, 'y', sizeof big);
+    for (long k = 0; k < 4; k++) {
+        FILE *f = file_of(big, sizeof big);
+        REQUIRE(f != nullptr);
+        Str s = {};
+        REQUIRE(str_from_cstr(&s, "kept"));
+        test_fail_alloc_after(k);
+        bool ok = str_read_line(&s, f);
+        test_fail_alloc_after(-1);
+        if (ok) {
+            CHECK_EQ_INT(s.len, sizeof big);
+        } else {
+            CHECK_SV(str_view(&s), "kept");
+            CHECK(s.data[s.len] == '\0');
+        }
+        str_free(&s);
+        fclose(f);
+    }
+}
+
+TEST(parse) {
+    /* [parse] */
+    /* scanf("%" SCNd64 " %lf") without scanf: split, then parse each part. */
+    StrView rest = SV("42 2.5"), word;
+    int64_t count = 0;
+    double scale = 0;
+    CHECK(sv_token_next(&rest, SV(" "), &word) && sv_parse_i64(word, &count));
+    CHECK(sv_token_next(&rest, SV(" "), &word) && sv_parse_f64(word, &scale));
+    CHECK_EQ_INT(count, 42);
+    CHECK(scale == 2.5);
+    /* [parse] */
+}
+
+TEST(parse_i64_edges) {
+    static const struct {
+        const char *text;
+        bool ok;
+        int64_t want;
+    } cases[] = {
+        { "0", true, 0 },
+        { "-0", true, 0 },
+        { "+7", true, 7 },
+        { "007", true, 7 },
+        { "9223372036854775807", true, INT64_MAX },
+        { "-9223372036854775808", true, INT64_MIN },
+        { "9223372036854775808", false, 0 },
+        { "-9223372036854775809", false, 0 },
+        { "99999999999999999999", false, 0 },
+        { "", false, 0 },
+        { "-", false, 0 },
+        { "+", false, 0 },
+        { " 1", false, 0 },
+        { "1 ", false, 0 },
+        { "1a", false, 0 },
+        { "0x10", false, 0 },
+        { "--1", false, 0 },
+        { "1.0", false, 0 },
+    };
+    for (size_t i = 0; i < sizeof cases / sizeof cases[0]; i++) {
+        int64_t got = 12345;
+        bool ok = sv_parse_i64(sv_from_cstr(cases[i].text), &got);
+        if (ok != cases[i].ok) printf("  case \"%s\"\n", cases[i].text);
+        CHECK(ok == cases[i].ok);
+        CHECK_EQ_INT(got, cases[i].ok ? cases[i].want : 12345);
+    }
+    /* A view stops where its length says, not at a NUL. */
+    int64_t got = 0;
+    CHECK(sv_parse_i64((StrView){ "123456", 3 }, &got));
+    CHECK_EQ_INT(got, 123);
+}
+
+TEST(parse_f64_edges) {
+    static const struct {
+        const char *text;
+        bool ok;
+        double want;
+    } cases[] = {
+        { "3.5", true, 3.5 },    { "-0.25", true, -0.25 },
+        { "1e3", true, 1000.0 }, { "+2", true, 2.0 },
+        { ".5", true, 0.5 },     { "1e400", false, 0 },
+        { "-1e400", false, 0 },  { "", false, 0 },
+        { " 1", false, 0 },      { "1 ", false, 0 },
+        { "abc", false, 0 },     { "1.5x", false, 0 },
+    };
+    for (size_t i = 0; i < sizeof cases / sizeof cases[0]; i++) {
+        double got = -99.0;
+        bool ok = sv_parse_f64(sv_from_cstr(cases[i].text), &got);
+        if (ok != cases[i].ok) printf("  case \"%s\"\n", cases[i].text);
+        CHECK(ok == cases[i].ok);
+        CHECK(got == (cases[i].ok ? cases[i].want : -99.0));
+    }
+    double got = 0;
+    CHECK(sv_parse_f64(SV("1e-310"), &got)); /* subnormal, not an error */
+    CHECK(got > 0);
+    CHECK(sv_parse_f64((StrView){ "2.75junk", 4 }, &got));
+    CHECK(got == 2.75);
+
+    char long_num[300];
+    memset(long_num, '1', sizeof long_num);
+    CHECK(!sv_parse_f64((StrView){ long_num, sizeof long_num }, &got));
+}
+
 /* --- Out of memory ------------------------------------------------------- */
 
 static bool op_push(Str *s) {
@@ -537,6 +719,31 @@ static uint64_t next_random(uint64_t *state) {
     z = (z ^ (z >> 30)) * 0xBF58476D1CE4E5B9u;
     z = (z ^ (z >> 27)) * 0x94D049BB133111EBu;
     return z ^ (z >> 31);
+}
+
+/* Random signed digit strings, checked against strtoll. */
+TEST(parse_i64_matches_strtoll) {
+    uint64_t rng = 7;
+    char buf[32];
+    for (int i = 0; i < 100000; i++) {
+        uint64_t r = next_random(&rng);
+        size_t n = 0;
+        if (r & 1) buf[n++] = (r & 2) ? '-' : '+';
+        size_t digits = 1 + (size_t)((r >> 2) % 20);
+        for (size_t d = 0; d < digits; d++)
+            buf[n++] = (char)('0' + next_random(&rng) % 10);
+        buf[n] = '\0';
+
+        errno = 0;
+        char *end;
+        long long want = strtoll(buf, &end, 10);
+        bool want_ok = errno != ERANGE && *end == '\0';
+        int64_t got = 0;
+        bool ok = sv_parse_i64(sv_from_cstr(buf), &got);
+        if (ok != want_ok || (ok && got != want)) printf("  \"%s\"\n", buf);
+        REQUIRE(ok == want_ok);
+        if (ok) REQUIRE(got == want);
+    }
 }
 
 /* Random operations on a Str, checked after every step against a plain array
@@ -706,6 +913,13 @@ int main(int argc, char **argv) {
     RUN(split);
     RUN(split_edges);
     RUN(tokens);
+    RUN(read_line);
+    RUN(read_line_edges);
+    RUN(read_line_oom_keeps_contents);
+    RUN(parse);
+    RUN(parse_i64_edges);
+    RUN(parse_f64_edges);
+    RUN(parse_i64_matches_strtoll);
     RUN(oom_leaves_string_unchanged);
     RUN(oom_during_init_leaves_empty);
     RUN(matches_model_under_random_ops);

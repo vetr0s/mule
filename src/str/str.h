@@ -89,6 +89,12 @@ void str_clear(Str *s);
 /** Append everything left to read from @p f. On false, check ferror(f).
  *  @snippet{trimleft} test_str.c append_file */
 [[nodiscard]] bool str_append_file(Str *s, FILE *f);
+/** Replace the contents of @p s with the next line of @p f, without its
+ *  `\n`. A `\r` before it is kept, and embedded NULs are allowed. False at
+ *  end of input, on a read error (check ferror(f)) or out of memory. On false
+ *  the contents of @p s are unchanged, though its capacity may have grown.
+ *  @snippet{trimleft} test_str.c read_line */
+[[nodiscard]] bool str_read_line(Str *s, FILE *f);
 
 /* --- Access -------------------------------------------------------------- */
 
@@ -129,3 +135,14 @@ void str_clear(Str *s);
 /** strtok without the mutation: skip @p delims, cut the next non-empty run.
  *  @snippet{trimleft} test_str.c token */
 [[nodiscard]] bool sv_token_next(StrView *rest, StrView delims, StrView *token);
+
+/* --- Parsing ------------------------------------------------------------- */
+
+/** Parse all of @p v as a base-10 integer with an optional sign. Whitespace,
+ *  trailing bytes and overflow fail. On false @p out is unchanged.
+ *  @snippet{trimleft} test_str.c parse */
+[[nodiscard]] bool sv_parse_i64(StrView v, int64_t *out);
+/** Parse all of @p v as a double, in any form strtod accepts in the C locale.
+ *  Whitespace, trailing bytes, overflow to infinity and views over 255 bytes
+ *  fail. On false @p out is unchanged. */
+[[nodiscard]] bool sv_parse_f64(StrView v, double *out);

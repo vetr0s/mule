@@ -1,6 +1,8 @@
 #include "str/str.h"
 
 #include <assert.h>
+#include <errno.h>
+#include <math.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -177,6 +179,33 @@ bool str_append_file(Str *s, FILE *f) {
     return ok;
 }
 
+bool str_read_line(Str *s, FILE *f) {
+    /* Read after the current contents, so failure can restore them. */
+    size_t old = s->len;
+    bool got = false, ok = true;
+    flockfile(f);
+    for (int c; (c = getc_unlocked(f)) != EOF;) {
+        got = true;
+        if (c == '\n') break;
+        if (!str_push(s, (char)c)) {
+            ok = false;
+            break;
+        }
+    }
+    funlockfile(f);
+
+    if (!ok || !got || ferror(f)) {
+        s->len = old;
+        if (s->data != nullptr) s->data[old] = '\0';
+        return false;
+    }
+    if (s->data == nullptr) return true; /* an empty first line */
+    memmove(s->data, s->data + old, s->len - old);
+    s->len -= old;
+    s->data[s->len] = '\0';
+    return true;
+}
+
 StrView str_view(const Str *s) {
     return (StrView){ .data = str_cstr(s), .len = s->len };
 }
@@ -290,5 +319,42 @@ bool sv_token_next(StrView *rest, StrView delims, StrView *token) {
     }
     *token = sv_slice(*rest, from, to);
     *rest = sv_slice(*rest, to, n);
+    return true;
+}
+
+/* --- Parsing ------------------------------------------------------------- */
+
+bool sv_parse_i64(StrView v, int64_t *out) {
+    size_t i = 0;
+    bool neg = false;
+    if (v.len > 0 && (v.data[0] == '-' || v.data[0] == '+')) {
+        neg = v.data[0] == '-';
+        i = 1;
+    }
+    if (i == v.len) return false;
+
+    uint64_t mag = 0;
+    for (; i < v.len; i++) {
+        unsigned d = (unsigned)(unsigned char)v.data[i] - '0';
+        if (d > 9 || ckd_mul(&mag, mag, 10) || ckd_add(&mag, mag, d))
+            return false;
+    }
+    if (mag > (uint64_t)INT64_MAX + neg) return false;
+    /* -(mag - 1) - 1 reaches INT64_MIN without overflowing on the way. */
+    *out = neg ? -(int64_t)(mag - 1) - 1 : (int64_t)mag;
+    return true;
+}
+
+bool sv_parse_f64(StrView v, double *out) {
+    char buf[256];
+    if (v.len == 0 || v.len >= sizeof buf || sv_space_(v.data[0])) return false;
+    memcpy(buf, v.data, v.len);
+    buf[v.len] = '\0';
+
+    char *end;
+    errno = 0;
+    double d = strtod(buf, &end);
+    if (end != buf + v.len || (errno == ERANGE && isinf(d))) return false;
+    *out = d;
     return true;
 }

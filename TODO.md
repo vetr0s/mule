@@ -37,16 +37,9 @@ modules still need.
 
 ### 3. Input parsing, added to `str`
 
-This replaces `scanf`. Do not build a format-string scanner. `printf` with
-`STR_FMT`, plus `str_appendf`, already covers the output side.
-
-- [ ] `str_read_line(Str *, FILE *)` reads one line without the `\n`. It must
-      handle embedded NULs, so use `getc` and not `fgets`.
-- [ ] `sv_parse_i64` and `sv_parse_f64` must consume the whole view or fail,
-      and they reject overflow. `strtol` accepts leading spaces and
-      `strtoull` accepts `"-1"`. These functions accept neither.
-- [ ] The `scanf("%d %d")` pattern then becomes `str_read_line`, then
-      `sv_token_next`, then `sv_parse_i64`.
+- [x] `str_read_line`, `sv_parse_i64` and `sv_parse_f64` replace `scanf`:
+      read a line, split it with `sv_token_next`, parse each piece.
+- [ ] `sv_parse_u64`, and bases other than 10, when a caller needs them.
 
 ### 4. Dynamic array
 
