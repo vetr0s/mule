@@ -2,7 +2,7 @@
 # run `doxygen -x Doxyfile` to see what differs, `doxygen -g` for the rest.
 
 PROJECT_NAME           = MULE
-PROJECT_BRIEF          = "Multi-User Library Essentials"
+PROJECT_BRIEF          = "Multi-Use Library Essentials"
 OUTPUT_DIRECTORY       = build/docs
 INPUT                  = src
 RECURSIVE              = YES

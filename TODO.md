@@ -1,6 +1,6 @@
 # TODO
 
-MULE, Multi-User Library Essentials, is a personal standard library for C in
+MULE, Multi-Use Library Essentials, is a personal standard library for C in
 the spirit of stb. This file tracks what comes next and what the existing
 modules still need.
 

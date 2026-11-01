@@ -1,6 +1,6 @@
 # MULE
 
-MULE, Multi-User Library Essentials, is a personal standard library for C.
+MULE, Multi-Use Library Essentials, is a personal standard library for C.
 Each module lives in its own folder under `src/`. `TODO.md` is the roadmap.
 Check off what you finish and add what you find.
 

@@ -1,6 +1,6 @@
 # MULE
 
-Multi-User Library Essentials. A small standard library for C23 in the
+Multi-Use Library Essentials. A small standard library for C23 in the
 spirit of stb. It is written to be read as well as used.
 
 It is early. Four modules exist, and `TODO.md` holds the roadmap.
