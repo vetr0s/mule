@@ -1,0 +1,43 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  linux:
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        cc: [gcc-13, gcc-14, clang]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install gcc 14
+        if: matrix.cc == 'gcc-14'
+        run: sudo apt-get update && sudo apt-get install -y gcc-14
+      # ASan crashes at startup when the kernel randomises mmap with more bits.
+      - name: Lower mmap randomisation for AddressSanitizer
+        run: sudo sysctl vm.mmap_rnd_bits=28
+      - run: ${{ matrix.cc }} --version
+      - run: make test CC=${{ matrix.cc }}
+      - run: make release CC=${{ matrix.cc }}
+      - run: build/release/main data/pg2554.txt
+
+  macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: cc --version
+      - run: make test
+      - run: make release
+      - run: build/release/main data/pg2554.txt
+
+  docs:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y doxygen
+      - run: doxygen --version
+      - run: make docs
