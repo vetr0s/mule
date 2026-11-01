@@ -27,6 +27,10 @@ The folder, include and naming rules live in the file comment of
 - Mark every function whose result must be checked `[[nodiscard]]`.
 - Targets are Unix with clang 17+ or gcc 13+. A feature missing from either
   goes behind a fallback in `base.h`, the way `ckd_add` does.
+- Projects use `dist/mule.h`, which `tools/amalgamate.sh` joins from `src/`.
+  A new module joins `MODULES` in the Makefile, after the modules it
+  includes. Commit the regenerated `dist/mule.h` with every change to
+  `src/`. CI fails when it is stale.
 
 ## Tests and docs
 

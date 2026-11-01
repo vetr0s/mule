@@ -1,12 +1,13 @@
 # ---------------------------------------------------------------------------
-#  Unity build: main.c #includes every src/*/*.c, so each binary is a single
-#  translation unit compiled in one compiler invocation.
+#  Unity build: each test and benchmark #includes the src/*/*.c it needs, so
+#  each binary is one translation unit. main.c uses dist/mule.h instead.
 #
 #    make            -> debug build   (build/debug/main)
 #    make release    -> release build (build/release/main)
 #    make run        -> build + run debug on data/pg2554.txt (ARGS=... to change)
 #    make test       -> build + run every tests/test_*.c
 #    make test T=x   -> run only the tests named x (space-separated list)
+#    make dist       -> regenerate dist/mule.h, the single-header library
 #    make docs       -> Doxygen HTML reference (build/docs/html/index.html)
 #    make bench      -> micro-benchmarks of str_append and friends
 #    make bench-corpus -> benchmark on Gutenberg books, Pizza & Chili
@@ -33,7 +34,7 @@ WARN := -Wall -Wextra -Wpedantic -Wshadow -Wconversion -Wsign-conversion \
         -Wmissing-prototypes -Wmissing-declarations -Wpointer-arith \
         -Wwrite-strings -Wswitch-enum -Wimplicit-fallthrough \
         -Wvla -Walloca
-CPPFLAGS += -Isrc -MMD -MP
+CPPFLAGS += -Isrc -Idist -MMD -MP
 
 # Keep each flag in $(1) only if $(CC) compiles and links with it silently.
 cc-options = $(strip $(foreach f,$(1),$(shell echo 'int main(void){return 0;}' | \
@@ -67,8 +68,8 @@ RELEASE_BIN := $(BUILD)/release/$(TARGET)
 TEST_BINS   := $(TEST_SRCS:tests/%.c=$(BUILD)/tests/%)
 BENCH_BINS  := $(BENCH_SRCS:bench/%.c=$(BUILD)/bench/%)
 
-.PHONY: all debug release run test bench bench-corpus bench-scale corpus docs \
-        format clean
+.PHONY: all debug release run test bench bench-corpus bench-scale corpus dist \
+        docs format clean
 .DELETE_ON_ERROR:
 all: debug compile_commands.json
 
@@ -91,6 +92,19 @@ $(RELEASE_BIN): main.c
 $(BUILD)/tests/%: tests/%.c
 	@mkdir -p $(@D)
 	$(CC) $(CPPFLAGS) $(DEBUG_FLAGS) $(CFLAGS) $< $(LDFLAGS) -o $@ $(LDLIBS)
+
+# The single-header distribution. It is committed, so regenerate it with every
+# change to src/. MODULES lists them in dependency order.
+MODULES := base mem str arr rand time log
+DIST    := dist/mule.h
+
+dist: $(DIST)
+
+$(DIST): tools/amalgamate.sh $(wildcard src/*/*.[ch])
+	@mkdir -p $(@D)
+	sh tools/amalgamate.sh $(MODULES) > $@
+
+$(DEBUG_BIN) $(RELEASE_BIN) $(BUILD)/tests/test_dist: $(DIST)
 
 test: $(TEST_BINS)
 	@pass=0; fail=0; \
@@ -187,7 +201,7 @@ bench-scale: $(BUILD)/bench/bench_corpus $(RELEASE_BIN) $(SCALE_TEXT) \
 	    -L kind text,seq -L mib $(subst $(space),$(comma),$(SCALE_MIB)) \
 	    '$(RELEASE_BIN) $(BUILD)/scale/{kind}-{mib}M'
 
-# clangd reads this for include paths and -std; src/*/*.c resolve via main.c.
+# clangd reads this for include paths and -std; src/*/*.c resolve via the tests.
 compile_commands.json: Makefile $(TEST_SRCS) $(BENCH_SRCS)
 	@printf '[' > $@; sep=; \
 	for f in main.c $(TEST_SRCS) $(BENCH_SRCS); do \

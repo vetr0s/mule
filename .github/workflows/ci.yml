@@ -41,3 +41,6 @@ jobs:
       - run: sudo apt-get update && sudo apt-get install -y doxygen
       - run: doxygen --version
       - run: make docs
+      # -B, because a fresh checkout gives dist/mule.h and src/ equal mtimes.
+      - name: dist/mule.h matches src/
+        run: make -B dist && git diff --exit-code dist/

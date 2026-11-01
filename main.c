@@ -6,11 +6,10 @@
  * StrViews into that one buffer, so counting allocates nothing more, and one
  * arena_free releases it all.
  *
- * Unity build: every implementation file is included here, so the whole
- * program is one translation unit. */
-#include "log/log.c"
-#include "mem/mem.c"
-#include "str/str.c"
+ * It uses the single-header distribution, dist/mule.h, the way any project
+ * would. */
+#define MULE_IMPLEMENTATION
+#include "mule.h"
 
 #include <stdio.h>
 #include <stdlib.h>

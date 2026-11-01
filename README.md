@@ -19,8 +19,8 @@ It is early. Eight modules exist, and `TODO.md` holds the roadmap.
 ## A taste
 
 ```c
-#include "mem/mem.c"
-#include "str/str.c"
+#define MULE_IMPLEMENTATION
+#include "mule.h"
 
 #include <stdio.h>
 
@@ -39,7 +39,7 @@ int main(void) {
 ```
 
 ```sh
-cc -std=c23 -Isrc example.c -o example && ./example
+cc -std=c23 -Idist example.c -o example && ./example
 ```
 
 It prints `[mule]`, `[c23]` and `[4]`, each on its own line.
@@ -56,9 +56,9 @@ It prints `[mule]`, `[c23]` and `[4]`, each on its own line.
   inside it.
 - **Views over copies.** Splitting, trimming and searching return
   `StrView`s into the original bytes and never allocate.
-- **One translation unit.** Each module is a `.h`/`.c` pair. A program
-  includes the `.c` files it needs and builds with one compiler call. That
-  means nothing to link and lets the optimiser see every function.
+- **One header to use, many files to read.** Each module is a `.h`/`.c`
+  pair under `src/`. `make dist` joins them into `dist/mule.h`, so a project
+  copies one file and has nothing to link.
 
 ## Requirements
 
@@ -71,10 +71,15 @@ It prints `[mule]`, `[c23]` and `[4]`, each on its own line.
 
 ## Using it in a project
 
-Copy `src/` into your tree and add `-Isrc` to your compiler flags. In the one
-file that holds `main`, include the `.c` file of every module you use and of
-the modules it depends on. `arr` and `str` need `mem`, and `log` needs `mem` and `str`. Every
-other file includes only the headers it needs, such as `#include "str/str.h"`.
+Copy `dist/mule.h` into your project. Include it in any file that uses the
+library. In exactly one `.c` file, define `MULE_IMPLEMENTATION` before the
+include to compile the library into that file. Include it before any system
+header, because it sets `_POSIX_C_SOURCE`.
+
+For tests, define `MULE_TEST` too and the `test` harness comes with it. Put
+both defines in the test program, so the leak counting and allocation
+failure reach the library's own allocations. `tests/test_dist.c` is a
+complete example.
 
 ## Building this repository
 
@@ -84,6 +89,7 @@ other file includes only the headers it needs, such as `#include "str/str.h"`.
 | `make run` | Runs the example word counter in `main.c` on `data/pg2554.txt`. Pass `ARGS=file` for another file. |
 | `make test` | Builds and runs every `tests/test_*.c`. `T=name` runs one test. |
 | `make release` | Optimised build with `-Werror` and hardening flags. |
+| `make dist` | Regenerates `dist/mule.h` from `src/`. Builds of `main` and `test_dist` do it too. |
 | `make docs` | API reference in `build/docs/html/`. |
 | `make bench` | Micro-benchmarks for `str`. `bench-corpus` and `bench-scale` run on real data. |
 
@@ -94,10 +100,12 @@ off.
 
 ```
 src/<module>/   one folder per module, holding <module>.h and usually <module>.c
-tests/          one test file per module
+dist/mule.h     the single-header library, generated from src/ and committed
+tools/          the script that generates dist/mule.h
+tests/          one test file per module, and test_dist.c for dist/mule.h
 bench/          benchmarks against string.h
 notes/          guides for learning the library, with runnable examples
-main.c          a word counter built on every module
+main.c          a word counter that uses dist/mule.h
 ```
 
 ## Documentation
