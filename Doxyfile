@@ -20,3 +20,4 @@ PREDEFINED             = "__attribute__(x)="
 
 # Every public declaration must be documented, or `make docs` fails.
 WARN_AS_ERROR          = FAIL_ON_WARNINGS
+HAVE_DOT               = NO   # older doxygen draws graphs by default and needs graphviz
