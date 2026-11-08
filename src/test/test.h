@@ -30,9 +30,10 @@
  *
  *   - CHECK records a failure and carries on. REQUIRE records it and returns
  *     from the test, for when the rest of it would be meaningless.
- *   - Every file included after this one has malloc, calloc, realloc and free
- *     redirected to counting wrappers. RUN fails a test that ends with more
- *     live allocations than it started with, so leaks fail on every platform.
+ *   - test_init() installs a counting Allocator with mem_set_heap(), so every
+ *     null allocator and every arena block goes through it. RUN fails a test
+ *     that ends with more live allocations than it started with, so leaks fail
+ *     on every platform. A direct call to malloc or free is not counted.
  *   - test_fail_alloc_after() makes allocation fail on demand, so
  *     out-of-memory paths can be tested deterministically.
  *   - A test still running after #TEST_TIMEOUT_S seconds is reported as
@@ -47,6 +48,7 @@
  */
 #include "base/base.h" /* first: it sets the POSIX feature macros */
 #include "log/log.h"
+#include "mem/mem.h"
 
 #include <signal.h>
 #include <stdio.h>
@@ -69,7 +71,7 @@ static char **test_argv_ = NULL;
 static const char *test_running_ = "";
 static bool test_color_ = false; /* set once by test_init */
 
-/* --- Allocator hooks ----------------------------------------------------- */
+/* --- Allocator ----------------------------------------------------------- */
 
 static long test_live_allocs_ = 0;
 static long test_alloc_budget_ = -1; /* allocations left; -1 means no limit */
@@ -84,42 +86,23 @@ MULE_UNUSED static void test_fail_alloc_after(long n) {
 
 /** @cond */
 
-static bool test_alloc_allowed_(void) {
-    if (test_alloc_budget_ == 0) return false;
+static void *test_heap_fn_(void *ctx, void *old, size_t old_size,
+                           size_t new_size) {
+    (void)ctx;
+    (void)old_size;
+    if (new_size == 0) {
+        if (old != NULL) test_live_allocs_--;
+        free(old);
+        return NULL;
+    }
+    if (test_alloc_budget_ == 0) return NULL;
     if (test_alloc_budget_ > 0) test_alloc_budget_--;
-    return true;
-}
-
-MULE_UNUSED static void *test_malloc_(size_t n) {
-    if (!test_alloc_allowed_()) return NULL;
-    void *p = malloc(n);
-    if (p != NULL) test_live_allocs_++;
-    return p;
-}
-
-MULE_UNUSED static void *test_calloc_(size_t count, size_t n) {
-    if (!test_alloc_allowed_()) return NULL;
-    void *p = calloc(count, n);
-    if (p != NULL) test_live_allocs_++;
-    return p;
-}
-
-MULE_UNUSED static void *test_realloc_(void *old, size_t n) {
-    if (!test_alloc_allowed_()) return NULL;
-    void *p = realloc(old, n);
+    void *p = realloc(old, new_size);
     if (p != NULL && old == NULL) test_live_allocs_++;
     return p;
 }
 
-MULE_UNUSED static void test_free_(void *p) {
-    if (p != NULL) test_live_allocs_--;
-    free(p);
-}
-
-#define malloc test_malloc_
-#define calloc test_calloc_
-#define realloc test_realloc_
-#define free test_free_
+static const Allocator test_heap_ = { .fn = test_heap_fn_ };
 
 /* --- Checks -------------------------------------------------------------- */
 
@@ -253,6 +236,7 @@ MULE_UNUSED static void test_init(int argc, char **argv) {
     test_argc_ = argc;
     test_argv_ = argv;
     test_color_ = log_color_enabled(stdout);
+    mem_set_heap(&test_heap_);
     signal(SIGALRM, test_timeout_);
 }
 

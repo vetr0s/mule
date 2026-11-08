@@ -37,8 +37,8 @@ The folder, include and naming rules live in the file comment of
 - A zero-initialised struct is a valid empty value: `Str s = { 0 };`,
   `Arena a = { 0 };`. New types keep that property.
 - Code that allocates takes a `const Allocator *`, and null means the heap.
-  It allocates through `mem_realloc`. Only `src/mem/` calls libc
-  allocation directly.
+  It allocates through `mem_realloc`. Outside the test harness and `tests/`,
+  only `src/mem/` calls libc allocation directly.
 - Write a macro only for what a function cannot do: `sizeof` a literal,
   capture `__FILE__` and `__LINE__`, or work for any element type.
 - Mark every function whose result must be checked `MULE_NODISCARD`.
@@ -59,8 +59,10 @@ The folder, include and naming rules live in the file comment of
 ## Tests and docs
 
 - Each module has `tests/test_<module>.c`, a unity file that includes
-  `test/test.h` first. The harness counts live allocations and fails a test that
-  leaks. `test_fail_alloc_after(n)` makes allocation fail on demand.
+  `test/test.h` first. `test_init` installs the harness `Allocator` with
+  `mem_set_heap`. It counts live allocations through null allocators and arena
+  blocks, and `RUN` fails a test that leaks. `test_fail_alloc_after(n)` makes
+  those allocations fail on demand. A direct `malloc` in a test is not counted.
 - Every public declaration has a doc comment. Examples are regions of the
   test files pulled in with `@snippet`, so every documented example compiles
   and runs.
@@ -82,13 +84,15 @@ The folder, include and naming rules live in the file comment of
 
 - `make test`, `make release` and `make docs` all pass. `make release`
   builds with `-Werror`. `make docs` fails on any undocumented member.
-- When a public API changes, every file in `notes/str-examples/` still
-  compiles with `cc -std=c11 -Isrc`. `10_dangling.c` and `11_double_free.c`
-  are bugs on purpose and only need to compile.
+- When a public API changes, `make examples` still passes. It compiles every
+  file in `notes/str-examples/` with `cc -std=c11 -Idist`. `10_dangling.c` and
+  `11_double_free.c` are bugs on purpose and only need to compile.
 - `notes/str-and-strview.html` is generated. Edit
   `notes/str-and-strview.tmpl.html` or the examples, then run
   `python3 tools/gen-guide.py`. It inlines each example and the
-  standard-html stylesheet from `~/.claude/skills/`.
+  standard-html stylesheet from `~/.claude/skills/`. Its two sanitizer traces
+  quote `mule.h` line numbers, so a change to `src/` can make them stale.
+  Re-capture them by running the examples.
 - A change a user of the library would notice adds a line under
   `## [Unreleased]` in `CHANGELOG.md`, in the same commit.
 
@@ -127,6 +131,8 @@ does not happen on every commit.
 - gcc ignores a `(void)` cast on a `MULE_NODISCARD` call, so `-Werror`
   fails there. Free through `mem_realloc` by assigning its null result:
   `p = mem_realloc(a, p, n, 0);`.
+- A mark taken before `arena_reset` or `arena_free` is dead. Nothing checks
+  it, so restoring it is undefined.
 - An `Arena` must stay put once `arena_allocator` has been called. The
   allocator's context points at it.
 - Doxygen reads both branches of an `#if`. Wrap internal macros in
@@ -147,12 +153,13 @@ does not happen on every commit.
   file edited and rebuilt within one second looks up to date. Use `make -B`
   when a script edits and rebuilds in a loop, such as a mutation check.
 - AddressSanitizer on macOS does not detect leaks, and Apple clang ships no
-  libFuzzer. The allocation counter in `test/test.h` covers leaks. Fuzzing needs
-  Linux.
+  libFuzzer. The harness `Allocator` in `test/test.h` covers leaks. Fuzzing
+  needs Linux.
 - macOS 26 libmalloc keeps a large block grown by realloc dirty after free,
   and never reuses it. `mem_realloc` grows by malloc and copy on Apple for
   that reason. `heap_growth_returns_memory` only runs without ASan, because
-  ASan replaces libmalloc. Run `make test SANITIZE=` after touching it.
+  ASan replaces libmalloc. Run `make test SANITIZE= BUILD=build/nosan` after
+  touching it, because bare `SANITIZE=` reuses the ASan binaries in `build/`.
 
 ## Benchmarks
 

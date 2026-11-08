@@ -32,7 +32,19 @@ TEST(heap_realloc_and_free) {
     p = mem_realloc(NULL, p, 8, 4096);
     REQUIRE(p != NULL);
     CHECK_EQ_STR(p, "abcdefg");
-    CHECK(mem_realloc(NULL, p, 4096, 0) == NULL);
+    memset(p + 8, 'x', 4096 - 8);
+    p = mem_realloc(NULL, p, 4096, 4);
+    REQUIRE(p != NULL);
+    CHECK_EQ_MEM(p, 4, "abcd", 4);
+    CHECK(mem_realloc(NULL, p, 4, 0) == NULL);
+}
+
+/* Other tests run on the harness heap, so this one reaches libc in every build.
+ * A REQUIRE in the body returns here, so the harness always comes back. */
+TEST(libc_realloc_and_free) {
+    const Allocator *harness = mem_set_heap(NULL);
+    heap_realloc_and_free();
+    mem_set_heap(harness);
 }
 
 /* --- Arena --------------------------------------------------------------- */
@@ -53,12 +65,15 @@ static size_t footprint(void) {
 TEST(heap_growth_returns_memory) {
     enum { SIZE = 64 << 20, REPS = 8 };
     size_t after_first = 0;
+    /* This measures libc, so the harness heap steps aside for it. */
+    const Allocator *harness = mem_set_heap(NULL);
     for (size_t r = 0; r < REPS; r++) {
         char *p = NULL;
         size_t cap = 0;
         while (cap < SIZE) {
             size_t next = cap != 0 ? cap * 2 : 16;
             char *q = mem_realloc(NULL, p, cap, next);
+            if (q == NULL) mem_set_heap(harness);
             REQUIRE(q != NULL);
             memset(q + cap, 1, next - cap);
             p = q;
@@ -69,6 +84,19 @@ TEST(heap_growth_returns_memory) {
     }
     /* libmalloc may cache a freed block, but later passes must reuse it. */
     CHECK(footprint() < after_first + SIZE);
+    mem_set_heap(harness);
+}
+
+/* ASan aborts on a request it cannot serve, so this needs the same gate. */
+TEST(libc_oom_leaves_block) {
+    const Allocator *harness = mem_set_heap(NULL);
+    char *p = mem_realloc(NULL, NULL, 0, 8);
+    CHECK(p != NULL);
+    if (p != NULL) memcpy(p, "intact", 7);
+    CHECK(mem_realloc(NULL, p, 8, SIZE_MAX) == NULL);
+    CHECK_EQ_STR(p, "intact");
+    p = mem_realloc(NULL, p, 8, 0);
+    mem_set_heap(harness);
 }
 #endif
 
@@ -229,11 +257,199 @@ TEST(arena_oom_leaves_state) {
     arena_free(&a);
 }
 
+/* --- Arena marks --------------------------------------------------------- */
+
+static size_t chain_len(const Arena *a) {
+    size_t n = 0;
+    for (const ArenaBlock *b = a->head; b != NULL; b = b->prev) n++;
+    return n;
+}
+
+TEST(mark_on_empty_arena) {
+    Arena a = { 0 };
+    const Allocator *al = arena_allocator(&a);
+    ArenaMark m = arena_mark(&a);
+    REQUIRE(arena_alloc(&a, 8, 1) != NULL);
+    REQUIRE(arena_alloc(&a, 2 * MEM_ARENA_BLOCK, 1) != NULL);
+    arena_restore(&a, m);
+    CHECK(a.head == NULL);
+    CHECK(a.last == NULL);
+    CHECK(a.allocator.fn == al->fn && a.allocator.ctx == al->ctx);
+
+    CHECK(arena_alloc(&a, 8, 1) != NULL);
+    arena_free(&a);
+}
+
+TEST(restore_rewinds_within_block) {
+    Arena a = { 0 };
+    REQUIRE(arena_alloc(&a, 24, 8) != NULL);
+    ArenaBlock *head = a.head;
+    ArenaMark m = arena_mark(&a);
+    void *p = arena_alloc(&a, 40, 8);
+    REQUIRE(p != NULL);
+    arena_restore(&a, m);
+    CHECK(a.head == head);
+    CHECK(arena_alloc(&a, 40, 8) == p);
+    arena_free(&a);
+}
+
+TEST(restore_frees_newer_blocks) {
+    Arena a = { 0 };
+    REQUIRE(arena_alloc(&a, 16, 1) != NULL);
+    ArenaBlock *head = a.head;
+    size_t used = head->used, len = chain_len(&a);
+    ArenaMark m = arena_mark(&a);
+    for (int i = 0; i < 3; i++) {
+        REQUIRE(arena_alloc(&a, 2 * MEM_ARENA_BLOCK, 1) != NULL);
+    }
+    CHECK_EQ_INT(chain_len(&a), len + 3);
+    arena_restore(&a, m);
+    CHECK(a.head == head);
+    CHECK_EQ_INT(chain_len(&a), len);
+    CHECK_EQ_INT(a.head->used, used);
+    arena_free(&a);
+}
+
+TEST(restore_keeps_older_data) {
+    Arena a = { 0 };
+    char *s = arena_alloc(&a, 16, 1);
+    REQUIRE(s != NULL);
+    memcpy(s, "before the mark", 16);
+    ArenaMark m = arena_mark(&a);
+    REQUIRE(arena_alloc(&a, 100, 1) != NULL);
+    REQUIRE(arena_alloc(&a, 2 * MEM_ARENA_BLOCK, 1) != NULL);
+    arena_restore(&a, m);
+    CHECK_EQ_STR(s, "before the mark");
+    arena_free(&a);
+}
+
+TEST(mark_stops_in_place_growth) {
+    Arena a = { 0 };
+    const Allocator *al = arena_allocator(&a);
+    char *p = mem_realloc(al, NULL, 0, 16);
+    REQUIRE(p != NULL);
+    CHECK(mem_realloc(al, p, 16, 32) == p); /* no mark: grows in place */
+
+    memcpy(p, "grow past mark", 15);
+    ArenaMark m = arena_mark(&a);
+    char *q = mem_realloc(al, p, 32, 64);
+    REQUIRE(q != NULL);
+    CHECK(q != p);
+    CHECK_EQ_STR(q, "grow past mark");
+    arena_restore(&a, m);
+    arena_free(&a);
+}
+
+TEST(marks_nest) {
+    Arena a = { 0 };
+    REQUIRE(arena_alloc(&a, 16, 1) != NULL);
+    ArenaBlock *head_a = a.head;
+    size_t used_a = head_a->used, len_a = chain_len(&a);
+    ArenaMark outer = arena_mark(&a);
+
+    REQUIRE(arena_alloc(&a, 32, 1) != NULL);
+    REQUIRE(arena_alloc(&a, 2 * MEM_ARENA_BLOCK, 1) != NULL);
+    ArenaBlock *head_b = a.head;
+    size_t used_b = head_b->used, len_b = chain_len(&a);
+    ArenaMark inner = arena_mark(&a);
+
+    REQUIRE(arena_alloc(&a, 8, 1) != NULL);
+    REQUIRE(arena_alloc(&a, 2 * MEM_ARENA_BLOCK, 1) != NULL);
+    arena_restore(&a, inner);
+    CHECK(a.head == head_b);
+    CHECK_EQ_INT(a.head->used, used_b);
+    CHECK_EQ_INT(chain_len(&a), len_b);
+
+    arena_restore(&a, outer);
+    CHECK(a.head == head_a);
+    CHECK_EQ_INT(a.head->used, used_a);
+    CHECK_EQ_INT(chain_len(&a), len_a);
+    arena_free(&a);
+}
+
+TEST(mark_after_reset_restores) {
+    Arena a = { 0 };
+    for (int i = 0; i < 3; i++) {
+        REQUIRE(arena_alloc(&a, MEM_ARENA_BLOCK, 1) != NULL);
+    }
+    arena_reset(&a);
+    ArenaMark m = arena_mark(&a);
+    ArenaBlock *head = a.head;
+    void *p = arena_alloc(&a, 64, 8);
+    REQUIRE(p != NULL);
+    REQUIRE(arena_alloc(&a, 2 * MEM_ARENA_BLOCK, 1) != NULL);
+    arena_restore(&a, m);
+    CHECK(a.head == head);
+    CHECK_EQ_INT(chain_len(&a), 1);
+    CHECK(arena_alloc(&a, 64, 8) == p);
+    arena_free(&a);
+}
+
+TEST(restore_drops_scoped_str) {
+    Arena a = { 0 };
+    REQUIRE(arena_alloc(&a, 8, 1) != NULL);
+    ArenaMark m = arena_mark(&a);
+    Str s = { .alloc = arena_allocator(&a) };
+    for (int i = 0; i < 50; i++) REQUIRE(str_append(&s, SV("scoped text ")));
+    void *first = s.data; /* the newest block grows in place */
+    arena_restore(&a, m);
+    CHECK(arena_alloc(&a, 8, alignof(max_align_t)) == first);
+    arena_free(&a);
+}
+
+/* --- Heap hook ----------------------------------------------------------- */
+
+typedef struct HeapCount {
+    int allocs, frees;
+} HeapCount;
+
+static void *counting_heap_fn(void *ctx, void *old, size_t old_size,
+                              size_t new_size) {
+    HeapCount *c = ctx;
+    (void)old_size;
+    if (new_size == 0) {
+        c->frees++;
+        free(old);
+        return NULL;
+    }
+    c->allocs++;
+    return realloc(old, new_size);
+}
+
+TEST(heap_hook_routes_null_allocator) {
+    HeapCount c = { 0 };
+    Allocator counting = { .fn = counting_heap_fn, .ctx = &c };
+    const Allocator *prev = mem_set_heap(&counting);
+
+    /* No REQUIRE: returning early would leave `c` installed after it dies. */
+    char *p = mem_realloc(NULL, NULL, 0, 8);
+    CHECK(p != NULL);
+    CHECK_EQ_INT(c.allocs, 1);
+    CHECK(mem_realloc(NULL, p, 8, 0) == NULL);
+    CHECK_EQ_INT(c.frees, 1);
+
+    Arena a = { 0 };
+    CHECK(arena_alloc(&a, 8, 1) != NULL);
+    CHECK_EQ_INT(c.allocs, 2);
+    arena_free(&a);
+    CHECK_EQ_INT(c.frees, 2);
+
+    CHECK(mem_set_heap(NULL) == &counting);
+    p = mem_realloc(NULL, NULL, 0, 8);
+    CHECK(p != NULL);
+    CHECK(mem_realloc(NULL, p, 8, 0) == NULL);
+    CHECK_EQ_INT(c.allocs, 2);
+    CHECK_EQ_INT(c.frees, 2);
+    CHECK(mem_set_heap(prev) == NULL);
+}
+
 int main(int argc, char **argv) {
     test_init(argc, argv);
     RUN(heap_realloc_and_free);
+    RUN(libc_realloc_and_free);
 #if MEM_FOOTPRINT_TESTS
     RUN(heap_growth_returns_memory);
+    RUN(libc_oom_leaves_block);
 #endif
     RUN(arena_alloc_and_free);
     RUN(arena_alignment);
@@ -245,5 +461,14 @@ int main(int argc, char **argv) {
     RUN(arena_free_twice_and_reuse);
     RUN(arena_rejects_overflow);
     RUN(arena_oom_leaves_state);
+    RUN(mark_on_empty_arena);
+    RUN(restore_rewinds_within_block);
+    RUN(restore_frees_newer_blocks);
+    RUN(restore_keeps_older_data);
+    RUN(mark_stops_in_place_growth);
+    RUN(marks_nest);
+    RUN(mark_after_reset_restores);
+    RUN(restore_drops_scoped_str);
+    RUN(heap_hook_routes_null_allocator);
     return TEST_REPORT();
 }

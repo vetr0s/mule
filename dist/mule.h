@@ -11,9 +11,9 @@
  * Include it before any system header. It sets _POSIX_C_SOURCE, which only
  * takes effect before the first one.
  *
- * Define MULE_TEST as well to get the test harness. Its leak counting and
- * allocation failure cover the library only in the MULE_IMPLEMENTATION file,
- * so define both in the test program.
+ * Define MULE_TEST as well to get the test harness. test_init installs its
+ * counting, failing Allocator as the heap, so its leak counting and allocation
+ * failure cover the whole library.
  */
 #ifndef MULE_H
 #define MULE_H
@@ -97,11 +97,11 @@
 /** Bumped for breaking changes, once the version reaches 1.0.0. */
 #define MULE_VERSION_MAJOR 0
 /** Bumped for new features. Before 1.0.0, also for breaking changes. */
-#define MULE_VERSION_MINOR 1
+#define MULE_VERSION_MINOR 2
 /** Bumped for fixes that change no behaviour a program relies on. */
 #define MULE_VERSION_PATCH 0
 /** All three numbers as a string, such as "0.0.1". */
-#define MULE_VERSION "0.1.0"
+#define MULE_VERSION "0.2.0"
 /** @} */
 
 /** @} */
@@ -120,8 +120,10 @@
  * caller picks where its bytes live once and the rest of the code does not
  * care.
  *
- * All allocation in the library goes through mem_realloc(). Only this module
- * calls malloc, realloc and free.
+ * All allocation in the library goes through mem_realloc(). Outside the test
+ * harness, only this module calls malloc, realloc and free. mem_set_heap()
+ * sends what would reach them to an Allocator instead, which is how the test
+ * harness counts allocations and fails them on demand.
  *
  * ## Arenas
  *
@@ -138,6 +140,13 @@
  *     room, so a Str growing in an arena does not leave a copy behind at
  *     every doubling. Freeing the most recent allocation gives its bytes
  *     back. Older allocations stay until arena_reset() or arena_free().
+ *   - arena_mark() saves a position and arena_restore() rewinds to it, so a
+ *     function can free just what it allocated. Restore frees the blocks
+ *     added since the mark and leaves older allocations intact. Marks nest,
+ *     and restore goes last in, first out. A stale or out-of-order mark is
+ *     undefined, as a freed pointer is.
+ *   - Taking a mark stops the previous allocation from growing in place, so
+ *     a buffer never straddles the mark.
  *
  * @snippet{trimleft} test_mem.c arena
  *
@@ -167,7 +176,8 @@ typedef struct Allocator {
 } Allocator;
 
 /** Resize @p old from @p old_size to @p new_size bytes through @p a.
- *  @param a  The allocator, or null for the libc heap.
+ *  @param a  The allocator, or null for the heap: libc, unless mem_set_heap()
+ *  installed another.
  *  @param old  The block to resize, or null to allocate a new one.
  *  @param old_size  The size @p old was allocated with. Ignored when @p old
  *  is null.
@@ -176,6 +186,14 @@ typedef struct Allocator {
  *  returns null too, so `p = mem_realloc(a, p, n, 0);` frees and clears. */
 MULE_NODISCARD void *mem_realloc(const Allocator *a, void *old, size_t old_size,
                                  size_t new_size);
+
+/** Make @p heap serve every null allocator, including arena blocks. The
+ *  setting is process-wide and not thread safe, and is meant for a test
+ *  harness. Memory must be freed through the heap that allocated it.
+ *  @param heap  The Allocator to install, or null for libc. It must outlive
+ *  the setting, and its blocks must be aligned for `max_align_t`.
+ *  @return The previous setting, so the caller can put it back. */
+const Allocator *mem_set_heap(const Allocator *heap);
 
 /** @} */
 
@@ -197,6 +215,13 @@ typedef struct Arena {
     Allocator allocator; /**< Filled by arena_allocator(). */
 } Arena;
 
+/** A position in an arena, from arena_mark(). The zero value is the mark of
+ *  an empty arena. */
+typedef struct ArenaMark {
+    ArenaBlock *head; /**< Newest block at the mark. */
+    size_t used;      /**< Bytes handed out of `head` at the mark. */
+} ArenaMark;
+
 /** Hand out @p size bytes from @p a.
  *  @param a  The arena.
  *  @param size  Bytes wanted.
@@ -212,6 +237,23 @@ MULE_NODISCARD const Allocator *arena_allocator(Arena *a);
 /** Forget every allocation and keep the newest block for reuse. Memory
  *  handed out before is invalid afterwards. */
 void arena_reset(Arena *a);
+/** Save the current position of @p a for arena_restore(). The newest
+ *  allocation stops growing in place, so growing it later moves it past the
+ *  mark.
+ *  @param a  The arena.
+ *  @return The mark.
+ *  @warning arena_reset() and arena_free() kill every mark taken before them.
+ *  Passing a dead mark to arena_restore() is undefined. */
+MULE_NODISCARD ArenaMark arena_mark(Arena *a);
+/** Free everything allocated since @p mark and rewind to it. Allocations made
+ *  before the mark keep their contents. The next arena_alloc() of the same
+ *  size and alignment returns the address the first one after the mark got.
+ *  @param a  The arena @p mark came from.
+ *  @param mark  A live mark. Restoring it kills the marks taken after it.
+ *  @warning Memory handed out since the mark is invalid afterwards. That
+ *  includes the buffer of a Str that grew in the arena since the mark, even
+ *  if the Str itself is older. */
+void arena_restore(Arena *a, ArenaMark mark);
 /** Release every block. Safe to call twice, and @p a stays usable. Its
  *  Allocator still works, so a Str that points at it can allocate again. */
 void arena_free(Arena *a);
@@ -510,6 +552,17 @@ MULE_NODISCARD bool sv_token_next(StrView *rest, StrView delims,
  *  @par Example
  *  @snippet{trimleft} test_str.c parse */
 MULE_NODISCARD bool sv_parse_i64(StrView v, int64_t *out);
+/** Parse all of @p v as an unsigned integer in @p base. Digits past 9 are
+ *  letters in either case.
+ *  @param v  The whole text to parse.
+ *  @param base  The base, from 2 to 36.
+ *  @param[out] out  The value. Unchanged when the call returns false.
+ *  @pre @p base is in 2..36. An assert checks it.
+ *  @return False on an empty view, a sign, whitespace, a prefix such as `0x`,
+ *  a byte that is not a digit of @p base, or a value above `UINT64_MAX`.
+ *  @par Example
+ *  @snippet{trimleft} test_str.c parse_u64 */
+MULE_NODISCARD bool sv_parse_u64(StrView v, int base, uint64_t *out);
 /** Parse all of @p v as a double, in any form strtod accepts in the C
  *  locale.
  *  @param v  The whole text to parse.
@@ -1006,9 +1059,10 @@ MULE_NORETURN void log_fatal_(const char *file, int line, const char *fmt, ...)
  *
  *   - CHECK records a failure and carries on. REQUIRE records it and returns
  *     from the test, for when the rest of it would be meaningless.
- *   - Every file included after this one has malloc, calloc, realloc and free
- *     redirected to counting wrappers. RUN fails a test that ends with more
- *     live allocations than it started with, so leaks fail on every platform.
+ *   - test_init() installs a counting Allocator with mem_set_heap(), so every
+ *     null allocator and every arena block goes through it. RUN fails a test
+ *     that ends with more live allocations than it started with, so leaks fail
+ *     on every platform. A direct call to malloc or free is not counted.
  *   - test_fail_alloc_after() makes allocation fail on demand, so
  *     out-of-memory paths can be tested deterministically.
  *   - A test still running after #TEST_TIMEOUT_S seconds is reported as
@@ -1043,7 +1097,7 @@ static char **test_argv_ = NULL;
 static const char *test_running_ = "";
 static bool test_color_ = false; /* set once by test_init */
 
-/* --- Allocator hooks ----------------------------------------------------- */
+/* --- Allocator ----------------------------------------------------------- */
 
 static long test_live_allocs_ = 0;
 static long test_alloc_budget_ = -1; /* allocations left; -1 means no limit */
@@ -1058,42 +1112,23 @@ MULE_UNUSED static void test_fail_alloc_after(long n) {
 
 /** @cond */
 
-static bool test_alloc_allowed_(void) {
-    if (test_alloc_budget_ == 0) return false;
+static void *test_heap_fn_(void *ctx, void *old, size_t old_size,
+                           size_t new_size) {
+    (void)ctx;
+    (void)old_size;
+    if (new_size == 0) {
+        if (old != NULL) test_live_allocs_--;
+        free(old);
+        return NULL;
+    }
+    if (test_alloc_budget_ == 0) return NULL;
     if (test_alloc_budget_ > 0) test_alloc_budget_--;
-    return true;
-}
-
-MULE_UNUSED static void *test_malloc_(size_t n) {
-    if (!test_alloc_allowed_()) return NULL;
-    void *p = malloc(n);
-    if (p != NULL) test_live_allocs_++;
-    return p;
-}
-
-MULE_UNUSED static void *test_calloc_(size_t count, size_t n) {
-    if (!test_alloc_allowed_()) return NULL;
-    void *p = calloc(count, n);
-    if (p != NULL) test_live_allocs_++;
-    return p;
-}
-
-MULE_UNUSED static void *test_realloc_(void *old, size_t n) {
-    if (!test_alloc_allowed_()) return NULL;
-    void *p = realloc(old, n);
+    void *p = realloc(old, new_size);
     if (p != NULL && old == NULL) test_live_allocs_++;
     return p;
 }
 
-MULE_UNUSED static void test_free_(void *p) {
-    if (p != NULL) test_live_allocs_--;
-    free(p);
-}
-
-#define malloc test_malloc_
-#define calloc test_calloc_
-#define realloc test_realloc_
-#define free test_free_
+static const Allocator test_heap_ = { .fn = test_heap_fn_ };
 
 /* --- Checks -------------------------------------------------------------- */
 
@@ -1227,6 +1262,7 @@ MULE_UNUSED static void test_init(int argc, char **argv) {
     test_argc_ = argc;
     test_argv_ = argv;
     test_color_ = log_color_enabled(stdout);
+    mem_set_heap(&test_heap_);
     signal(SIGALRM, test_timeout_);
 }
 
@@ -1303,8 +1339,17 @@ struct ArenaBlock {
     alignas(max_align_t) char data[]; /**< The memory itself. */
 };
 
+static const Allocator *mem_heap_;
+
+const Allocator *mem_set_heap(const Allocator *heap) {
+    const Allocator *prev = mem_heap_;
+    mem_heap_ = heap;
+    return prev;
+}
+
 void *mem_realloc(const Allocator *a, void *old, size_t old_size,
                   size_t new_size) {
+    if (a == NULL) a = mem_heap_;
     if (a != NULL) return a->fn(a->ctx, old, old_size, new_size);
     /* realloc(p, 0) is undefined in C23, so freeing is its own branch. */
     if (new_size == 0) {
@@ -1347,7 +1392,7 @@ void *arena_alloc(Arena *a, size_t size, size_t align) {
         if (cap < MEM_ARENA_BLOCK) cap = MEM_ARENA_BLOCK;
         if (ckd_add(&bytes, cap, sizeof(ArenaBlock))) return NULL;
 
-        ArenaBlock *b = malloc(bytes);
+        ArenaBlock *b = mem_realloc(NULL, NULL, 0, bytes);
         if (b == NULL) return NULL;
         *b = (ArenaBlock){ .prev = a->head, .cap = cap };
         a->head = b;
@@ -1389,24 +1434,39 @@ const Allocator *arena_allocator(Arena *a) {
     return &a->allocator;
 }
 
-void arena_reset(Arena *a) {
-    if (a->head == NULL) return;
-    for (ArenaBlock *b = a->head->prev; b != NULL;) {
+/* Free the blocks from `b` back to `stop`, which stays. */
+static void mem_free_blocks_(ArenaBlock *b, const ArenaBlock *stop) {
+    while (b != stop) {
         ArenaBlock *prev = b->prev;
-        free(b);
+        b = mem_realloc(NULL, b, sizeof(ArenaBlock) + b->cap, 0);
         b = prev;
     }
+}
+
+void arena_reset(Arena *a) {
+    if (a->head == NULL) return;
+    mem_free_blocks_(a->head->prev, NULL);
     a->head->prev = NULL;
     a->head->used = 0;
     a->last = NULL;
 }
 
+ArenaMark arena_mark(Arena *a) {
+    /* A buffer that grew in place past the mark would be cut off by restore. */
+    a->last = NULL;
+    return (ArenaMark){ .head = a->head,
+                        .used = a->head != NULL ? a->head->used : 0 };
+}
+
+void arena_restore(Arena *a, ArenaMark mark) {
+    mem_free_blocks_(a->head, mark.head);
+    a->head = mark.head;
+    if (a->head != NULL) a->head->used = mark.used;
+    a->last = NULL;
+}
+
 void arena_free(Arena *a) {
-    for (ArenaBlock *b = a->head; b != NULL;) {
-        ArenaBlock *prev = b->prev;
-        free(b);
-        b = prev;
-    }
+    mem_free_blocks_(a->head, NULL);
     /* Keep the allocator, so Strs that point at it can still allocate. */
     *a = (Arena){ .allocator = a->allocator };
 }
@@ -1765,6 +1825,30 @@ bool sv_parse_i64(StrView v, int64_t *out) {
     if (mag > (uint64_t)INT64_MAX + neg) return false;
     /* -(mag - 1) - 1 reaches INT64_MIN without overflowing on the way. */
     *out = neg ? -(int64_t)(mag - 1) - 1 : (int64_t)mag;
+    return true;
+}
+
+bool sv_parse_u64(StrView v, int base, uint64_t *out) {
+    assert(base >= 2 && base <= 36);
+    if (v.len == 0) return false;
+
+    uint64_t val = 0;
+    for (size_t i = 0; i < v.len; i++) {
+        unsigned c = (unsigned char)v.data[i], d;
+        if (c >= '0' && c <= '9')
+            d = c - '0';
+        else if (c >= 'a' && c <= 'z')
+            d = c - 'a' + 10;
+        else if (c >= 'A' && c <= 'Z')
+            d = c - 'A' + 10;
+        else
+            return false;
+        if (d >= (unsigned)base ||
+            ckd_mul(&val, val, (uint64_t)base) ||
+            ckd_add(&val, val, d))
+            return false;
+    }
+    *out = val;
     return true;
 }
 

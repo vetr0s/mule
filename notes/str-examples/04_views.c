@@ -1,6 +1,6 @@
 /* StrView on its own: inspect and slice text without allocating. */
-#include "mem/mem.c"
-#include "str/str.c"
+#define MULE_IMPLEMENTATION
+#include "mule.h"
 
 #include <stdio.h>
 #include <stdlib.h>

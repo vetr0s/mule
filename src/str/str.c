@@ -354,6 +354,30 @@ bool sv_parse_i64(StrView v, int64_t *out) {
     return true;
 }
 
+bool sv_parse_u64(StrView v, int base, uint64_t *out) {
+    assert(base >= 2 && base <= 36);
+    if (v.len == 0) return false;
+
+    uint64_t val = 0;
+    for (size_t i = 0; i < v.len; i++) {
+        unsigned c = (unsigned char)v.data[i], d;
+        if (c >= '0' && c <= '9')
+            d = c - '0';
+        else if (c >= 'a' && c <= 'z')
+            d = c - 'a' + 10;
+        else if (c >= 'A' && c <= 'Z')
+            d = c - 'A' + 10;
+        else
+            return false;
+        if (d >= (unsigned)base ||
+            ckd_mul(&val, val, (uint64_t)base) ||
+            ckd_add(&val, val, d))
+            return false;
+    }
+    *out = val;
+    return true;
+}
+
 bool sv_parse_f64(StrView v, double *out) {
     char buf[256];
     if (v.len == 0 || v.len >= sizeof buf || sv_space_(v.data[0])) return false;

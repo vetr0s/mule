@@ -1,6 +1,6 @@
 /* StrView on its own: sort an array of views with qsort. */
-#include "mem/mem.c"
-#include "str/str.c"
+#define MULE_IMPLEMENTATION
+#include "mule.h"
 
 #include <stdio.h>
 #include <stdlib.h>

@@ -1,6 +1,6 @@
 /* Bug on purpose: copying a Str struct makes two owners of one buffer. */
-#include "mem/mem.c"
-#include "str/str.c"
+#define MULE_IMPLEMENTATION
+#include "mule.h"
 
 #include <stdlib.h>
 

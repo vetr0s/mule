@@ -577,6 +577,84 @@ TEST(parse) {
     /* [parse] */
 }
 
+TEST(parse_u64_basics) {
+    /* [parse_u64] */
+    uint64_t port = 0, max = 0;
+    CHECK(sv_parse_u64(SV("8"), 10, &port));
+    CHECK(sv_parse_u64(SV("18446744073709551615"), 10, &max));
+    CHECK_EQ_INT(port, 8);
+    CHECK(max == UINT64_MAX);
+    /* [parse_u64] */
+}
+
+TEST(parse_u64_bases) {
+    static const struct {
+        const char *text;
+        int base;
+        bool ok;
+        uint64_t want;
+    } cases[] = {
+        { "ff", 16, true, 255 },
+        { "FF", 16, true, 255 },
+        { "Ff", 16, true, 255 },
+        { "101", 2, true, 5 },
+        { "z", 36, true, 35 },
+        { "Z", 36, true, 35 },
+        { "17", 8, true, 15 },
+        { "8", 8, false, 0 },
+        { "2", 2, false, 0 },
+        { "g", 16, false, 0 },
+        { "10", 36, true, 36 },
+        { "ffffffffffffffff", 16, true, UINT64_MAX },
+        { "1111111111111111111111111111111111111111111111111111111111111111", 2,
+          true, UINT64_MAX },
+    };
+    for (size_t i = 0; i < sizeof cases / sizeof cases[0]; i++) {
+        uint64_t got = 99;
+        bool ok = sv_parse_u64(sv_from_cstr(cases[i].text), cases[i].base,
+                               &got);
+        if (ok != cases[i].ok) printf("  case \"%s\"\n", cases[i].text);
+        CHECK(ok == cases[i].ok);
+        CHECK(got == (cases[i].ok ? cases[i].want : 99));
+    }
+}
+
+/* A base outside 2..36 trips an assert, so the check is @pre in str.h. */
+TEST(parse_u64_edges) {
+    static const struct {
+        const char *text;
+        int base;
+    } rejects[] = {
+        { "", 10 },
+        { "+1", 10 },
+        { "-0", 10 },
+        { "-1", 10 },
+        { " 1", 10 },
+        { "1 ", 10 },
+        { "1\n", 10 },
+        { "1a", 10 },
+        { "0x1f", 16 },
+        { "0b101", 2 },
+        { "18446744073709551616", 10 },
+        { "99999999999999999999", 10 },
+        { "10000000000000000", 16 },
+        { "10000000000000000000000000000000000000000000000000000000000000000",
+          2 },
+    };
+    for (size_t i = 0; i < sizeof rejects / sizeof rejects[0]; i++) {
+        uint64_t n = 77;
+        bool ok = sv_parse_u64(sv_from_cstr(rejects[i].text), rejects[i].base,
+                               &n);
+        if (ok) printf("  case \"%s\"\n", rejects[i].text);
+        CHECK(!ok);
+        CHECK(n == 77);
+    }
+    /* A view stops where its length says, not at a NUL. */
+    uint64_t n = 0;
+    CHECK(sv_parse_u64((StrView){ "123456", 3 }, 10, &n));
+    CHECK_EQ_INT(n, 123);
+}
+
 TEST(parse_i64_edges) {
     static const struct {
         const char *text;
@@ -773,6 +851,35 @@ TEST(parse_i64_matches_strtoll) {
     }
 }
 
+/* Random digit strings in every base, checked against strtoull. */
+TEST(parse_u64_matches_strtoull) {
+    static const char digits[] = "0123456789abcdefghijklmnopqrstuvwxyz";
+    Rand rng = { 11 };
+    char buf[72];
+    for (int base = 2; base <= 36; base++) {
+        for (int i = 0; i < 5000; i++) {
+            size_t len = 1 + (size_t)(rand_next(&rng) % 70);
+            for (size_t d = 0; d < len; d++) {
+                char c = digits[rand_next(&rng) % (uint64_t)base];
+                if (c > '9' && (rand_next(&rng) & 1)) c = (char)(c - 'a' + 'A');
+                buf[d] = c;
+            }
+            buf[len] = '\0';
+
+            errno = 0;
+            char *end;
+            unsigned long long want = strtoull(buf, &end, base);
+            bool want_ok = errno != ERANGE && *end == '\0';
+            uint64_t got = 0;
+            bool ok = sv_parse_u64((StrView){ buf, len }, base, &got);
+            if (ok != want_ok || (ok && got != want))
+                printf("  base %d \"%s\"\n", base, buf);
+            REQUIRE(ok == want_ok);
+            if (ok) REQUIRE(got == want);
+        }
+    }
+}
+
 /* Random operations on a Str, checked after every step against a plain array
  * that applies the same operations. */
 static void check_against_model(const Allocator *alloc) {
@@ -947,9 +1054,13 @@ int main(int argc, char **argv) {
     RUN(read_line_edges);
     RUN(read_line_oom_keeps_contents);
     RUN(parse);
+    RUN(parse_u64_basics);
+    RUN(parse_u64_bases);
+    RUN(parse_u64_edges);
     RUN(parse_i64_edges);
     RUN(parse_f64_edges);
     RUN(parse_i64_matches_strtoll);
+    RUN(parse_u64_matches_strtoull);
     RUN(oom_leaves_string_unchanged);
     RUN(oom_during_init_leaves_empty);
     RUN(matches_model_under_random_ops);

@@ -11,8 +11,17 @@ struct ArenaBlock {
     alignas(max_align_t) char data[]; /**< The memory itself. */
 };
 
+static const Allocator *mem_heap_;
+
+const Allocator *mem_set_heap(const Allocator *heap) {
+    const Allocator *prev = mem_heap_;
+    mem_heap_ = heap;
+    return prev;
+}
+
 void *mem_realloc(const Allocator *a, void *old, size_t old_size,
                   size_t new_size) {
+    if (a == NULL) a = mem_heap_;
     if (a != NULL) return a->fn(a->ctx, old, old_size, new_size);
     /* realloc(p, 0) is undefined in C23, so freeing is its own branch. */
     if (new_size == 0) {
@@ -55,7 +64,7 @@ void *arena_alloc(Arena *a, size_t size, size_t align) {
         if (cap < MEM_ARENA_BLOCK) cap = MEM_ARENA_BLOCK;
         if (ckd_add(&bytes, cap, sizeof(ArenaBlock))) return NULL;
 
-        ArenaBlock *b = malloc(bytes);
+        ArenaBlock *b = mem_realloc(NULL, NULL, 0, bytes);
         if (b == NULL) return NULL;
         *b = (ArenaBlock){ .prev = a->head, .cap = cap };
         a->head = b;
@@ -97,24 +106,39 @@ const Allocator *arena_allocator(Arena *a) {
     return &a->allocator;
 }
 
-void arena_reset(Arena *a) {
-    if (a->head == NULL) return;
-    for (ArenaBlock *b = a->head->prev; b != NULL;) {
+/* Free the blocks from `b` back to `stop`, which stays. */
+static void mem_free_blocks_(ArenaBlock *b, const ArenaBlock *stop) {
+    while (b != stop) {
         ArenaBlock *prev = b->prev;
-        free(b);
+        b = mem_realloc(NULL, b, sizeof(ArenaBlock) + b->cap, 0);
         b = prev;
     }
+}
+
+void arena_reset(Arena *a) {
+    if (a->head == NULL) return;
+    mem_free_blocks_(a->head->prev, NULL);
     a->head->prev = NULL;
     a->head->used = 0;
     a->last = NULL;
 }
 
+ArenaMark arena_mark(Arena *a) {
+    /* A buffer that grew in place past the mark would be cut off by restore. */
+    a->last = NULL;
+    return (ArenaMark){ .head = a->head,
+                        .used = a->head != NULL ? a->head->used : 0 };
+}
+
+void arena_restore(Arena *a, ArenaMark mark) {
+    mem_free_blocks_(a->head, mark.head);
+    a->head = mark.head;
+    if (a->head != NULL) a->head->used = mark.used;
+    a->last = NULL;
+}
+
 void arena_free(Arena *a) {
-    for (ArenaBlock *b = a->head; b != NULL;) {
-        ArenaBlock *prev = b->prev;
-        free(b);
-        b = prev;
-    }
+    mem_free_blocks_(a->head, NULL);
     /* Keep the allocator, so Strs that point at it can still allocate. */
     *a = (Arena){ .allocator = a->allocator };
 }

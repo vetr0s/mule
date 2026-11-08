@@ -55,12 +55,12 @@ static void *moving_realloc(void *ctx, void *old, size_t old_size,
     (void)ctx;
     void *p = NULL;
     if (new_size != 0) {
-        p = malloc(new_size);
+        p = mem_realloc(NULL, NULL, 0, new_size);
         if (p == NULL) return NULL;
         if (old != NULL)
             memcpy(p, old, old_size < new_size ? old_size : new_size);
     }
-    free(old);
+    old = mem_realloc(NULL, old, old_size, 0);
     return p;
 }
 

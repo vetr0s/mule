@@ -9,6 +9,7 @@
 #    make test T=x   -> run only the tests named x (space-separated list)
 #    make dist       -> regenerate dist/mule.h, the single-header library
 #    make docs       -> Doxygen HTML reference (build/docs/html/index.html)
+#    make examples   -> compile-check notes/str-examples/ against dist/mule.h
 #    make version    -> print the version in src/base/base.h
 #    make bench      -> micro-benchmarks of str_append and friends
 #    make bench-corpus -> benchmark on Gutenberg books, Pizza & Chili
@@ -72,7 +73,7 @@ TEST_BINS   := $(TEST_SRCS:tests/%.c=$(BUILD)/tests/%)
 BENCH_BINS  := $(BENCH_SRCS:bench/%.c=$(BUILD)/bench/%)
 
 .PHONY: all debug release run test bench bench-corpus bench-map bench-scale \
-        corpus dist docs format clean version
+        corpus dist docs examples format clean version
 .DELETE_ON_ERROR:
 all: debug compile_commands.json
 
@@ -108,6 +109,10 @@ $(DIST): tools/amalgamate.sh $(wildcard src/*/*.[ch])
 	sh tools/amalgamate.sh $(MODULES) > $@
 
 $(DEBUG_BIN) $(RELEASE_BIN) $(BUILD)/tests/test_dist: $(DIST)
+
+# Compiling is enough: 10_dangling.c and 11_double_free.c are bugs on purpose.
+examples: dist
+	$(CC) -std=c11 -Idist -fsyntax-only $(wildcard notes/str-examples/*.c)
 
 test: $(TEST_BINS)
 	@pass=0; fail=0; \

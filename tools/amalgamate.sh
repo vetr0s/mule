@@ -26,9 +26,9 @@ cat <<'EOF'
  * Include it before any system header. It sets _POSIX_C_SOURCE, which only
  * takes effect before the first one.
  *
- * Define MULE_TEST as well to get the test harness. Its leak counting and
- * allocation failure cover the library only in the MULE_IMPLEMENTATION file,
- * so define both in the test program.
+ * Define MULE_TEST as well to get the test harness. test_init installs its
+ * counting, failing Allocator as the heap, so its leak counting and allocation
+ * failure cover the whole library.
  */
 #ifndef MULE_H
 #define MULE_H

@@ -1,6 +1,6 @@
 /* Together: copy a view into its own Str when it must outlive its source. */
-#include "mem/mem.c"
-#include "str/str.c"
+#define MULE_IMPLEMENTATION
+#include "mule.h"
 
 #include <stdio.h>
 #include <stdlib.h>

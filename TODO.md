@@ -19,37 +19,24 @@ follows that rule.
 - [x] Errors: functions return `bool`, and a failed call leaves its argument
       unchanged. Macros only where a function cannot do the job.
 - [x] Naming: one prefix per module. Never name anything plain `log`.
-- [x] Platforms: Unix with clang 17+ or gcc 13+. Windows comes in 0.5.0, so
+- [x] Platforms: Unix with clang 17+ or gcc 13+. Windows comes in 0.6.0, so
       new platform code keeps its POSIX calls behind one function per call
       site.
 - [x] Language: a C11 floor, written in C99 style.
 - [x] Versions: Semantic Versioning, released at milestones. AGENTS.md has
       the rules and the steps.
 - [x] The reference is published to https://mule.vetr0s.dev by CI.
-- [x] Builds: from 0.2.0, MULE builds itself with a `build.c` written
+- [x] Builds: from 0.3.0, MULE builds itself with a `build.c` written
       against its own `build` module, in the style of tsoding's nob.h. The
       Makefile goes away.
 
-## 0.1.x: patches on 0.1.0
-
-Additions to existing modules. Each one is groundwork for 0.2.0.
-
-- [ ] `sv_parse_u64`, and bases other than 10. The `args` module parses
-      `-j 8` with it.
-- [ ] Arena save and restore marks, so a function can free just what it
-      allocated. Build scripts use them as nob uses its temp allocator.
-- [ ] Replace the `malloc` macro hooks in `src/test/test.h` with a failing
-      `Allocator`.
-- [ ] `notes/str-examples/` and the guides include `dist/mule.h`, which is
-      how readers will use the library.
-
-## 0.2.0: build in C
+## 0.3.0: build in C
 
 A project's build is a C program. Bootstrapping it needs only a C compiler:
 `cc -o build build.c && ./build`. After that the binary rebuilds itself
 whenever its source changes. nob.h does this. MULE goes further where nob
 cuts corners: sub-second mtimes, header tracking, `compile_commands.json`
-and exit codes that pass through. 0.2.0 ships when MULE builds itself this
+and exit codes that pass through. 0.3.0 ships when MULE builds itself this
 way and the Makefile is gone.
 
 ### `fs`: files and paths
@@ -84,7 +71,7 @@ way and the Makefile is gone.
 - [ ] Redirect stdin, stdout and stderr to files.
 - [ ] Capture a command's stdout into a `Str`.
 - [ ] A process handle the caller does not look inside, so a Windows
-      backend fits in 0.5.0 without changing callers.
+      backend fits in 0.6.0 without changing callers.
 
 ### `args`: command lines
 
@@ -110,6 +97,11 @@ way and the Makefile is gone.
       The Makefile writes one today and nob does not.
 - [ ] A minimal example project with its own `build.c`, compiled in CI.
 
+### Docs
+
+- [ ] Revamp the examples section of the docs. It shows wider use cases and
+      covers every topic in the library.
+
 ### MULE builds itself
 
 - [x] `build.c` includes the `src/` files, not `dist/mule.h`. The build
@@ -127,24 +119,24 @@ way and the Makefile is gone.
       and pitfalls in AGENTS.md. The GNU Make 3.81 one-second pitfall goes
       with them.
 
-## 0.2.x: patches on 0.2.0
+## 0.3.x: patches on 0.3.0
 
 - [ ] Wall-clock ISO 8601 timestamps in `time`.
 - [ ] Timestamps in `log`, on top of them.
 
-## 0.3.0: text
+## 0.4.0: text
 
 - [ ] `utf8`: validate a view, decode the next code point, count code
       points.
 - [ ] In-place edits on `Str`: insert, remove a range, replace.
 - [ ] An INI or JSON parser built on views.
 
-## 0.4.0: threads
+## 0.5.0: threads
 
 - [ ] A thin wrapper over `<threads.h>` or pthreads.
 - [ ] A job queue on top of it.
 
-## 0.5.0: Windows
+## 0.6.0: Windows
 
 - [ ] MSVC: a `ckd_*` fallback without the gcc builtins.
 - [ ] Windows versions of the POSIX calls in `log`, `rand`, `time`, `fs`

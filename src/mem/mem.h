@@ -11,8 +11,10 @@
  * caller picks where its bytes live once and the rest of the code does not
  * care.
  *
- * All allocation in the library goes through mem_realloc(). Only this module
- * calls malloc, realloc and free.
+ * All allocation in the library goes through mem_realloc(). Outside the test
+ * harness, only this module calls malloc, realloc and free. mem_set_heap()
+ * sends what would reach them to an Allocator instead, which is how the test
+ * harness counts allocations and fails them on demand.
  *
  * ## Arenas
  *
@@ -29,6 +31,13 @@
  *     room, so a Str growing in an arena does not leave a copy behind at
  *     every doubling. Freeing the most recent allocation gives its bytes
  *     back. Older allocations stay until arena_reset() or arena_free().
+ *   - arena_mark() saves a position and arena_restore() rewinds to it, so a
+ *     function can free just what it allocated. Restore frees the blocks
+ *     added since the mark and leaves older allocations intact. Marks nest,
+ *     and restore goes last in, first out. A stale or out-of-order mark is
+ *     undefined, as a freed pointer is.
+ *   - Taking a mark stops the previous allocation from growing in place, so
+ *     a buffer never straddles the mark.
  *
  * @snippet{trimleft} test_mem.c arena
  *
@@ -59,7 +68,8 @@ typedef struct Allocator {
 } Allocator;
 
 /** Resize @p old from @p old_size to @p new_size bytes through @p a.
- *  @param a  The allocator, or null for the libc heap.
+ *  @param a  The allocator, or null for the heap: libc, unless mem_set_heap()
+ *  installed another.
  *  @param old  The block to resize, or null to allocate a new one.
  *  @param old_size  The size @p old was allocated with. Ignored when @p old
  *  is null.
@@ -68,6 +78,14 @@ typedef struct Allocator {
  *  returns null too, so `p = mem_realloc(a, p, n, 0);` frees and clears. */
 MULE_NODISCARD void *mem_realloc(const Allocator *a, void *old, size_t old_size,
                                  size_t new_size);
+
+/** Make @p heap serve every null allocator, including arena blocks. The
+ *  setting is process-wide and not thread safe, and is meant for a test
+ *  harness. Memory must be freed through the heap that allocated it.
+ *  @param heap  The Allocator to install, or null for libc. It must outlive
+ *  the setting, and its blocks must be aligned for `max_align_t`.
+ *  @return The previous setting, so the caller can put it back. */
+const Allocator *mem_set_heap(const Allocator *heap);
 
 /** @} */
 
@@ -89,6 +107,13 @@ typedef struct Arena {
     Allocator allocator; /**< Filled by arena_allocator(). */
 } Arena;
 
+/** A position in an arena, from arena_mark(). The zero value is the mark of
+ *  an empty arena. */
+typedef struct ArenaMark {
+    ArenaBlock *head; /**< Newest block at the mark. */
+    size_t used;      /**< Bytes handed out of `head` at the mark. */
+} ArenaMark;
+
 /** Hand out @p size bytes from @p a.
  *  @param a  The arena.
  *  @param size  Bytes wanted.
@@ -104,6 +129,23 @@ MULE_NODISCARD const Allocator *arena_allocator(Arena *a);
 /** Forget every allocation and keep the newest block for reuse. Memory
  *  handed out before is invalid afterwards. */
 void arena_reset(Arena *a);
+/** Save the current position of @p a for arena_restore(). The newest
+ *  allocation stops growing in place, so growing it later moves it past the
+ *  mark.
+ *  @param a  The arena.
+ *  @return The mark.
+ *  @warning arena_reset() and arena_free() kill every mark taken before them.
+ *  Passing a dead mark to arena_restore() is undefined. */
+MULE_NODISCARD ArenaMark arena_mark(Arena *a);
+/** Free everything allocated since @p mark and rewind to it. Allocations made
+ *  before the mark keep their contents. The next arena_alloc() of the same
+ *  size and alignment returns the address the first one after the mark got.
+ *  @param a  The arena @p mark came from.
+ *  @param mark  A live mark. Restoring it kills the marks taken after it.
+ *  @warning Memory handed out since the mark is invalid afterwards. That
+ *  includes the buffer of a Str that grew in the arena since the mark, even
+ *  if the Str itself is older. */
+void arena_restore(Arena *a, ArenaMark mark);
 /** Release every block. Safe to call twice, and @p a stays usable. Its
  *  Allocator still works, so a Str that points at it can allocate again. */
 void arena_free(Arena *a);

@@ -318,12 +318,12 @@ dd { margin: 0; }
 
 <h2 id="run">Running the examples</h2>
 
-<p>Run these from the repository root. The examples read <span class="path">data/pg2554.txt</span>, which is the Project Gutenberg text of <em>Crime and Punishment</em>. Each file includes <span class="path">src/mem/mem.c</span> and <span class="path">src/str/str.c</span> directly, the same way <span class="path">main.c</span> does, so a single compiler call builds it.</p>
+<p>Run these from the repository root. The examples read <span class="path">data/pg2554.txt</span>, which is the Project Gutenberg text of <em>Crime and Punishment</em>. Each file defines <code>MULE_IMPLEMENTATION</code> and includes <span class="path">dist/mule.h</span>, the same way a project uses the library, so a single compiler call builds it.</p>
 
-<pre><code>cc -std=c11 -Isrc -fsanitize=address,undefined \
+<pre><code>cc -std=c11 -Idist -fsanitize=address,undefined -g \
    notes/str-examples/01_build.c -o build/ex &amp;&amp; ./build/ex</code></pre>
 
-<p>Keep the sanitizer flag on while you learn. It turns most memory mistakes into a report that names the line. The <a href="#mistakes">mistakes section</a> shows two of those reports.</p>
+<p>Keep the sanitizer flag on while you learn. It turns most memory mistakes into a report, and <code>-g</code> makes that report name the line. The <a href="#mistakes">mistakes section</a> shows two of those reports.</p>
 
 <h2 id="types">The two types</h2>
 
@@ -363,8 +363,8 @@ StrView tail                         data ┘ len 10   tail = "Punishment"</code
 
 <p class="muted"><span class="path">notes/str-examples/01_build.c</span></p>
 <pre><code>/* Str on its own: build a string, read it, free it. */
-#include "mem/mem.c"
-#include "str/str.c"
+#define MULE_IMPLEMENTATION
+#include "mule.h"
 
 #include &lt;stdio.h&gt;
 #include &lt;stdlib.h&gt;
@@ -405,8 +405,8 @@ Rodion Raskolnikov, former student, age 23</code></pre>
 <p class="muted"><span class="path">notes/str-examples/02_reuse.c</span></p>
 <pre><code>/* Str on its own: clear and refill one buffer instead of allocating per line.
  */
-#include "mem/mem.c"
-#include "str/str.c"
+#define MULE_IMPLEMENTATION
+#include "mule.h"
 
 #include &lt;stdio.h&gt;
 #include &lt;stdlib.h&gt;
@@ -438,8 +438,8 @@ PART 3   capacity 15, data 0x6020000000f0</code></pre>
 
 <p class="muted"><span class="path">notes/str-examples/03_file.c</span></p>
 <pre><code>/* Str on its own: read a whole file into memory. */
-#include "mem/mem.c"
-#include "str/str.c"
+#define MULE_IMPLEMENTATION
+#include "mule.h"
 
 #include &lt;stdio.h&gt;
 #include &lt;stdlib.h&gt;
@@ -486,8 +486,8 @@ int main(int argc, char **argv) {
 
 <p class="muted"><span class="path">notes/str-examples/04_views.c</span></p>
 <pre><code>/* StrView on its own: inspect and slice text without allocating. */
-#include "mem/mem.c"
-#include "str/str.c"
+#define MULE_IMPLEMENTATION
+#include "mule.h"
 
 #include &lt;stdio.h&gt;
 #include &lt;stdlib.h&gt;
@@ -538,8 +538,8 @@ verbose on</code></pre>
 
 <p class="muted"><span class="path">notes/str-examples/05_split.c</span></p>
 <pre><code>/* StrView on its own: split fields and tokens. */
-#include "mem/mem.c"
-#include "str/str.c"
+#define MULE_IMPLEMENTATION
+#include "mule.h"
 
 #include &lt;stdio.h&gt;
 #include &lt;stdlib.h&gt;
@@ -592,8 +592,8 @@ word  [restless]</code></pre>
 
 <p class="muted"><span class="path">notes/str-examples/06_sort.c</span></p>
 <pre><code>/* StrView on its own: sort an array of views with qsort. */
-#include "mem/mem.c"
-#include "str/str.c"
+#define MULE_IMPLEMENTATION
+#include "mule.h"
 
 #include &lt;stdio.h&gt;
 #include &lt;stdlib.h&gt;
@@ -626,8 +626,8 @@ Sonya</code></pre>
 
 <p class="muted"><span class="path">notes/str-examples/07_lines.c</span></p>
 <pre><code>/* Together: one Str owns the file, views walk its lines. */
-#include "mem/mem.c"
-#include "str/str.c"
+#define MULE_IMPLEMENTATION
+#include "mule.h"
 
 #include &lt;stdio.h&gt;
 #include &lt;stdlib.h&gt;
@@ -680,8 +680,8 @@ int main(void) {
 
 <p class="muted"><span class="path">notes/str-examples/08_keep.c</span></p>
 <pre><code>/* Together: copy a view into its own Str when it must outlive its source. */
-#include "mem/mem.c"
-#include "str/str.c"
+#define MULE_IMPLEMENTATION
+#include "mule.h"
 
 #include &lt;stdio.h&gt;
 #include &lt;stdlib.h&gt;
@@ -745,8 +745,8 @@ int main(void) {
 
 <p class="muted"><span class="path">notes/str-examples/09_replace.c</span></p>
 <pre><code>/* Together: write your own function with views in and a Str out. */
-#include "mem/mem.c"
-#include "str/str.c"
+#define MULE_IMPLEMENTATION
+#include "mule.h"
 
 #include &lt;stdio.h&gt;
 #include &lt;stdlib.h&gt;
@@ -811,8 +811,8 @@ int main(void) {
 
 <p class="muted"><span class="path">notes/str-examples/10_dangling.c</span></p>
 <pre><code>/* Bug on purpose: a view kept across a call that reallocates. */
-#include "mem/mem.c"
-#include "str/str.c"
+#define MULE_IMPLEMENTATION
+#include "mule.h"
 
 #include &lt;stdio.h&gt;
 #include &lt;stdlib.h&gt;
@@ -832,17 +832,19 @@ int main(void) {
 
 <pre><code>ERROR: AddressSanitizer: heap-use-after-free on address 0x6020000000f0
 READ of size 1 at 0x6020000000f0 thread T0
-    #5 in main 10_dangling.c:15
+    #5 in main 10_dangling.c:16
 freed by thread T0 here:
-    #0 in realloc
-    #1 in str_grow_ str.c:25
-    #4 in str_append_cstr str.c:114
-    #5 in main 10_dangling.c:13
+    #0 in free
+    #1 in mem_realloc mule.h:1366
+    #2 in str_grow_ mule.h:1501
+    #5 in str_append_cstr mule.h:1600
+    #6 in main 10_dangling.c:14
 previously allocated by thread T0 here:
     #0 in realloc
-    #5 in main 10_dangling.c:9</code></pre>
+    #1 in mem_realloc mule.h:1370
+    #6 in main 10_dangling.c:10</code></pre>
 
-<p>The report is trimmed to the useful frames. Read it bottom up. Line 9 allocated the buffer. Line 13 grew it, and <code>realloc</code> freed the old one. Line 15 read through the stale view. There are two fixes. Take the view after the last call that grows the string. Or call <code>str_reserve</code> for the full size first, so the appends fit and the buffer never moves.</p>
+<p>The report is trimmed to the useful frames. Read it bottom up. Line 10 allocated the buffer. Line 14 grew it, and <code>mem_realloc</code> freed the old one. Line 16 read through the stale view. There are two fixes. Take the view after the last call that grows the string. Or call <code>str_reserve</code> for the full size first, so the appends fit and the buffer never moves.</p>
 
 <h3>Copying a Str struct</h3>
 
@@ -850,8 +852,8 @@ previously allocated by thread T0 here:
 
 <p class="muted"><span class="path">notes/str-examples/11_double_free.c</span></p>
 <pre><code>/* Bug on purpose: copying a Str struct makes two owners of one buffer. */
-#include "mem/mem.c"
-#include "str/str.c"
+#define MULE_IMPLEMENTATION
+#include "mule.h"
 
 #include &lt;stdlib.h&gt;
 
@@ -865,11 +867,13 @@ int main(void) {
 }</code></pre>
 
 <pre><code>ERROR: AddressSanitizer: attempting double-free on 0x6020000000f0 in thread T0:
-    #1 in str_free str.c:49
-    #2 in main 11_double_free.c:11
+    #1 in mem_realloc mule.h:1356
+    #2 in str_free mule.h:1526
+    #3 in main 11_double_free.c:12
 freed by thread T0 here:
-    #1 in str_free str.c:49
-    #2 in main 11_double_free.c:10</code></pre>
+    #1 in mem_realloc mule.h:1356
+    #2 in str_free mule.h:1526
+    #3 in main 11_double_free.c:11</code></pre>
 
 <p>To duplicate a string, make a real copy with <code>str_from(&amp;b, str_view(&amp;a))</code>. To hand ownership over, write <code>Str b = str_take(&amp;a);</code>. It moves the buffer to <code>b</code> and leaves <code>a</code> empty, so only one owner remains. Pass a <code>Str</code> to functions as <code>Str *</code> so this never happens by accident.</p>
 
@@ -932,7 +936,7 @@ freed by thread T0 here:
   <li data-state="todo">Write <code>StrView path_basename(StrView path)</code> that returns everything after the last <code>/</code>. It returns a view, so it cannot fail. Test it on <code>""</code>, <code>"a"</code>, <code>"a/"</code> and <code>"/usr/lib/libc.so"</code>.</li>
 </ul>
 
-<p class="footer">Built from <span class="path">src/str/str.h</span>, <span class="path">src/str/str.c</span> and the eleven files in <span class="path">notes/str-examples/</span>. Each example was compiled with Apple clang 21 using <code>-std=c11 -Wall -Wextra -Wconversion -fsanitize=address,undefined</code> and run on 2026-11-07. Sanitizer reports are trimmed to the frames that name a source line.</p>
+<p class="footer">Built from <span class="path">dist/mule.h</span> and the eleven files in <span class="path">notes/str-examples/</span>. Each example was compiled with Apple clang 21 using <code>-std=c11 -Idist -fsanitize=address,undefined -g -Wall -Wextra -Wconversion</code> and run on 2026-11-08. Sanitizer reports are trimmed to the frames that name a source line.</p>
 
 </main>
 </body>

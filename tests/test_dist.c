@@ -15,6 +15,11 @@ TEST(every_module_works) {
     CHECK(str_appendf(&s, "%d,%d", 4, 2));
     int64_t n = 0;
     CHECK(sv_parse_i64(sv_slice(str_view(&s), 0, 1), &n) && n == 4);
+    uint64_t u = 0;
+    CHECK(sv_parse_u64(SV("ff"), 16, &u) && u == 255);
+    ArenaMark mark = arena_mark(&arena);
+    CHECK(arena_alloc(&arena, 8, 1) != NULL);
+    arena_restore(&arena, mark);
     arena_free(&arena);
 
     IntArr xs = { 0 };

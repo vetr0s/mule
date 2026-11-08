@@ -1,6 +1,6 @@
 /* Together: one Str owns the file, views walk its lines. */
-#include "mem/mem.c"
-#include "str/str.c"
+#define MULE_IMPLEMENTATION
+#include "mule.h"
 
 #include <stdio.h>
 #include <stdlib.h>

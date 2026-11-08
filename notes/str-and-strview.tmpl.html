@@ -42,12 +42,12 @@
 
 <h2 id="run">Running the examples</h2>
 
-<p>Run these from the repository root. The examples read <span class="path">data/pg2554.txt</span>, which is the Project Gutenberg text of <em>Crime and Punishment</em>. Each file includes <span class="path">src/mem/mem.c</span> and <span class="path">src/str/str.c</span> directly, the same way <span class="path">main.c</span> does, so a single compiler call builds it.</p>
+<p>Run these from the repository root. The examples read <span class="path">data/pg2554.txt</span>, which is the Project Gutenberg text of <em>Crime and Punishment</em>. Each file defines <code>MULE_IMPLEMENTATION</code> and includes <span class="path">dist/mule.h</span>, the same way a project uses the library, so a single compiler call builds it.</p>
 
-<pre><code>cc -std=c11 -Isrc -fsanitize=address,undefined \
+<pre><code>cc -std=c11 -Idist -fsanitize=address,undefined -g \
    notes/str-examples/01_build.c -o build/ex &amp;&amp; ./build/ex</code></pre>
 
-<p>Keep the sanitizer flag on while you learn. It turns most memory mistakes into a report that names the line. The <a href="#mistakes">mistakes section</a> shows two of those reports.</p>
+<p>Keep the sanitizer flag on while you learn. It turns most memory mistakes into a report, and <code>-g</code> makes that report name the line. The <a href="#mistakes">mistakes section</a> shows two of those reports.</p>
 
 <h2 id="types">The two types</h2>
 
@@ -248,17 +248,19 @@ Sonya</code></pre>
 
 <pre><code>ERROR: AddressSanitizer: heap-use-after-free on address 0x6020000000f0
 READ of size 1 at 0x6020000000f0 thread T0
-    #5 in main 10_dangling.c:15
+    #5 in main 10_dangling.c:16
 freed by thread T0 here:
-    #0 in realloc
-    #1 in str_grow_ str.c:25
-    #4 in str_append_cstr str.c:114
-    #5 in main 10_dangling.c:13
+    #0 in free
+    #1 in mem_realloc mule.h:1366
+    #2 in str_grow_ mule.h:1501
+    #5 in str_append_cstr mule.h:1600
+    #6 in main 10_dangling.c:14
 previously allocated by thread T0 here:
     #0 in realloc
-    #5 in main 10_dangling.c:9</code></pre>
+    #1 in mem_realloc mule.h:1370
+    #6 in main 10_dangling.c:10</code></pre>
 
-<p>The report is trimmed to the useful frames. Read it bottom up. Line 9 allocated the buffer. Line 13 grew it, and <code>realloc</code> freed the old one. Line 15 read through the stale view. There are two fixes. Take the view after the last call that grows the string. Or call <code>str_reserve</code> for the full size first, so the appends fit and the buffer never moves.</p>
+<p>The report is trimmed to the useful frames. Read it bottom up. Line 10 allocated the buffer. Line 14 grew it, and <code>mem_realloc</code> freed the old one. Line 16 read through the stale view. There are two fixes. Take the view after the last call that grows the string. Or call <code>str_reserve</code> for the full size first, so the appends fit and the buffer never moves.</p>
 
 <h3>Copying a Str struct</h3>
 
@@ -267,11 +269,13 @@ previously allocated by thread T0 here:
 {{code:11_double_free.c}}
 
 <pre><code>ERROR: AddressSanitizer: attempting double-free on 0x6020000000f0 in thread T0:
-    #1 in str_free str.c:49
-    #2 in main 11_double_free.c:11
+    #1 in mem_realloc mule.h:1356
+    #2 in str_free mule.h:1526
+    #3 in main 11_double_free.c:12
 freed by thread T0 here:
-    #1 in str_free str.c:49
-    #2 in main 11_double_free.c:10</code></pre>
+    #1 in mem_realloc mule.h:1356
+    #2 in str_free mule.h:1526
+    #3 in main 11_double_free.c:11</code></pre>
 
 <p>To duplicate a string, make a real copy with <code>str_from(&amp;b, str_view(&amp;a))</code>. To hand ownership over, write <code>Str b = str_take(&amp;a);</code>. It moves the buffer to <code>b</code> and leaves <code>a</code> empty, so only one owner remains. Pass a <code>Str</code> to functions as <code>Str *</code> so this never happens by accident.</p>
 
@@ -334,6 +338,6 @@ freed by thread T0 here:
   <li data-state="todo">Write <code>StrView path_basename(StrView path)</code> that returns everything after the last <code>/</code>. It returns a view, so it cannot fail. Test it on <code>""</code>, <code>"a"</code>, <code>"a/"</code> and <code>"/usr/lib/libc.so"</code>.</li>
 </ul>
 
-<p class="footer">Built from <span class="path">src/str/str.h</span>, <span class="path">src/str/str.c</span> and the eleven files in <span class="path">notes/str-examples/</span>. Each example was compiled with Apple clang 21 using <code>-std=c11 -Wall -Wextra -Wconversion -fsanitize=address,undefined</code> and run on 2026-11-07. Sanitizer reports are trimmed to the frames that name a source line.</p>
+<p class="footer">Built from <span class="path">dist/mule.h</span> and the eleven files in <span class="path">notes/str-examples/</span>. Each example was compiled with Apple clang 21 using <code>-std=c11 -Idist -fsanitize=address,undefined -g -Wall -Wextra -Wconversion</code> and run on 2026-11-08. Sanitizer reports are trimmed to the frames that name a source line.</p>
 
 </main>

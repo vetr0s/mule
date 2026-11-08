@@ -81,10 +81,10 @@ library. In exactly one `.c` file, define `MULE_IMPLEMENTATION` before the
 include to compile the library into that file. Include it before any system
 header, because it sets `_POSIX_C_SOURCE`.
 
-For tests, define `MULE_TEST` too and the `test` harness comes with it. Put
-both defines in the test program, so the leak counting and allocation
-failure reach the library's own allocations. `tests/test_dist.c` is a
-complete example.
+For tests, define `MULE_TEST` too and the `test` harness comes with it.
+`test_init` installs an `Allocator` as the heap, so the leak counting and
+allocation failure reach the library's own allocations. `tests/test_dist.c`
+is a complete example.
 
 Releases follow Semantic Versioning, and `CHANGELOG.md` lists what changed
 in each. Before 1.0.0, a minor release may break the API.
@@ -99,6 +99,7 @@ in each. Before 1.0.0, a minor release may break the API.
 | `make release` | Optimised build with `-Werror` and hardening flags. |
 | `make dist` | Regenerates `dist/mule.h` from `src/`. Builds of `main` and `test_dist` do it too. |
 | `make docs` | API reference in `build/docs/html/`. |
+| `make examples` | Compile-checks `notes/str-examples/` against `dist/mule.h`. |
 | `make bench` | Micro-benchmarks for `str`. `bench-corpus` and `bench-scale` run on real data. |
 
 Test output is coloured on a colour terminal. Set `NO_COLOR=1` to turn it

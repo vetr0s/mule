@@ -289,6 +289,17 @@ MULE_NODISCARD bool sv_token_next(StrView *rest, StrView delims,
  *  @par Example
  *  @snippet{trimleft} test_str.c parse */
 MULE_NODISCARD bool sv_parse_i64(StrView v, int64_t *out);
+/** Parse all of @p v as an unsigned integer in @p base. Digits past 9 are
+ *  letters in either case.
+ *  @param v  The whole text to parse.
+ *  @param base  The base, from 2 to 36.
+ *  @param[out] out  The value. Unchanged when the call returns false.
+ *  @pre @p base is in 2..36. An assert checks it.
+ *  @return False on an empty view, a sign, whitespace, a prefix such as `0x`,
+ *  a byte that is not a digit of @p base, or a value above `UINT64_MAX`.
+ *  @par Example
+ *  @snippet{trimleft} test_str.c parse_u64 */
+MULE_NODISCARD bool sv_parse_u64(StrView v, int base, uint64_t *out);
 /** Parse all of @p v as a double, in any form strtod accepts in the C
  *  locale.
  *  @param v  The whole text to parse.

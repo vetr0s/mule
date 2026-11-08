@@ -7,6 +7,30 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Before
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-11-08
+
+### Added
+
+- `sv_parse_u64`: parses a whole view as an unsigned integer in bases 2 to
+  36.
+- `arena_mark` and `arena_restore`: a function can free just what it
+  allocated from an arena.
+- `mem_set_heap`: installs an `Allocator` behind every null allocator and
+  every arena block.
+
+### Changed
+
+- Breaking for `MULE_TEST` users: the test harness no longer redefines
+  `malloc`, `calloc`, `realloc` and `free`. `test_init` installs a counting,
+  failing `Allocator` with `mem_set_heap` instead. A direct `malloc` that leaks
+  no longer fails a test. A direct `free` of library memory leaves the count
+  raised, so a correct test fails with a false leak. To migrate, allocate
+  through `mem_realloc` or an `Allocator`, and do not free library memory with
+  `free`.
+- The examples in `notes/str-examples/` and the Str and StrView guide include
+  `dist/mule.h`, as a project does. `make examples` compile-checks them, and
+  CI runs it.
+
 ## [0.1.0] - 2026-11-07
 
 ### Added
@@ -41,6 +65,7 @@ The first release. `mule.h` is the whole library as one header.
 - `test`: a unit-test harness that fails tests that leak or hang, and makes
   allocation fail on demand.
 
-[Unreleased]: https://github.com/vetr0s/mule/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/vetr0s/mule/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/vetr0s/mule/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/vetr0s/mule/compare/v0.0.1...v0.1.0
 [0.0.1]: https://github.com/vetr0s/mule/releases/tag/v0.0.1

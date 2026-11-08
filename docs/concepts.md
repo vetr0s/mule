@@ -21,10 +21,10 @@ Include it before any system header. @ref mod_base sets `_POSIX_C_SOURCE`,
 which only takes effect before the first one. Define `MULE_TEST` as well to
 get the @ref mod_test harness.
 
-Inside this repository, programs build as one translation unit instead.
-Each test and example includes the `.c` files it needs, as in
-`#include "str/str.c"`. That is why every example here compiles with a
-single compiler call.
+The examples here use the library the same way. Each one defines
+`MULE_IMPLEMENTATION` and includes `mule.h`, so it compiles with a single
+compiler call. The tests in this repository are the exception. Each one
+includes the `.c` files it needs, as in `#include "str/str.c"`.
 
 The library needs a C11 compiler and is written in the style of C99. It is
 tested with clang 17+ and gcc 13+ on macOS and Linux.
@@ -120,7 +120,8 @@ Anything that points into a buffer dies when the buffer moves:
     or map_reserve(). An index from map_put() lives until map_clear(), or
     until map_remove() moves the last entry into another index.
   - A Map's keys borrow their bytes, so each key's owner must outlive the map.
-  - Memory from an arena dies at arena_reset() or arena_free().
+  - Memory from an arena dies at arena_reset() or arena_free(), or at
+    arena_restore() of a mark taken before it was allocated.
   - An Arena must not move once arena_allocator() has been called on it.
 
 Reserve the full size first with str_reserve() or arr_reserve(), and the
@@ -140,11 +141,11 @@ appends that fit will not move the buffer.
 
 ## Threads {#threads}
 
-The library keeps no global state except the log level and the log output.
-Set both before starting threads. Each log line is written with one
-`fwrite`, so lines from different threads do not interleave. Every other
-value belongs to whoever holds it, so give each thread its own, or lock
-around a shared one.
+The library keeps no global state except the log level, the log output and
+the heap from mem_set_heap(). Set them before starting threads. Each log
+line is written with one `fwrite`, so lines from different threads do not
+interleave. Every other value belongs to whoever holds it, so give each
+thread its own, or lock around a shared one.
 
 ## Versions {#versions}
 
