@@ -62,9 +62,13 @@ modules still need.
 
 ### 5. Hash map keyed by `StrView`
 
-- [ ] Open addressing. The main design question is who owns the key bytes:
-      the caller, the map, or an arena.
-- [ ] It enables word counts, symbol tables and deduplication.
+- [x] `src/map/`: `Map(E)`, an Arr of entries in insertion order with an
+      open-addressing index beside it. Entries start with `StrView key`.
+- [x] Keys are borrowed. A caller whose bytes do not last copies new keys
+      into an arena, as the module docs show.
+- [ ] `map_remove`, when a caller needs it. A swap with the last entry keeps
+      `data` dense, and backward-shift deletion keeps the index tombstone-free.
+- [ ] Seed the hash, if a map is ever keyed on untrusted input.
 
 ### 6. Files and paths
 

@@ -40,6 +40,7 @@ other in this order, so a module only uses the ones above it.
 | @ref mod_mem | Allocator, Arena | base |
 | @ref mod_str | Str, StrView | mem |
 | @ref mod_arr | Arr(T) | mem |
+| @ref mod_map | Map(E), keyed by StrView | str, arr |
 | @ref mod_rand | Rand | base |
 | @ref mod_time | time_now_ns() | base |
 | @ref mod_log | log_info() and friends, log_assert() | str |
@@ -101,7 +102,7 @@ arena and is freed with it:
 ### Who frees
 
 The value that owns memory frees it. A Str is freed with str_free(), an Arr
-with arr_free(), and an arena with everything in it by arena_free(). A struct
+with arr_free(), a Map with map_free(), and an arena with everything in it by arena_free(). A struct
 that holds owning fields gets its own `_free` function that frees each one.
 
 Never copy an owning struct by assignment. `Str b = a;` copies the pointer,
@@ -116,6 +117,9 @@ Anything that points into a buffer dies when the buffer moves:
     call that may grow that Str.
   - A pointer into an Arr's `data` dies at the next arr_push(), arr_insert() or
     arr_reserve().
+  - A pointer into a Map's `data` dies at the next map_put() that adds a key,
+    or map_reserve(). An index from map_put() lives until map_clear().
+  - A Map's keys borrow their bytes, so each key's owner must outlive the map.
   - Memory from an arena dies at arena_reset() or arena_free().
   - An Arena must not move once arena_allocator() has been called on it.
 

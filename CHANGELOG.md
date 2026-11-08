@@ -7,6 +7,12 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Before
 
 ## [Unreleased]
 
+### Added
+
+- `map`: `Map(E)`, a hash map from `StrView` keys to entries of any struct
+  type. Entries stay in insertion order in an array, and the map borrows
+  its keys rather than copying them.
+
 ## [0.0.1] - 2026-11-07
 
 The first release. `mule.h` is the whole library as one header.
