@@ -69,4 +69,18 @@
 #endif
 /** @endcond */
 
+/** @name Version
+ *  The library's version, which follows Semantic Versioning. See
+ *  CHANGELOG.md for what changed in each one.
+ *  @{ */
+/** Bumped for breaking changes, once the version reaches 1.0.0. */
+#define MULE_VERSION_MAJOR 0
+/** Bumped for new features. Before 1.0.0, also for breaking changes. */
+#define MULE_VERSION_MINOR 0
+/** Bumped for fixes that change no behaviour a program relies on. */
+#define MULE_VERSION_PATCH 1
+/** All three numbers as a string, such as "0.0.1". */
+#define MULE_VERSION "0.0.1"
+/** @} */
+
 /** @} */

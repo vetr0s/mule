@@ -16,6 +16,9 @@ modules still need.
 - [x] Naming: one prefix per module. Never name anything plain `log`.
 - [x] Platforms: Unix with clang 17+ or gcc 13+.
 - [x] Language: a C11 floor, written in C99 style.
+- [x] Versions: Semantic Versioning, released at milestones. AGENTS.md has
+      the rules and the steps.
+- [x] The reference is published to https://mule.vetr0s.dev by CI.
 - [ ] MSVC: a `ckd_*` fallback without the gcc builtins, and Windows
       versions of the POSIX calls in `log`, `rand` and `time`.
 - [ ] Rewrite `notes/modern-c-guide.html` for C99 style, or retire it.
@@ -103,7 +106,8 @@ modules still need.
       `main.c` and `tests/test_dist.c` use it the way a project would.
 - [ ] `notes/str-examples/` and the guides still include from `src/`. Move
       them to `dist/mule.h`, which is how readers will use the library.
-- [ ] Publish `dist/mule.h` as a release asset once there are versions.
+- [x] Publish `dist/mule.h` as a release asset. The Release workflow does it
+      for every version tag.
 - [x] `main.c` is a word counter built on every module, and `bench-scale`
       times it.
 - [ ] Turn `main.c` into a word-frequency counter once the hash map exists.

@@ -142,6 +142,17 @@ Set both before starting threads. Each log line is written with one
 value belongs to whoever holds it, so give each thread its own, or lock
 around a shared one.
 
+## Versions {#versions}
+
+Releases follow Semantic Versioning. Each one is a GitHub release with
+`mule.h` attached, and `CHANGELOG.md` lists what changed. Before 1.0.0, a
+minor release may break the API, and a patch release never does.
+MULE_VERSION and the `MULE_VERSION_*` macros in @ref mod_base say which
+version a program was built with.
+
+This reference follows the `main` branch, which may be ahead of the latest
+release.
+
 ## Where to go next {#next}
 
   - The [Str and StrView tutorial](str-and-strview.html) teaches the two

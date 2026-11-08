@@ -42,9 +42,38 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
-      - run: sudo apt-get update && sudo apt-get install -y doxygen
+      # docs/DoxygenLayout.xml comes from 1.18, and Ubuntu's 1.9.8 rejects it.
+      - name: Install doxygen 1.18.0
+        run: |
+          curl -fsSL -o "$RUNNER_TEMP/doxygen.tar.gz" \
+            https://github.com/doxygen/doxygen/releases/download/Release_1_18_0/doxygen-1.18.0.linux.bin.tar.gz
+          echo "14fa81bdc34171edb5f1f02b1d60e74802f0439b77fa44e592565d517d72df90  $RUNNER_TEMP/doxygen.tar.gz" | sha256sum -c
+          tar -xzf "$RUNNER_TEMP/doxygen.tar.gz" -C "$RUNNER_TEMP"
+          echo "$RUNNER_TEMP/doxygen-1.18.0/bin" >> "$GITHUB_PATH"
       - run: doxygen --version
       - run: make docs
       # -B, because a fresh checkout gives dist/mule.h and src/ equal mtimes.
       - name: dist/mule.h matches src/
         run: make -B dist && git diff --exit-code dist/
+      - if: github.event_name == 'push'
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: build/docs/html
+
+  # Publishes the reference to GitHub Pages once everything above passes.
+  pages:
+    if: github.event_name == 'push'
+    needs: [linux, macos, docs]
+    runs-on: ubuntu-24.04
+    permissions:
+      pages: write
+      id-token: write
+    concurrency:
+      group: pages
+      cancel-in-progress: false
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - id: deploy
+        uses: actions/deploy-pages@v5

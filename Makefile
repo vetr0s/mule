@@ -9,6 +9,7 @@
 #    make test T=x   -> run only the tests named x (space-separated list)
 #    make dist       -> regenerate dist/mule.h, the single-header library
 #    make docs       -> Doxygen HTML reference (build/docs/html/index.html)
+#    make version    -> print the version in src/base/base.h
 #    make bench      -> micro-benchmarks of str_append and friends
 #    make bench-corpus -> benchmark on Gutenberg books, Pizza & Chili
 #                       English, source code and XML, and the 1 GB enwik9
@@ -69,7 +70,7 @@ TEST_BINS   := $(TEST_SRCS:tests/%.c=$(BUILD)/tests/%)
 BENCH_BINS  := $(BENCH_SRCS:bench/%.c=$(BUILD)/bench/%)
 
 .PHONY: all debug release run test bench bench-corpus bench-scale corpus dist \
-        docs format clean
+        docs format clean version
 .DELETE_ON_ERROR:
 all: debug compile_commands.json
 
@@ -211,12 +212,19 @@ compile_commands.json: Makefile $(TEST_SRCS) $(BENCH_SRCS)
 	    sep=,; \
 	done; printf '\n]\n' >> $@
 
+# The version in src/base/base.h, for the docs header and the release.
+VERSION := $(shell sed -n 's/^\#define MULE_VERSION "\(.*\)"/\1/p' src/base/base.h)
+
 # HTML reference from README.md, docs/ and the doc comments in src/ (needs
 # doxygen). The test harness is not in MODULES, so it is added last.
 docs:
 	@mkdir -p $(BUILD)/docs # doxygen before 1.10 does not create parents
-	MULE_DOC_MODULES="$(MODULES:%=src/%) src/test" doxygen Doxyfile
+	MULE_DOC_MODULES="$(MODULES:%=src/%) src/test" MULE_DOC_VERSION=$(VERSION) \
+	    doxygen Doxyfile
 	@echo "open $(BUILD)/docs/html/index.html"
+
+version:
+	@echo $(VERSION)
 
 format:
 	clang-format -i main.c $(wildcard src/*/*.[ch] tests/*.[ch] bench/*.[ch])

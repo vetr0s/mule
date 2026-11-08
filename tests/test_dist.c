@@ -30,6 +30,13 @@ TEST(every_module_works) {
     log_set_level(LOG_INFO);
 }
 
+TEST(version_string_matches_numbers) {
+    char want[32];
+    snprintf(want, sizeof want, "%d.%d.%d", MULE_VERSION_MAJOR,
+             MULE_VERSION_MINOR, MULE_VERSION_PATCH);
+    CHECK_EQ_STR(MULE_VERSION, want);
+}
+
 TEST(hooks_reach_the_library) {
     Str s = { 0 };
     test_fail_alloc_after(0);
@@ -42,5 +49,6 @@ int main(int argc, char **argv) {
     test_init(argc, argv);
     RUN(every_module_works);
     RUN(hooks_reach_the_library);
+    RUN(version_string_matches_numbers);
     return TEST_REPORT();
 }

@@ -3,6 +3,7 @@
 
 PROJECT_NAME           = MULE
 PROJECT_BRIEF          = "Multi-Use Library Essentials"
+PROJECT_NUMBER         = $(MULE_DOC_VERSION)
 OUTPUT_DIRECTORY       = build/docs
 
 # make docs passes the module folders in dependency order, which is also the

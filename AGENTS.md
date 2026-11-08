@@ -72,6 +72,35 @@ The folder, include and naming rules live in the file comment of
   `notes/str-and-strview.tmpl.html` or the examples, then run
   `python3 tools/gen-guide.py`. It inlines each example and the
   standard-html stylesheet from `~/.claude/skills/`.
+- A change a user of the library would notice adds a line under
+  `## [Unreleased]` in `CHANGELOG.md`, in the same commit.
+
+## Versions and releases
+
+MULE follows Semantic Versioning 2.0.0. The version lives in the
+`MULE_VERSION_*` macros and `MULE_VERSION` in `src/base/base.h`, and
+`make version` prints it. A release marks a milestone the user calls. It
+does not happen on every commit.
+
+- Pick the bump from what changed since the last release. While the major
+  version is 0, a new module or any change that breaks a caller bumps the
+  minor version. A break is a removed or renamed name, a changed signature,
+  or changed behaviour a caller relies on. Fixes, docs and additions that
+  break nothing bump the patch version. From 1.0.0 on, a break bumps the
+  major version, an addition the minor and a fix the patch.
+- To release: rename `## [Unreleased]` in `CHANGELOG.md` to
+  `## [X.Y.Z] - YYYY-MM-DD`, open a new empty Unreleased section above it,
+  and update the links at the bottom. Set the version macros, run
+  `make dist`, and check that `make test`, `make release` and `make docs`
+  pass. Commit as `Release vX.Y.Z`, tag it with
+  `git tag -a vX.Y.Z -m "MULE vX.Y.Z"`, and push the commit, then the tag.
+- The tag starts `.github/workflows/release.yml`. It checks the tag against
+  `MULE_VERSION`, runs the tests, and publishes `dist/mule.h` with the
+  version's changelog section as the notes.
+- Never move or delete a tag that has been pushed. Fix a bad release with a
+  new patch release.
+- CI publishes the reference to https://mule.vetr0s.dev on every push to
+  `main` that passes. It shows `main`, not the last release.
 
 ## Known pitfalls
 

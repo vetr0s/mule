@@ -1,7 +1,8 @@
 # MULE
 
 Multi-Use Library Essentials. A small standard library for C11, written in
-the style of C99 and the spirit of stb. It is written to be read as well as used.
+the style of C99 and the spirit of stb. It is written to be read as well as
+used.
 
 It is early. Eight modules exist, and `TODO.md` holds the roadmap.
 
@@ -72,7 +73,9 @@ It prints `[mule]`, `[c99]` and `[4]`, each on its own line.
 
 ## Using it in a project
 
-Copy `dist/mule.h` into your project. Include it in any file that uses the
+Download `mule.h` from the
+[latest release](https://github.com/vetr0s/mule/releases/latest), or copy
+`dist/mule.h` for the newest code. Include it in any file that uses the
 library. In exactly one `.c` file, define `MULE_IMPLEMENTATION` before the
 include to compile the library into that file. Include it before any system
 header, because it sets `_POSIX_C_SOURCE`.
@@ -81,6 +84,9 @@ For tests, define `MULE_TEST` too and the `test` harness comes with it. Put
 both defines in the test program, so the leak counting and allocation
 failure reach the library's own allocations. `tests/test_dist.c` is a
 complete example.
+
+Releases follow Semantic Versioning, and `CHANGELOG.md` lists what changed
+in each. Before 1.0.0, a minor release may break the API.
 
 ## Building this repository
 
@@ -111,6 +117,7 @@ main.c          a word counter that uses dist/mule.h
 
 ## Documentation
 
+- The reference is online at https://mule.vetr0s.dev, built from `main`.
 - `make docs` builds the reference in `build/docs/html/`. It has a topic
   per module, a page on the rules every module shares (`docs/concepts.md`),
   and the example programs with every library call linked. Every snippet in

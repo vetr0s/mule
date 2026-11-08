@@ -1,0 +1,36 @@
+name: Release
+
+# Pushing a tag such as v0.0.1 publishes dist/mule.h as a GitHub release,
+# with that version's section of CHANGELOG.md as the notes.
+on:
+  push:
+    tags: ['v*.*.*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Tag matches MULE_VERSION in src/base/base.h
+        run: test "v$(make -s version)" = "$GITHUB_REF_NAME"
+      # -B, because a fresh checkout gives dist/mule.h and src/ equal mtimes.
+      - name: dist/mule.h matches src/
+        run: make -B dist && git diff --exit-code dist/
+      # ASan crashes at startup when the kernel randomises mmap with more bits.
+      - run: sudo sysctl vm.mmap_rnd_bits=28
+      - run: make test
+      - name: Notes from CHANGELOG.md
+        run: |
+          awk -v v="${GITHUB_REF_NAME#v}" '
+            /^## \[/ { if (on) exit; on = index($0, "## [" v "]") == 1; next }
+            on && !/^\[[^]]*\]: /' CHANGELOG.md > "$RUNNER_TEMP/notes.md"
+          test -s "$RUNNER_TEMP/notes.md"
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" dist/mule.h --verify-tag \
+            --title "MULE $GITHUB_REF_NAME" --notes-file "$RUNNER_TEMP/notes.md"
