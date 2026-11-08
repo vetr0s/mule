@@ -15,6 +15,8 @@
 #                       English, source code and XML, and the 1 GB enwik9
 #                       Wikipedia dump (downloaded on first use), and
 #                       compare the StrView functions against string.h
+#    make bench-map  -> main.c's word-frequency phases and the map's index on
+#                       the same corpus
 #    make bench-scale  -> benchmark on generated 10, 100 and 1000 MiB files
 #                       and time the main program on them with hyperfine
 #    make format     -> clang-format every source file in place
@@ -69,8 +71,8 @@ RELEASE_BIN := $(BUILD)/release/$(TARGET)
 TEST_BINS   := $(TEST_SRCS:tests/%.c=$(BUILD)/tests/%)
 BENCH_BINS  := $(BENCH_SRCS:bench/%.c=$(BUILD)/bench/%)
 
-.PHONY: all debug release run test bench bench-corpus bench-scale corpus dist \
-        docs format clean version
+.PHONY: all debug release run test bench bench-corpus bench-map bench-scale \
+        corpus dist docs format clean version
 .DELETE_ON_ERROR:
 all: debug compile_commands.json
 
@@ -193,6 +195,9 @@ bench-corpus: $(BUILD)/bench/bench_corpus $(BUILD)/bench/bench_views \
               $(CORPUS_FILES)
 	./$(BUILD)/bench/bench_corpus $(CORPUS_FILES)
 	./$(BUILD)/bench/bench_views $(CORPUS_FILES)
+
+bench-map: $(BUILD)/bench/bench_map $(CORPUS_FILES)
+	./$< $(CORPUS_FILES)
 
 bench-scale: $(BUILD)/bench/bench_corpus $(RELEASE_BIN) $(SCALE_TEXT) \
              $(SCALE_SEQ)
