@@ -74,10 +74,10 @@ typedef struct StrView {
     size_t len;       /**< Number of bytes in the view. */
 } StrView;
 
-/** View of a string literal, with its length computed at compile time.
- *  @warning Pass a literal only. A `char *` compiles too, and its length
- *  silently becomes `sizeof(char *) - 1`. Use sv_from_cstr() for pointers. */
-#define SV(lit) ((StrView){ .data = (lit), .len = sizeof(lit) - 1 })
+/** View of a string literal, with its length computed at compile time. Only
+ *  a literal compiles, so a `char *` cannot silently get the length of a
+ *  pointer. Use sv_from_cstr() for pointers. */
+#define SV(lit) ((StrView){ .data = "" lit "", .len = sizeof(lit) - 1 })
 /** printf helper: `printf("%.*s", STR_FMT(s))` prints exactly len bytes.
  *  Works on a Str and on a StrView.
  *  @par Example

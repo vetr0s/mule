@@ -49,15 +49,12 @@ modules still need.
 
 - [x] `src/arr/`: `Arr(T)` with push, pop, insert, remove, reserve, clear
       and free. It shares the `Str` layout and the allocator.
-- [ ] `arr_push(&a, (int)a.len)` in `tests/test_arr.c` is undefined. The
-      macro expands to `a.data[a.len++] = (int)a.len`, and gcc flags it with
-      `-Wsequence-point`. Evaluate `v` into a temporary before `len++`, or
-      forbid reading `len` in the argument.
-- [ ] `push_reads_own_element_across_growth` assumes realloc moves the
-      block. glibc grows in place, so it fails on Linux with `SANITIZE=`.
-      CI misses it because ASan always moves.
-- [ ] gcc warns `-Wtype-limits` on the `>= 0` check in `arr.h` line 49 when
-      the index is unsigned.
+- [x] `arr_push` stores before it increments `len`, so its argument may read
+      `len`, as in `arr_push(&a, a.len)`.
+- [x] `push_reads_own_element_across_growth` grows through an allocator that
+      always moves, and CI runs the tests without sanitizers on Linux too.
+- [x] `arr_insert` checks its index in a function, so a literal 0 no longer
+      trips gcc's `-Wtype-limits` in the caller's code.
 
 ### 5. Hash map keyed by `StrView`
 
@@ -95,9 +92,8 @@ modules still need.
 
 ## Existing work on `str`
 
-- [ ] `SV(p)` accepts a pointer and silently uses `sizeof(char *) - 1` as the
-      length, which is 7 on this machine. Change the body to `"" lit ""` so a
-      pointer fails to compile.
+- [x] `SV(p)` with a pointer fails to compile, because the body is
+      `"" lit ""`.
 - [ ] Add `str_take(Str *)`, which returns the string and zeroes the source.
       It makes moves explicit. Today the guide tells readers to write
       `b = a; a = (Str){ 0 };`.

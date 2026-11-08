@@ -48,8 +48,25 @@ TEST(structs) {
     arr_free(&pts);
 }
 
+/* Every growth moves the block, as under ASan. glibc may grow in place, and
+ * then a read of the old block would go unnoticed. */
+static void *moving_realloc(void *ctx, void *old, size_t old_size,
+                            size_t new_size) {
+    (void)ctx;
+    void *p = NULL;
+    if (new_size != 0) {
+        p = malloc(new_size);
+        if (p == NULL) return NULL;
+        if (old != NULL)
+            memcpy(p, old, old_size < new_size ? old_size : new_size);
+    }
+    free(old);
+    return p;
+}
+
 TEST(push_reads_own_element_across_growth) {
-    IntArr a = { 0 };
+    static const Allocator moving = { .fn = moving_realloc };
+    IntArr a = { .alloc = &moving };
     REQUIRE(arr_push(&a, 7));
     while (a.len < a.capacity) REQUIRE(arr_push(&a, 0));
     int *before = a.data;

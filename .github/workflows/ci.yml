@@ -22,6 +22,8 @@ jobs:
         run: sudo sysctl vm.mmap_rnd_bits=28
       - run: ${{ matrix.cc }} --version
       - run: make test CC=${{ matrix.cc }}
+      # glibc's realloc can grow in place, which ASan's never does.
+      - run: make test CC=${{ matrix.cc }} SANITIZE= BUILD=build/nosan
       - run: make release CC=${{ matrix.cc }}
       - run: build/release/main data/pg2554.txt
 

@@ -19,7 +19,7 @@
  *   - Calls that may allocate return `bool`. On false the array is
  *     unchanged.
  *   - Growing may move `data`, so pointers into it do not survive arr_push(),
- *     arr_insert or arr_reserve.
+ *     arr_insert() or arr_reserve().
  *
  * @warning The macros evaluate the array argument more than once. Pass a
  * variable or a plain pointer, never an expression with side effects.
@@ -52,19 +52,19 @@
     arr_reserve_(&(a)->data, &(a)->capacity, (a)->len, (n), sizeof *(a)->data, \
                  (a)->alloc)
 
-/** Append @p v. @p v is evaluated after any growth, so it may read the array
- *  itself, as in `arr_push(&xs, xs.data[0])`.
- *  @return False when out of memory. The array is then unchanged.
- *  @warning @p v must not read `len`. The macro increments it in the same
- *  expression, so `arr_push(&xs, xs.len)` is undefined. */
+/** Append @p v. @p v is evaluated after any growth and before `len`
+ *  changes, so it may read the array itself, as in `arr_push(&xs,
+ *  xs.data[0])` or `arr_push(&xs, xs.len)`.
+ *  @return False when out of memory. The array is then unchanged. */
 #define arr_push(a, v)                                                         \
-    (arr_reserve((a), 1) ? ((a)->data[(a)->len++] = (v), true) : false)
+    (arr_reserve((a), 1) ? ((a)->data[(a)->len] = (v), (a)->len++, true)       \
+                         : false)
 
 /** Insert @p v before index @p i, shifting the rest up. @p i may equal len.
  *  @return False when out of memory. The array is then unchanged.
  *  @pre `i <= len`. An assert checks it. */
 #define arr_insert(a, i, v)                                                    \
-    (assert((i) <= (a)->len),                                                  \
+    (assert(arr_index_ok_((i), (a)->len)),                                     \
      arr_reserve((a), 1) ? (memmove((a)->data + (i) + 1, (a)->data + (i),      \
                                     ((a)->len - (i)) * sizeof *(a)->data),     \
                             (a)->data[(i)] = (v), (a)->len++, true)            \
@@ -100,6 +100,11 @@
 /** @} */
 
 /** @cond */
+/* A function, so a literal 0 index does not trip gcc's -Wtype-limits. */
+static inline bool arr_index_ok_(size_t i, size_t len) {
+    return i <= len;
+}
+
 MULE_NODISCARD bool arr_reserve_(void *data_field, size_t *capacity, size_t len,
                                  size_t add, size_t elem,
                                  const Allocator *alloc);

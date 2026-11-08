@@ -284,7 +284,7 @@ freed by thread T0 here:
   </thead>
   <tbody>
     <tr><td><code>printf("%s", v.data)</code> on a view</td><td>Prints past the end of the view, as shown in <a href="#view-slice">Inspect and slice</a></td><td><code>printf("%.*s", STR_FMT(v))</code></td></tr>
-    <tr><td><code>SV(p)</code> where <code>p</code> is a <code>char *</code></td><td>Compiles silently. The length is <code>sizeof(char *) - 1</code>, which was 7 for <code>"Sonya"</code> on this machine.</td><td><code>sv_from_cstr(p)</code>. The guide's first exercise makes <code>SV</code> reject pointers.</td></tr>
+    <tr><td><code>SV(p)</code> where <code>p</code> is a <code>char *</code></td><td>A compile error, <code>expected '}'</code>, because <code>SV</code> only takes a literal. Before 0.0.1 it compiled and silently used <code>sizeof(char *) - 1</code> as the length.</td><td><code>sv_from_cstr(p)</code></td></tr>
     <tr><td>Ignoring the <code>bool</code></td><td><code>warning: ignoring return value of function declared with 'warn_unused_result' attribute</code></td><td>Check it, or chain the calls with <code>&amp;&amp;</code></td></tr>
     <tr><td>Passing <code>s.data</code> to a C API</td><td>Null for an empty <code>Str</code>, which many APIs crash on</td><td><code>str_cstr(&amp;s)</code>, which never returns null</td></tr>
     <tr><td>Forgetting <code>str_free</code></td><td>A leak. AddressSanitizer on macOS does not report leaks, so nothing warns you.</td><td>Write the <code>str_free</code> as soon as you write the <code>Str s = { 0 };</code></td></tr>
