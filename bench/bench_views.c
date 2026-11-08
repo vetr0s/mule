@@ -21,8 +21,8 @@
 
 enum { REPS = 5 };
 
-static const char NEEDLE[] = "the";
-static const char DELIMS[] = " \t\r\n";
+#define NEEDLE "the"
+#define DELIMS " \t\r\n"
 
 typedef struct Corpus {
     StrView text;   /* NUL-terminated, so string.h can read it as-is */

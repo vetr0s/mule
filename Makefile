@@ -3,7 +3,7 @@
 #  each binary is one translation unit. main.c uses dist/mule.h instead.
 #
 #    make            -> debug build   (build/debug/main)
-#    make release    -> release build (build/release/main)
+#    make release    -> release build (build/release/main), and the benchmarks
 #    make run        -> build + run debug on data/pg2554.txt (ARGS=... to change)
 #    make test       -> build + run every tests/test_*.c
 #    make test T=x   -> run only the tests named x (space-separated list)
@@ -75,7 +75,7 @@ BENCH_BINS  := $(BENCH_SRCS:bench/%.c=$(BUILD)/bench/%)
 all: debug compile_commands.json
 
 debug:   $(DEBUG_BIN)
-release: $(RELEASE_BIN)
+release: $(RELEASE_BIN) $(BENCH_BINS)
 
 ARGS ?= data/pg2554.txt
 run: debug
