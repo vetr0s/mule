@@ -7,6 +7,8 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Before
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-11-07
+
 ### Added
 
 - `map`: `Map(E)`, a hash map from `StrView` keys to entries of any struct
@@ -39,5 +41,6 @@ The first release. `mule.h` is the whole library as one header.
 - `test`: a unit-test harness that fails tests that leak or hang, and makes
   allocation fail on demand.
 
-[Unreleased]: https://github.com/vetr0s/mule/compare/v0.0.1...HEAD
+[Unreleased]: https://github.com/vetr0s/mule/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/vetr0s/mule/compare/v0.0.1...v0.1.0
 [0.0.1]: https://github.com/vetr0s/mule/releases/tag/v0.0.1

@@ -76,11 +76,11 @@
 /** Bumped for breaking changes, once the version reaches 1.0.0. */
 #define MULE_VERSION_MAJOR 0
 /** Bumped for new features. Before 1.0.0, also for breaking changes. */
-#define MULE_VERSION_MINOR 0
+#define MULE_VERSION_MINOR 1
 /** Bumped for fixes that change no behaviour a program relies on. */
-#define MULE_VERSION_PATCH 1
+#define MULE_VERSION_PATCH 0
 /** All three numbers as a string, such as "0.0.1". */
-#define MULE_VERSION "0.0.1"
+#define MULE_VERSION "0.1.0"
 /** @} */
 
 /** @} */
