@@ -1,8 +1,9 @@
 # MULE
 
 MULE, Multi-Use Library Essentials, is a personal standard library for C.
-Each module lives in its own folder under `src/`. `TODO.md` is the roadmap.
-Check off what you finish and add what you find.
+Each module lives in its own folder under `src/`. `TODO.md` is the roadmap,
+grouped by release. Check off what you finish and add what you find under
+the release that will ship it.
 
 `CLAUDE.md` is a symlink to this file. Edit `AGENTS.md`.
 
@@ -106,9 +107,10 @@ does not happen on every commit.
   major version, an addition the minor and a fix the patch.
 - To release: rename `## [Unreleased]` in `CHANGELOG.md` to
   `## [X.Y.Z] - YYYY-MM-DD`, open a new empty Unreleased section above it,
-  and update the links at the bottom. Set the version macros, run
-  `make dist`, and check that `make test`, `make release` and `make docs`
-  pass. Commit as `Release vX.Y.Z`, tag it with
+  and update the links at the bottom. Delete the shipped items from
+  `TODO.md`, because the changelog now records them. Set the version
+  macros, run `make dist`, and check that `make test`, `make release` and
+  `make docs` pass. Commit as `Release vX.Y.Z`, tag it with
   `git tag -a vX.Y.Z -m "MULE vX.Y.Z"`, and push the commit, then the tag.
 - The tag starts `.github/workflows/release.yml`. It checks the tag against
   `MULE_VERSION`, runs the tests, and publishes `dist/mule.h` with the

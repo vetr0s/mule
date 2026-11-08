@@ -1,121 +1,166 @@
 # TODO
 
 MULE, Multi-Use Library Essentials, is a personal standard library for C in
-the spirit of stb. This file tracks what comes next and what the existing
-modules still need.
+the spirit of stb. This file is the roadmap, grouped by the release that
+ships each item. `CHANGELOG.md` records what already shipped, so a release
+deletes its checked items from here.
+
+While the major version is 0, a new module bumps the minor version and an
+addition to an existing module bumps the patch. Each milestone below
+follows that rule.
 
 ## Decided
 
 - [x] Packaging: `.h`/`.c` pairs with a unity build, one folder per module
       under `src/`. The layout rules live in `src/base/base.h`.
 - [x] A shared `src/base/base.h`, included first by every header.
-- [x] Allocation: `Str` gets an allocator pointer, null meaning the libc
-      heap. The arena comes next, and every module uses it.
+- [x] Allocation: code that allocates takes an `Allocator`, and null means
+      the libc heap.
 - [x] Errors: functions return `bool`, and a failed call leaves its argument
       unchanged. Macros only where a function cannot do the job.
 - [x] Naming: one prefix per module. Never name anything plain `log`.
-- [x] Platforms: Unix with clang 17+ or gcc 13+.
+- [x] Platforms: Unix with clang 17+ or gcc 13+. Windows comes in 0.5.0, so
+      new platform code keeps its POSIX calls behind one function per call
+      site.
 - [x] Language: a C11 floor, written in C99 style.
 - [x] Versions: Semantic Versioning, released at milestones. AGENTS.md has
       the rules and the steps.
 - [x] The reference is published to https://mule.vetr0s.dev by CI.
-- [ ] MSVC: a `ckd_*` fallback without the gcc builtins, and Windows
-      versions of the POSIX calls in `log`, `rand` and `time`.
-- [x] Retire `notes/modern-c-guide.html`, which taught the C23 spellings the
-      code dropped. Git history keeps it.
+- [x] Builds: from 0.2.0, MULE builds itself with a `build.c` written
+      against its own `build` module, in the style of tsoding's nob.h. The
+      Makefile goes away.
 
-## Modules, in build order
+## 0.1.x: patches on 0.1.0
 
-### 1. Logger
+Additions to existing modules. Each one is groundwork for 0.2.0.
 
-- [x] `src/log/`: `log_trace` to `log_fatal` and `log_assert`, a runtime
-      level, a compile-time floor, checked format strings, one `fwrite` per
-      line, coloured levels, and output to any `FILE *`.
-- [ ] Reuse a per-thread line buffer instead of allocating one per message,
-      if logging ever shows up in a profile.
-- [ ] Timestamps, once the time module exists.
-
-### 2. Arena allocator
-
-- [x] A bump allocator in `src/mem/` with aligned allocation and one call
-      that frees everything. `Str` draws from it through its `alloc` field.
-- [ ] Save and restore marks, so a function can free just what it allocated.
+- [ ] `sv_parse_u64`, and bases other than 10. The `args` module parses
+      `-j 8` with it.
+- [ ] Arena save and restore marks, so a function can free just what it
+      allocated. Build scripts use them as nob uses its temp allocator.
 - [ ] Replace the `malloc` macro hooks in `src/test/test.h` with a failing
       `Allocator`.
+- [ ] `notes/str-examples/` and the guides include `dist/mule.h`, which is
+      how readers will use the library.
 
-### 3. Input parsing, added to `str`
+## 0.2.0: build in C
 
-- [x] `str_read_line`, `sv_parse_i64` and `sv_parse_f64` replace `scanf`:
-      read a line, split it with `sv_token_next`, parse each piece.
-- [ ] `sv_parse_u64`, and bases other than 10, when a caller needs them.
+A project's build is a C program. Bootstrapping it needs only a C compiler:
+`cc -o build build.c && ./build`. After that the binary rebuilds itself
+whenever its source changes. nob.h does this. MULE goes further where nob
+cuts corners: sub-second mtimes, header tracking, `compile_commands.json`
+and exit codes that pass through. 0.2.0 ships when MULE builds itself this
+way and the Makefile is gone.
 
-### 4. Dynamic array
+### `fs`: files and paths
 
-- [x] `src/arr/`: `Arr(T)` with push, pop, insert, remove, reserve, clear
-      and free. It shares the `Str` layout and the allocator.
-- [x] `arr_push` stores before it increments `len`, so its argument may read
-      `len`, as in `arr_push(&a, a.len)`.
-- [x] `push_reads_own_element_across_growth` grows through an allocator that
-      always moves, and CI runs the tests without sanitizers on Linux too.
-- [x] `arr_insert` checks its index in a function, so a literal 0 no longer
-      trips gcc's `-Wtype-limits` in the caller's code.
+- [ ] Read a whole file from a path into a `Str`, on top of
+      `str_append_file`.
+- [ ] Write a file, and write one atomically: write to a temporary file in
+      the same directory, then `rename`.
+- [ ] `fs_mkdir_p`, `fs_exists`, `fs_remove`, `fs_rename`, and a file type
+      from `lstat`: regular, directory, symlink or other.
+- [ ] `fs_mtime_ns`: modification time in nanoseconds, from `st_mtim` on
+      Linux and `st_mtimespec` on macOS. nob compares whole seconds, which
+      misses an edit made in the same second as the build.
+- [ ] Copy a file and keep its mode. Copy a directory tree.
+- [ ] Walk a directory tree, with a way to skip a subtree or stop.
+- [ ] The path of the running executable: `/proc/self/exe` on Linux and
+      `_NSGetExecutablePath` on macOS. `argv[0]` is wrong when the binary
+      was found on `PATH`.
+- [ ] Path functions on `StrView`: basename, dirname, extension, and join
+      into a `Str`.
 
-### 5. Hash map keyed by `StrView`
+### `proc`: run programs
 
-- [x] `src/map/`: `Map(E)`, an Arr of entries with an open-addressing
-      index beside it. Entries stay in insertion order until a remove,
-      which moves the last entry into the hole. Entries start with
-      `StrView key`.
-- [x] Keys are borrowed. A caller whose bytes do not last copies new keys
-      into an arena, as the module docs show.
-- [x] `map_remove`. A swap with the last entry keeps `data` dense, and
-      backward-shift deletion keeps the index tombstone-free.
-- [ ] Seed the hash, if a map is ever keyed on untrusted input.
+- [ ] `Cmd`, an `Arr` of argument strings with an append for several at
+      once.
+- [ ] Render a `Cmd` into a `Str` with shell quoting, so a logged command
+      can be pasted back into a shell.
+- [ ] Run a `Cmd` and wait: `fork`, `execvp`, `waitpid`. False on a nonzero
+      exit or a signal, with the exit code or signal number available.
+- [ ] Start a `Cmd` without waiting. A pool caps how many run at once, and
+      defaults to the CPU count from `sysconf`.
+- [ ] Redirect stdin, stdout and stderr to files.
+- [ ] Capture a command's stdout into a `Str`.
+- [ ] A process handle the caller does not look inside, so a Windows
+      backend fits in 0.5.0 without changing callers.
 
-### 6. Files and paths
+### `args`: command lines
 
-- [ ] Read a whole file from a path in one call.
-- [ ] Write a file atomically: write to a temporary file, then `rename`.
-- [ ] Path functions that take a `StrView`: `basename`, `dirname`, extension,
-      join.
+- [ ] `--name=value`, `--flag`, `-v`, positional arguments and
+      subcommands. `./build test --sanitize=off` needs all of them.
+- [ ] Generated `--help` output.
 
-### 7. Argument parser
+### `build`: the nob part
 
-- [ ] Handles `--name=value`, `-v`, and positional arguments. Generates
-      `--help` output.
+- [ ] `build_needs_rebuild(out, inputs, n)` on nanosecond mtimes. A missing
+      output means rebuild, and a missing input is an error.
+- [ ] Read a `-MMD` depfile, so a header edit rebuilds every object that
+      includes it. nob has no header tracking.
+- [ ] `MULE_REBUILD_SELF(argc, argv)`. The binary is stale when `build.c`,
+      `mule.h` or any header in its depfile is newer. It renames the old
+      binary to `.old`, recompiles with `$CC` or `cc` and warnings on, and
+      puts the old one back if the compile fails. Then it `execv`s the new
+      binary with the same arguments, so the exit code passes through. nob
+      runs a child and exits 0 or 1 instead.
+- [ ] Log each command through `log`, quoted, before it runs.
+- [ ] Write `compile_commands.json` from the compile commands a build ran.
+      The Makefile writes one today and nob does not.
+- [ ] A minimal example project with its own `build.c`, compiled in CI.
 
-### 8. Promote what already exists
+### MULE builds itself
 
-- [x] `src/test/`: the test harness, with its allocation counting and
-      out-of-memory injection.
-- [x] `src/time/`: `time_now_ns`, promoted from `bench/bench.h`.
-- [ ] Wall-clock ISO timestamps in `time`, for the logger.
-- [x] `src/rand/`: the tests' splitmix64, with an unbiased `rand_below`.
+- [ ] Decide whether `build.c` includes `dist/mule.h` or the `src/` files.
+      `dist/mule.h` is generated by the build it compiles into.
+- [ ] `build.c` at the repo root covers every Makefile target: debug,
+      release with the benchmarks, test with the sanitizer and build
+      directory options, dist, docs, version, format, the bench and corpus
+      targets, `compile_commands.json` and clean.
+- [ ] Port `tools/amalgamate.sh` to C inside `build.c`.
+- [ ] CI and the Release workflow bootstrap with `cc -o build build.c`.
+- [ ] Delete the Makefile and `tools/amalgamate.sh`. Update the commands
+      and pitfalls in AGENTS.md. The GNU Make 3.81 one-second pitfall goes
+      with them.
 
-### Later
+## 0.2.x: patches on 0.2.0
 
-- [ ] UTF-8: validate a view, decode the next code point, count code points.
+- [ ] Wall-clock ISO 8601 timestamps in `time`.
+- [ ] Timestamps in `log`, on top of them.
+
+## 0.3.0: text
+
+- [ ] `utf8`: validate a view, decode the next code point, count code
+      points.
 - [ ] In-place edits on `Str`: insert, remove a range, replace.
-- [ ] Threads: a thin wrapper over `<threads.h>` or pthreads, then a job queue.
 - [ ] An INI or JSON parser built on views.
-- [ ] Run a process and capture its output into a `Str`.
 
-## Existing work on `str`
+## 0.4.0: threads
 
-- [x] `SV(p)` with a pointer fails to compile, because the body is
-      `"" lit ""`.
-- [x] Add `str_take(Str *)`, which returns the string and empties the
-      source. It makes moves explicit, and the guide uses it.
-- [ ] Add `sv_find_last`, `sv_trim_left`, `sv_trim_right` and an ASCII
-      `sv_eq_ignore_case` when a real caller needs them, and not before.
-- [x] `dist/mule.h` is the single-header library, generated by `make dist`.
-      `main.c` and `tests/test_dist.c` use it the way a project would.
-- [ ] `notes/str-examples/` and the guides still include from `src/`. Move
-      them to `dist/mule.h`, which is how readers will use the library.
-- [x] Publish `dist/mule.h` as a release asset. The Release workflow does it
-      for every version tag.
-- [x] `main.c` is a word-frequency counter on `str`, `map`, `mem` and
-      `log`, and `bench-scale` times it.
-- [x] Run `make test` on Linux with gcc and sanitizers in CI.
-- [ ] Fuzz the splitters and parsers with libFuzzer. Apple clang does not ship
-      libFuzzer, so this runs on Linux.
+- [ ] A thin wrapper over `<threads.h>` or pthreads.
+- [ ] A job queue on top of it.
+
+## 0.5.0: Windows
+
+- [ ] MSVC: a `ckd_*` fallback without the gcc builtins.
+- [ ] Windows versions of the POSIX calls in `log`, `rand`, `time`, `fs`
+      and `proc`. `proc` uses `CreateProcess`.
+- [ ] CI on Windows with MSVC and clang.
+
+## 1.0.0: a stable API
+
+1.0.0 ships when these hold.
+
+- [ ] Every module has a real caller in this repo: `main.c`, `build.c`, a
+      benchmark or an example.
+- [ ] libFuzzer fuzzes the splitters, the parsers, `args` and the depfile
+      reader in CI on Linux. Apple clang ships no libFuzzer.
+- [ ] No planned change would break a caller.
+
+## When a caller needs it
+
+- [ ] `sv_find_last`, `sv_trim_left`, `sv_trim_right` and an ASCII
+      `sv_eq_ignore_case`.
+- [ ] Seed the map hash, if a map is ever keyed on untrusted input.
+- [ ] Reuse a per-thread log line buffer, if logging shows up in a profile.
+- [ ] Pipe one `Cmd` into another, as nob's chain API does.
