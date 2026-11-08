@@ -13,10 +13,11 @@ JAVADOC_AUTOBRIEF      = YES
 GENERATE_LATEX         = NO
 QUIET                  = YES
 
-# Hide GNU attributes from the rendered signatures.
+# Hide the MULE_ attribute macros from the rendered signatures.
 MACRO_EXPANSION        = YES
 EXPAND_ONLY_PREDEF     = YES
-PREDEFINED             = "__attribute__(x)="
+PREDEFINED             = MULE_NODISCARD= MULE_UNUSED= \
+                         MULE_NORETURN= "MULE_PRINTF(f,a)="
 
 # Every public declaration must be documented, or `make docs` fails.
 WARN_AS_ERROR          = FAIL_ON_WARNINGS

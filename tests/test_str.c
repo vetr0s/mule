@@ -21,31 +21,31 @@
 /* --- Lifetime ------------------------------------------------------------ */
 
 TEST(zero_init_is_empty) {
-    Str s = {};
+    Str s = { 0 };
     CHECK_EQ_INT(s.len, 0);
     CHECK_EQ_STR(str_cstr(&s), "");
     CHECK_SV(str_view(&s), "");
     str_clear(&s);
     CHECK(str_shrink_to_fit(&s));
-    CHECK(s.data == nullptr);
+    CHECK(s.data == NULL);
     str_free(&s);
 }
 
 TEST(from_and_append) {
     /* [build] */
-    Str s = {};
+    Str s = { 0 };
     CHECK(str_from_cstr(&s, "foo"));
     CHECK(str_append(&s, SV("bar")));
     CHECK(str_push(&s, '!'));
     CHECK_EQ_STR(str_cstr(&s), "foobar!");
     str_free(&s);
     /* [build] */
-    CHECK(s.data == nullptr);
+    CHECK(s.data == NULL);
 }
 
 TEST(free_is_idempotent) {
     /* [free] */
-    Str s = {};
+    Str s = { 0 };
     CHECK(str_from_cstr(&s, "temporary"));
     str_free(&s);
     str_free(&s);
@@ -56,16 +56,16 @@ TEST(free_is_idempotent) {
 }
 
 TEST(null_cstr_is_empty) {
-    Str s = {};
-    CHECK(str_from_cstr(&s, nullptr));
-    CHECK(str_append_cstr(&s, nullptr));
+    Str s = { 0 };
+    CHECK(str_from_cstr(&s, NULL));
+    CHECK(str_append_cstr(&s, NULL));
     CHECK_EQ_INT(s.len, 0);
-    CHECK_SV(sv_from_cstr(nullptr), "");
+    CHECK_SV(sv_from_cstr(NULL), "");
     str_free(&s);
 }
 
 TEST(with_capacity_preallocates) {
-    Str s = {};
+    Str s = { 0 };
     REQUIRE(str_with_capacity(&s, 100));
     char *before = s.data;
     for (int i = 0; i < 100; i++) CHECK(str_push(&s, 'x'));
@@ -73,7 +73,7 @@ TEST(with_capacity_preallocates) {
     str_free(&s);
 
     CHECK(str_with_capacity(&s, 0));
-    CHECK(s.data != nullptr);
+    CHECK(s.data != NULL);
     CHECK_EQ_STR(str_cstr(&s), "");
     str_free(&s);
 }
@@ -81,7 +81,7 @@ TEST(with_capacity_preallocates) {
 /* --- Capacity ------------------------------------------------------------ */
 
 TEST(grows_past_initial_capacity) {
-    Str s = {};
+    Str s = { 0 };
     for (int i = 0; i < 1000; i++) CHECK(str_push(&s, 'a'));
     CHECK_EQ_INT(s.len, 1000);
     CHECK(s.data[1000] == '\0');
@@ -92,7 +92,7 @@ TEST(grows_past_initial_capacity) {
 
 TEST(clear_keeps_capacity) {
     /* [clear] */
-    Str s = {};
+    Str s = { 0 };
     CHECK(str_with_capacity(&s, 100));
     CHECK(str_append_cstr(&s, "data"));
     str_clear(&s);
@@ -103,7 +103,7 @@ TEST(clear_keeps_capacity) {
 }
 
 TEST(reserve_rejects_overflow) {
-    Str s = {};
+    Str s = { 0 };
     REQUIRE(str_from_cstr(&s, "abc"));
     Str before = s;
     CHECK(!str_reserve(&s, SIZE_MAX));     /* len + additional overflows */
@@ -115,14 +115,14 @@ TEST(reserve_rejects_overflow) {
     str_free(&s);
 
     CHECK(!str_with_capacity(&s, SIZE_MAX));
-    CHECK(s.data == nullptr);
+    CHECK(s.data == NULL);
 }
 
 /* --- Mutation ------------------------------------------------------------ */
 
 TEST(appendf) {
     /* [appendf] */
-    Str s = {};
+    Str s = { 0 };
     CHECK(str_appendf(&s, "%d-%s", 42, "x"));
     CHECK(str_appendf(&s, "|%05.1f", 3.14159));
     CHECK_EQ_STR(str_cstr(&s), "42-x|003.1");
@@ -131,7 +131,7 @@ TEST(appendf) {
 }
 
 TEST(appendf_edges) {
-    Str s = {};
+    Str s = { 0 };
     CHECK(str_appendf(&s, "%s", ""));
     CHECK_EQ_INT(s.len, 0);
     CHECK_EQ_STR(str_cstr(&s), "");
@@ -143,7 +143,7 @@ TEST(appendf_edges) {
 }
 
 TEST(embedded_nul_bytes) {
-    Str s = {};
+    Str s = { 0 };
     CHECK(str_append(&s, (StrView){ .data = "a\0b", .len = 3 }));
     CHECK(str_push(&s, '\0'));
     CHECK_SV(str_view(&s), "a\0b\0");
@@ -154,7 +154,7 @@ TEST(embedded_nul_bytes) {
 /* A temporary file holding a repeating byte pattern, NULs included. */
 static FILE *pattern_file(size_t n) {
     FILE *f = tmpfile();
-    if (f == nullptr) return nullptr;
+    if (f == NULL) return NULL;
     for (size_t i = 0; i < n; i++) fputc((int)(i * 7 % 256), f);
     rewind(f);
     return f;
@@ -163,11 +163,11 @@ static FILE *pattern_file(size_t n) {
 TEST(append_file) {
     /* [append_file] */
     FILE *f = tmpfile();
-    REQUIRE(f != nullptr);
+    REQUIRE(f != NULL);
     fputs("line one\nline two\n", f);
     rewind(f);
 
-    Str s = {};
+    Str s = { 0 };
     CHECK(str_append_file(&s, f));
     CHECK_EQ_STR(str_cstr(&s), "line one\nline two\n");
     str_free(&s);
@@ -177,8 +177,8 @@ TEST(append_file) {
 
 TEST(append_file_binary_onto_existing) {
     FILE *f = pattern_file(10000);
-    REQUIRE(f != nullptr);
-    Str s = {};
+    REQUIRE(f != NULL);
+    Str s = { 0 };
     REQUIRE(str_from_cstr(&s, "head:"));
     CHECK(str_append_file(&s, f));
     CHECK_EQ_INT(s.len, 5 + 10000);
@@ -194,8 +194,8 @@ TEST(append_file_binary_onto_existing) {
 
 TEST(append_file_empty) {
     FILE *f = tmpfile();
-    REQUIRE(f != nullptr);
-    Str s = {};
+    REQUIRE(f != NULL);
+    Str s = { 0 };
     CHECK(str_append_file(&s, f));
     CHECK_EQ_INT(s.len, 0);
     CHECK_EQ_STR(str_cstr(&s), "");
@@ -210,7 +210,7 @@ TEST(append_file_empty) {
 
 TEST(self_append) {
     /* [self_append] */
-    Str s = {};
+    Str s = { 0 };
     CHECK(str_from_cstr(&s, "abc"));
     CHECK(str_append(&s, str_view(&s)));
     CHECK_EQ_STR(str_cstr(&s), "abcabc");
@@ -219,7 +219,7 @@ TEST(self_append) {
 }
 
 TEST(self_append_grows_repeatedly) {
-    Str s = {};
+    Str s = { 0 };
     CHECK(str_from_cstr(&s, "abc"));
     for (int i = 0; i < 6; i++) CHECK(str_append(&s, str_view(&s)));
     CHECK_EQ_INT(s.len, 3 * 64);
@@ -228,7 +228,7 @@ TEST(self_append_grows_repeatedly) {
 }
 
 TEST(self_append_slice) {
-    Str s = {};
+    Str s = { 0 };
     REQUIRE(str_from_cstr(&s, "0123456789"));
     REQUIRE(str_shrink_to_fit(&s)); /* force the append to reallocate */
     CHECK(str_append(&s, (StrView){ s.data + 3, 4 }));
@@ -242,7 +242,7 @@ TEST(self_append_slice) {
 
 TEST(arena_str) {
     /* [arena_str] */
-    Arena arena = {};
+    Arena arena = { 0 };
     Str s = { .alloc = arena_allocator(&arena) };
     CHECK(str_append_cstr(&s, "lives in the arena"));
     CHECK(str_appendf(&s, ", %d bytes", 18));
@@ -252,24 +252,24 @@ TEST(arena_str) {
 }
 
 TEST(arena_str_grows_in_place) {
-    Arena a = {};
+    Arena a = { 0 };
     Str s = { .alloc = arena_allocator(&a) };
     for (int i = 0; i < 1000; i++) REQUIRE(str_push(&s, 'x'));
     /* Every doubling extended the same allocation, so nothing was left behind.
      */
-    CHECK(a.head->prev == nullptr);
+    CHECK(a.head->prev == NULL);
     CHECK_EQ_INT(a.head->used, s.capacity + 1);
     arena_free(&a);
 }
 
 TEST(str_free_keeps_allocator) {
-    Arena a = {};
+    Arena a = { 0 };
     const Allocator *al = arena_allocator(&a);
     Str s = { .alloc = al };
     REQUIRE(str_with_capacity(&s, 100));
     CHECK(s.alloc == al);
     str_free(&s);
-    CHECK(s.alloc == al && s.data == nullptr);
+    CHECK(s.alloc == al && s.data == NULL);
     CHECK_EQ_INT(a.head->used, 0); /* the newest allocation rolls back */
 
     REQUIRE(str_from_cstr(&s, "reused"));
@@ -281,8 +281,8 @@ TEST(str_free_keeps_allocator) {
 
 TEST(arena_str_append_file) {
     FILE *f = pattern_file(10000);
-    REQUIRE(f != nullptr);
-    Arena a = {};
+    REQUIRE(f != NULL);
+    Arena a = { 0 };
     Str s = { .alloc = arena_allocator(&a) };
     REQUIRE(str_append_cstr(&s, "head:"));
     CHECK(str_append_file(&s, f));
@@ -304,13 +304,13 @@ TEST(equality) {
     CHECK(!str_eq(SV("abc"), SV("abd")));
     CHECK(!str_eq(SV("abc"), SV("ab")));
     /* [eq] */
-    CHECK(str_eq(SV(""), sv_from_cstr(nullptr)));
-    CHECK(str_eq((StrView){}, SV("")));
+    CHECK(str_eq(SV(""), sv_from_cstr(NULL)));
+    CHECK(str_eq((StrView){ 0 }, SV("")));
 }
 
 TEST(fmt_prints_exact_bytes) {
     /* [fmt] */
-    Str s = {};
+    Str s = { 0 };
     CHECK(str_from_cstr(&s, "hello"));
     char buf[32];
     snprintf(buf, sizeof buf, "[%.*s]", STR_FMT(s));
@@ -336,15 +336,15 @@ TEST(find_edges) {
     CHECK_EQ_INT(sv_find(SV("aaab"), SV("aab")), 1); /* after a partial match */
     CHECK_EQ_INT(sv_find(SV("xyzabc"), SV("abc")), 3);
     CHECK_EQ_INT(sv_find(SV("abc"), SV("")), 0);
-    CHECK_EQ_INT(sv_find((StrView){}, SV("")), 0);
-    CHECK(sv_find((StrView){}, SV("a")) == SV_NPOS);
+    CHECK_EQ_INT(sv_find((StrView){ 0 }, SV("")), 0);
+    CHECK(sv_find((StrView){ 0 }, SV("a")) == SV_NPOS);
     CHECK(sv_find(SV("ab"), SV("abc")) == SV_NPOS);
     CHECK_EQ_INT(sv_find(SV("a\0b\0c"), SV("b\0c")), 2);
 
     CHECK_EQ_INT(sv_find_byte(SV("hello"), 'l'), 2);
     CHECK_EQ_INT(sv_find_byte(SV("a\0b"), '\0'), 1);
     CHECK(sv_find_byte(SV("hello"), 'z') == SV_NPOS);
-    CHECK(sv_find_byte((StrView){}, 'a') == SV_NPOS);
+    CHECK(sv_find_byte((StrView){ 0 }, 'a') == SV_NPOS);
 }
 
 TEST(compare) {
@@ -352,7 +352,7 @@ TEST(compare) {
     CHECK(sv_cmp(SV("abd"), SV("abc")) > 0);
     CHECK(sv_cmp(SV("ab"), SV("abc")) < 0); /* a prefix sorts first */
     CHECK(sv_cmp(SV("abc"), SV("abc")) == 0);
-    CHECK(sv_cmp((StrView){}, SV("")) == 0);
+    CHECK(sv_cmp((StrView){ 0 }, SV("")) == 0);
     CHECK(sv_cmp(SV("a\xff"), SV("a\x01")) > 0); /* bytes compare unsigned */
     CHECK(sv_cmp(SV("a\0"), SV("a")) > 0);       /* strcmp calls these equal */
 
@@ -369,18 +369,18 @@ TEST(slice_and_trim) {
     CHECK_SV(sv_slice(v, 1, 3), "el");
     CHECK_SV(sv_slice(v, 0, 0), "");
     CHECK_SV(sv_slice(v, 5, 5), "");
-    CHECK_SV(sv_slice((StrView){}, 0, 0), "");
+    CHECK_SV(sv_slice((StrView){ 0 }, 0, 0), "");
 
     CHECK_SV(sv_trim(SV("  \t a b \r\n")), "a b");
     CHECK_SV(sv_trim(SV(" \n ")), "");
     CHECK_SV(sv_trim(SV("x")), "x");
-    CHECK_SV(sv_trim((StrView){}), "");
+    CHECK_SV(sv_trim((StrView){ 0 }), "");
 }
 
 TEST(split) {
     /* [split] */
     StrView rest = SV("a,,b,"), piece;
-    Str got = {};
+    Str got = { 0 };
     while (sv_split_next(&rest, SV(","), &piece)) {
         CHECK(str_appendf(&got, "[%.*s]", STR_FMT(piece)));
     }
@@ -392,7 +392,7 @@ TEST(split) {
 /* Each piece in brackets, so no pieces ("") and one empty piece ("[]") differ.
  */
 static void check_split(const char *in, const char *sep, const char *want) {
-    Str got = {};
+    Str got = { 0 };
     StrView rest = sv_from_cstr(in), piece;
     while (sv_split_next(&rest, sv_from_cstr(sep), &piece)) {
         CHECK(str_appendf(&got, "[%.*s]", STR_FMT(piece)));
@@ -414,7 +414,7 @@ TEST(split_edges) {
 TEST(tokens) {
     /* [token] */
     StrView rest = SV("  the quick,, brown  "), word;
-    Str got = {};
+    Str got = { 0 };
     while (sv_token_next(&rest, SV(" ,"), &word)) {
         CHECK(str_appendf(&got, "[%.*s]", STR_FMT(word)));
     }
@@ -435,7 +435,7 @@ TEST(tokens) {
 /* A temporary file holding `n` bytes of `bytes`, rewound. */
 static FILE *file_of(const char *bytes, size_t n) {
     FILE *f = tmpfile();
-    if (f != nullptr) {
+    if (f != NULL) {
         fwrite(bytes, 1, n, f);
         rewind(f);
     }
@@ -445,11 +445,11 @@ static FILE *file_of(const char *bytes, size_t n) {
 TEST(read_line) {
     /* [read_line] */
     FILE *f = tmpfile();
-    REQUIRE(f != nullptr);
+    REQUIRE(f != NULL);
     fputs("first\nsecond\n", f);
     rewind(f);
 
-    Str line = {};
+    Str line = { 0 };
     size_t lines = 0, bytes = 0;
     while (str_read_line(&line, f)) {
         lines++;
@@ -465,8 +465,8 @@ TEST(read_line) {
 TEST(read_line_edges) {
     static const char text[] = "one\ntwo\r\n\nnul\0byte\nlast";
     FILE *f = file_of(text, sizeof text - 1);
-    REQUIRE(f != nullptr);
-    Str s = {};
+    REQUIRE(f != NULL);
+    Str s = { 0 };
     CHECK(str_read_line(&s, f));
     CHECK_SV(str_view(&s), "one");
     CHECK(str_read_line(&s, f));
@@ -491,7 +491,7 @@ TEST(read_line_edges) {
     memset(big, 'x', sizeof big);
     big[0] = '\n';
     f = file_of(big, sizeof big);
-    REQUIRE(f != nullptr);
+    REQUIRE(f != NULL);
     CHECK(str_read_line(&s, f));
     CHECK_EQ_INT(s.len, 0);
     CHECK_EQ_STR(str_cstr(&s), "");
@@ -502,9 +502,9 @@ TEST(read_line_edges) {
     fclose(f);
 
     f = file_of("", 0);
-    REQUIRE(f != nullptr);
+    REQUIRE(f != NULL);
     CHECK(!str_read_line(&s, f));
-    CHECK(s.data == nullptr);
+    CHECK(s.data == NULL);
     fclose(f);
 }
 
@@ -513,8 +513,8 @@ TEST(read_line_oom_keeps_contents) {
     memset(big, 'y', sizeof big);
     for (long k = 0; k < 4; k++) {
         FILE *f = file_of(big, sizeof big);
-        REQUIRE(f != nullptr);
-        Str s = {};
+        REQUIRE(f != NULL);
+        Str s = { 0 };
         REQUIRE(str_from_cstr(&s, "kept"));
         test_fail_alloc_after(k);
         bool ok = str_read_line(&s, f);
@@ -644,8 +644,8 @@ static void check_unchanged_on_oom(Str *s, bool (*op)(Str *),
                                    const char *op_name) {
     for (long k = 0; k < 8; k++) {
         Str before = *s;
-        char bytes[64] = {};
-        if (s->data != nullptr) memcpy(bytes, s->data, s->len + 1);
+        char bytes[64] = { 0 };
+        if (s->data != NULL) memcpy(bytes, s->data, s->len + 1);
 
         test_fail_alloc_after(k);
         bool ok = op(s);
@@ -655,7 +655,7 @@ static void check_unchanged_on_oom(Str *s, bool (*op)(Str *),
         bool same = s->data == before.data &&
                     s->len == before.len &&
                     s->capacity == before.capacity &&
-                    (s->data == nullptr ||
+                    (s->data == NULL ||
                      memcmp(bytes, s->data, s->len + 1) == 0);
         if (!same)
             printf("  %s changed the string after allocation %ld failed\n",
@@ -680,21 +680,21 @@ TEST(oom_leaves_string_unchanged) {
         { op_append_file, "append_file" },
     };
     op_file = pattern_file(10000); /* several reads, so several allocations */
-    REQUIRE(op_file != nullptr);
+    REQUIRE(op_file != NULL);
     for (size_t i = 0; i < sizeof ops / sizeof ops[0]; i++) {
-        Str empty = {};
+        Str empty = { 0 };
         check_unchanged_on_oom(&empty, ops[i].fn, ops[i].name);
         str_free(&empty);
 
         /* Exactly full, so the next growth must reallocate. */
-        Str full = {};
+        Str full = { 0 };
         REQUIRE(str_from_cstr(&full, "abc"));
         REQUIRE(str_shrink_to_fit(&full));
         check_unchanged_on_oom(&full, ops[i].fn, ops[i].name);
         str_free(&full);
 
         /* Some spare room, but less than any op appends. */
-        Str partial = {};
+        Str partial = { 0 };
         REQUIRE(str_from_cstr(&partial, "abc"));
         REQUIRE(partial.capacity - partial.len < 15);
         check_unchanged_on_oom(&partial, ops[i].fn, ops[i].name);
@@ -704,12 +704,12 @@ TEST(oom_leaves_string_unchanged) {
 }
 
 TEST(oom_during_init_leaves_empty) {
-    Str s = {};
+    Str s = { 0 };
     test_fail_alloc_after(0);
     CHECK(!str_from_cstr(&s, "abc"));
     CHECK(!str_with_capacity(&s, 10));
     test_fail_alloc_after(-1);
-    CHECK(s.data == nullptr && s.len == 0 && s.capacity == 0);
+    CHECK(s.data == NULL && s.len == 0 && s.capacity == 0);
 }
 
 /* --- Model --------------------------------------------------------------- */
@@ -809,11 +809,11 @@ static void check_against_model(const Allocator *alloc) {
 }
 
 TEST(matches_model_under_random_ops) {
-    check_against_model(nullptr);
+    check_against_model(NULL);
 }
 
 TEST(matches_model_in_arena) {
-    Arena arena = {};
+    Arena arena = { 0 };
     check_against_model(arena_allocator(&arena));
     arena_free(&arena);
 }
@@ -863,7 +863,7 @@ TEST(tokens_match_strtok) {
         StrView rest = { text, n }, tok;
 
         bool same = true;
-        for (char *t = strtok(copy, " ,;"); t; t = strtok(nullptr, " ,;")) {
+        for (char *t = strtok(copy, " ,;"); t; t = strtok(NULL, " ,;")) {
             same = same &&
                    sv_token_next(&rest, SV(" ,;"), &tok) &&
                    str_eq(tok, sv_from_cstr(t));

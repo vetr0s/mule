@@ -6,7 +6,7 @@
 #include <stdlib.h>
 
 int main(void) {
-    Str s = {};
+    Str s = { 0 };
 
     /* A failed call leaves `s` unchanged, so && stops at the first failure. */
     bool ok = str_append_cstr(&s, "Rodion") &&

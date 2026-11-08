@@ -7,8 +7,8 @@
  *     C APIs, but `len` is authoritative (embedded NULs are allowed).
  *   - `capacity` is the number of bytes usable for content, excluding the
  *     terminator (the allocation is `capacity + 1` bytes).
- *   - A zero-initialised Str (`Str s = {};`) is a valid empty string and owns
- *     no memory; every function accepts it.
+ *   - A zero-initialised Str (`Str s = { 0 };`) is a valid empty string
+ *     and owns no memory; every function accepts it.
  *   - `alloc` says where the bytes live. Null means the libc heap. Set it
  *     before the first allocation and leave it alone after; str_free keeps it.
  *   - Functions that may allocate return `bool` (false = out of memory, size
@@ -51,11 +51,11 @@ typedef struct StrView {
 /* --- Lifetime ------------------------------------------------------------ */
 
 /** Initialise @p s as empty with room for @p capacity bytes of content. */
-[[nodiscard]] bool str_with_capacity(Str *s, size_t capacity);
+MULE_NODISCARD bool str_with_capacity(Str *s, size_t capacity);
 /** Initialise @p s as a copy of @p v. */
-[[nodiscard]] bool str_from(Str *s, StrView v);
+MULE_NODISCARD bool str_from(Str *s, StrView v);
 /** Initialise @p s as a copy of @p cstr. Null gives an empty string. */
-[[nodiscard]] bool str_from_cstr(Str *s, const char *cstr);
+MULE_NODISCARD bool str_from_cstr(Str *s, const char *cstr);
 /** Free the buffer and reset @p s to the zero state. Safe to call twice.
  *  @snippet{trimleft} test_str.c free */
 void str_free(Str *s);
@@ -63,9 +63,9 @@ void str_free(Str *s);
 /* --- Capacity ------------------------------------------------------------ */
 
 /** Ensure @p additional more bytes fit without another allocation. */
-[[nodiscard]] bool str_reserve(Str *s, size_t additional);
+MULE_NODISCARD bool str_reserve(Str *s, size_t additional);
 /** Shrink the allocation to exactly `len + 1` bytes. */
-[[nodiscard]] bool str_shrink_to_fit(Str *s);
+MULE_NODISCARD bool str_shrink_to_fit(Str *s);
 /** Set the length to zero. Keeps the allocation for reuse.
  *  @snippet{trimleft} test_str.c clear */
 void str_clear(Str *s);
@@ -73,40 +73,39 @@ void str_clear(Str *s);
 /* --- Mutation ------------------------------------------------------------ */
 
 /** Append the single byte @p c. */
-[[nodiscard]] bool str_push(Str *s, char c);
+MULE_NODISCARD bool str_push(Str *s, char c);
 /** Append @p v. @p v may point into @p s itself.
  *  @snippet{trimleft} test_str.c self_append */
-[[nodiscard]] bool str_append(Str *s, StrView v);
+MULE_NODISCARD bool str_append(Str *s, StrView v);
 /** Append @p cstr. A null @p cstr appends nothing. */
-[[nodiscard]] bool str_append_cstr(Str *s, const char *cstr);
+MULE_NODISCARD bool str_append_cstr(Str *s, const char *cstr);
 /** Append the printf-style expansion of @p fmt.
  *  @snippet{trimleft} test_str.c appendf */
-[[nodiscard]] bool str_appendf(Str *s, const char *fmt, ...)
-    __attribute__((format(printf, 2, 3)));
+MULE_NODISCARD bool str_appendf(Str *s, const char *fmt, ...) MULE_PRINTF(2, 3);
 /** str_appendf for a `va_list`, like vprintf. @p ap is used up afterwards. */
-[[nodiscard]] bool str_vappendf(Str *s, const char *fmt, va_list ap)
-    __attribute__((format(printf, 2, 0)));
+MULE_NODISCARD bool str_vappendf(Str *s, const char *fmt, va_list ap)
+    MULE_PRINTF(2, 0);
 /** Append everything left to read from @p f. On false, check ferror(f).
  *  @snippet{trimleft} test_str.c append_file */
-[[nodiscard]] bool str_append_file(Str *s, FILE *f);
+MULE_NODISCARD bool str_append_file(Str *s, FILE *f);
 /** Replace the contents of @p s with the next line of @p f, without its
  *  `\n`. A `\r` before it is kept, and embedded NULs are allowed. False at
  *  end of input, on a read error (check ferror(f)) or out of memory. On false
  *  the contents of @p s are unchanged, though its capacity may have grown.
  *  @snippet{trimleft} test_str.c read_line */
-[[nodiscard]] bool str_read_line(Str *s, FILE *f);
+MULE_NODISCARD bool str_read_line(Str *s, FILE *f);
 
 /* --- Access -------------------------------------------------------------- */
 
 /** Borrow the whole of @p s. Invalidated by any call that may reallocate. */
-[[nodiscard]] StrView str_view(const Str *s);
+MULE_NODISCARD StrView str_view(const Str *s);
 /** NUL-terminated contents of @p s. Never null, even for an empty Str. */
-[[nodiscard]] const char *str_cstr(const Str *s);
+MULE_NODISCARD const char *str_cstr(const Str *s);
 /** True when @p a and @p b hold the same bytes.
  *  @snippet{trimleft} test_str.c eq */
-[[nodiscard]] bool str_eq(StrView a, StrView b);
+MULE_NODISCARD bool str_eq(StrView a, StrView b);
 /** View of @p cstr, measured with strlen. Null gives an empty view. */
-[[nodiscard]] StrView sv_from_cstr(const char *cstr);
+MULE_NODISCARD StrView sv_from_cstr(const char *cstr);
 
 /* --- Views --------------------------------------------------------------- */
 
@@ -114,35 +113,36 @@ void str_clear(Str *s);
 #define SV_NPOS SIZE_MAX
 
 /** Index of the first @p c in @p v, or SV_NPOS. */
-[[nodiscard]] size_t sv_find_byte(StrView v, char c);
+MULE_NODISCARD size_t sv_find_byte(StrView v, char c);
 /** Index of the first @p needle in @p v, or SV_NPOS. An empty needle is at 0.
  *  @snippet{trimleft} test_str.c find */
-[[nodiscard]] size_t sv_find(StrView v, StrView needle);
+MULE_NODISCARD size_t sv_find(StrView v, StrView needle);
 /** Byte order like memcmp: negative, zero or positive. A prefix sorts first. */
-[[nodiscard]] int sv_cmp(StrView a, StrView b);
+MULE_NODISCARD int sv_cmp(StrView a, StrView b);
 /** True when @p v begins with @p prefix. */
-[[nodiscard]] bool sv_starts_with(StrView v, StrView prefix);
+MULE_NODISCARD bool sv_starts_with(StrView v, StrView prefix);
 /** True when @p v ends with @p suffix. */
-[[nodiscard]] bool sv_ends_with(StrView v, StrView suffix);
+MULE_NODISCARD bool sv_ends_with(StrView v, StrView suffix);
 /** Bytes @p from up to but not including @p to. Asserts the range is in @p v.
  */
-[[nodiscard]] StrView sv_slice(StrView v, size_t from, size_t to);
+MULE_NODISCARD StrView sv_slice(StrView v, size_t from, size_t to);
 /** @p v without leading and trailing ASCII whitespace. */
-[[nodiscard]] StrView sv_trim(StrView v);
+MULE_NODISCARD StrView sv_trim(StrView v);
 /** Cut the piece before @p sep off @p rest. `a,,b,` splits as a, "", b.
  *  @snippet{trimleft} test_str.c split */
-[[nodiscard]] bool sv_split_next(StrView *rest, StrView sep, StrView *piece);
+MULE_NODISCARD bool sv_split_next(StrView *rest, StrView sep, StrView *piece);
 /** strtok without the mutation: skip @p delims, cut the next non-empty run.
  *  @snippet{trimleft} test_str.c token */
-[[nodiscard]] bool sv_token_next(StrView *rest, StrView delims, StrView *token);
+MULE_NODISCARD bool sv_token_next(StrView *rest, StrView delims,
+                                  StrView *token);
 
 /* --- Parsing ------------------------------------------------------------- */
 
 /** Parse all of @p v as a base-10 integer with an optional sign. Whitespace,
  *  trailing bytes and overflow fail. On false @p out is unchanged.
  *  @snippet{trimleft} test_str.c parse */
-[[nodiscard]] bool sv_parse_i64(StrView v, int64_t *out);
+MULE_NODISCARD bool sv_parse_i64(StrView v, int64_t *out);
 /** Parse all of @p v as a double, in any form strtod accepts in the C locale.
  *  Whitespace, trailing bytes, overflow to infinity and views over 255 bytes
  *  fail. On false @p out is unchanged. */
-[[nodiscard]] bool sv_parse_f64(StrView v, double *out);
+MULE_NODISCARD bool sv_parse_f64(StrView v, double *out);

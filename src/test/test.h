@@ -15,7 +15,7 @@
  * #include "str/str.c"
  *
  * TEST(appends) {
- *     Str s = {};
+ *     Str s = { 0 };
  *     REQUIRE(str_append(&s, SV("mule")));
  *     CHECK_EQ_STR(str_cstr(&s), "mule");
  *     str_free(&s);
@@ -61,7 +61,7 @@ static int test_failures_ = 0;
 static int test_checks_ = 0;
 static int test_cur_failed_ = 0;
 static int test_argc_ = 0;
-static char **test_argv_ = nullptr;
+static char **test_argv_ = NULL;
 static const char *test_running_ = "";
 static bool test_color_ = false; /* set once by test_init */
 
@@ -74,7 +74,7 @@ static long test_alloc_budget_ = -1; /* allocations left; -1 means no limit */
 
 /** Let the next @p n allocations succeed and fail every one after. Pass -1
  *  to stop failing. RUN resets it after each test. */
-[[maybe_unused]] static void test_fail_alloc_after(long n) {
+MULE_UNUSED static void test_fail_alloc_after(long n) {
     test_alloc_budget_ = n;
 }
 
@@ -86,29 +86,29 @@ static bool test_alloc_allowed_(void) {
     return true;
 }
 
-[[maybe_unused]] static void *test_malloc_(size_t n) {
-    if (!test_alloc_allowed_()) return nullptr;
+MULE_UNUSED static void *test_malloc_(size_t n) {
+    if (!test_alloc_allowed_()) return NULL;
     void *p = malloc(n);
-    if (p != nullptr) test_live_allocs_++;
+    if (p != NULL) test_live_allocs_++;
     return p;
 }
 
-[[maybe_unused]] static void *test_calloc_(size_t count, size_t n) {
-    if (!test_alloc_allowed_()) return nullptr;
+MULE_UNUSED static void *test_calloc_(size_t count, size_t n) {
+    if (!test_alloc_allowed_()) return NULL;
     void *p = calloc(count, n);
-    if (p != nullptr) test_live_allocs_++;
+    if (p != NULL) test_live_allocs_++;
     return p;
 }
 
-[[maybe_unused]] static void *test_realloc_(void *old, size_t n) {
-    if (!test_alloc_allowed_()) return nullptr;
+MULE_UNUSED static void *test_realloc_(void *old, size_t n) {
+    if (!test_alloc_allowed_()) return NULL;
     void *p = realloc(old, n);
-    if (p != nullptr && old == nullptr) test_live_allocs_++;
+    if (p != NULL && old == NULL) test_live_allocs_++;
     return p;
 }
 
-[[maybe_unused]] static void test_free_(void *p) {
-    if (p != nullptr) test_live_allocs_--;
+MULE_UNUSED static void test_free_(void *p) {
+    if (p != NULL) test_live_allocs_--;
     free(p);
 }
 
@@ -129,7 +129,7 @@ static void test_fail_at_(const char *file, int line) {
 
 /* Print bytes as a C string literal, escaping anything unprintable. */
 static void test_print_bytes_(const char *p, size_t n) {
-    if (p == nullptr) {
+    if (p == NULL) {
         printf("null");
         return;
     }
@@ -144,8 +144,8 @@ static void test_print_bytes_(const char *p, size_t n) {
     putchar('"');
 }
 
-[[maybe_unused]] static bool test_check_(bool ok, const char *file, int line,
-                                         const char *expr) {
+MULE_UNUSED static bool test_check_(bool ok, const char *file, int line,
+                                    const char *expr) {
     test_checks_++;
     if (!ok) {
         test_fail_at_(file, line);
@@ -154,9 +154,8 @@ static void test_print_bytes_(const char *p, size_t n) {
     return ok;
 }
 
-[[maybe_unused]] static bool test_eq_int_(long long a, long long b,
-                                          const char *file, int line,
-                                          const char *ea, const char *eb) {
+MULE_UNUSED static bool test_eq_int_(long long a, long long b, const char *file,
+                                     int line, const char *ea, const char *eb) {
     test_checks_++;
     if (a != b) {
         test_fail_at_(file, line);
@@ -165,10 +164,10 @@ static void test_print_bytes_(const char *p, size_t n) {
     return a == b;
 }
 
-[[maybe_unused]] static bool test_eq_str_(const char *a, const char *b,
-                                          const char *file, int line,
-                                          const char *ea, const char *eb) {
-    bool ok = (a == nullptr || b == nullptr) ? a == b : strcmp(a, b) == 0;
+MULE_UNUSED static bool test_eq_str_(const char *a, const char *b,
+                                     const char *file, int line, const char *ea,
+                                     const char *eb) {
+    bool ok = (a == NULL || b == NULL) ? a == b : strcmp(a, b) == 0;
     test_checks_++;
     if (!ok) {
         test_fail_at_(file, line);
@@ -181,10 +180,9 @@ static void test_print_bytes_(const char *p, size_t n) {
     return ok;
 }
 
-[[maybe_unused]] static bool test_eq_mem_(const char *a, size_t alen,
-                                          const char *b, size_t blen,
-                                          const char *file, int line,
-                                          const char *ea, const char *eb) {
+MULE_UNUSED static bool test_eq_mem_(const char *a, size_t alen, const char *b,
+                                     size_t blen, const char *file, int line,
+                                     const char *ea, const char *eb) {
     bool ok = alen == blen && (alen == 0 || memcmp(a, b, alen) == 0);
     test_checks_++;
     if (!ok) {
@@ -247,7 +245,7 @@ static void test_timeout_(int sig) {
 /** @endcond */
 
 /** Start a test program. Call it first in main with main's arguments. */
-[[maybe_unused]] static void test_init(int argc, char **argv) {
+MULE_UNUSED static void test_init(int argc, char **argv) {
     test_argc_ = argc;
     test_argv_ = argv;
     test_color_ = log_color_enabled(stdout);
@@ -264,7 +262,7 @@ static void test_print_result_(const char *name) {
         printf("[%s] %s\n", tag, name);
 }
 
-[[maybe_unused]] static int test_report_(const char *file) {
+MULE_UNUSED static int test_report_(const char *file) {
     const char *on = test_color_ ? (test_failures_ ? LOG_RED : LOG_GREEN) : "";
     printf("%s%s: %d check(s), %d failing test(s)%s\n", on, file, test_checks_,
            test_failures_, test_color_ ? LOG_RESET : "");
@@ -305,4 +303,3 @@ static bool test_selected_(const char *name) {
 
 /** Print the totals. Return it from main: it is nonzero when a test failed. */
 #define TEST_REPORT() test_report_(__FILE__)
-

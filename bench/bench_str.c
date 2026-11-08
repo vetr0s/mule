@@ -32,7 +32,7 @@ static size_t finish(Str *s) {
 
 static size_t run_memcpy16(size_t ops) {
     char *buf = malloc(ops * chunk16.len + 1);
-    must(buf != nullptr);
+    must(buf != NULL);
     for (size_t i = 0; i < ops; i++) {
         memcpy(buf + i * chunk16.len, chunk16.data, chunk16.len);
     }
@@ -42,40 +42,40 @@ static size_t run_memcpy16(size_t ops) {
 }
 
 static size_t run_append16_reserved(size_t ops) {
-    Str s = {};
+    Str s = { 0 };
     must(str_reserve(&s, ops * chunk16.len));
     for (size_t i = 0; i < ops; i++) must(str_append(&s, chunk16));
     return finish(&s);
 }
 
 static size_t run_append16(size_t ops) {
-    Str s = {};
+    Str s = { 0 };
     for (size_t i = 0; i < ops; i++) must(str_append(&s, chunk16));
     return finish(&s);
 }
 
 static size_t run_append1k(size_t ops) {
-    Str s = {};
+    Str s = { 0 };
     StrView v = { .data = chunk1k, .len = sizeof chunk1k };
     for (size_t i = 0; i < ops; i++) must(str_append(&s, v));
     return finish(&s);
 }
 
 static size_t run_push(size_t ops) {
-    Str s = {};
+    Str s = { 0 };
     for (size_t i = 0; i < ops; i++) must(str_push(&s, (char)('a' + i % 26)));
     return finish(&s);
 }
 
 static size_t run_appendf(size_t ops) {
-    Str s = {};
+    Str s = { 0 };
     for (size_t i = 0; i < ops; i++) must(str_appendf(&s, "%zu,", i));
     return finish(&s);
 }
 
 static size_t run_strcat16(size_t ops) {
     char *buf = malloc(ops * chunk16.len + 1);
-    must(buf != nullptr);
+    must(buf != NULL);
     buf[0] = '\0';
     for (size_t i = 0; i < ops; i++) strcat(buf, "0123456789abcdef");
     size_t r = strlen(buf);

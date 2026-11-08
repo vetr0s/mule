@@ -15,7 +15,9 @@
  *     names apart. Static helpers carry the module prefix and a trailing `_`.
  *   - Something belongs here only once two modules use it.
  *
- * Targets are Unix with clang 17+ or gcc 13+.
+ * Targets are Unix with clang 17+ or gcc 13+. The floor is C11, written as
+ * C99. Attributes go through the MULE_ macros below, so a compiler without
+ * GNU attributes still builds the library.
  */
 
 /** @cond */
@@ -24,8 +26,22 @@
 #define _POSIX_C_SOURCE 200809L
 #endif
 
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+
+/* gcc ignores a (void) cast on warn_unused_result, so discard by assigning. */
+#ifdef __GNUC__
+#define MULE_NODISCARD __attribute__((warn_unused_result))
+#define MULE_UNUSED __attribute__((unused))
+#define MULE_NORETURN __attribute__((noreturn))
+#define MULE_PRINTF(fmt, args) __attribute__((format(printf, fmt, args)))
+#else
+#define MULE_NODISCARD
+#define MULE_UNUSED
+#define MULE_NORETURN _Noreturn
+#define MULE_PRINTF(fmt, args)
+#endif
 
 #if __has_include(<stdckdint.h>)
 #include <stdckdint.h>

@@ -11,7 +11,7 @@
 #include "str/str.c"
 
 TEST(matches_reference_splitmix64) {
-    Rand r = {};
+    Rand r = { 0 };
     CHECK(rand_next(&r) == 0xe220a8397b1dcdafu);
     CHECK(rand_next(&r) == 0x6e789e6aa1b965f4u);
     CHECK(rand_next(&r) == 0x06c45d188009454fu);
@@ -30,7 +30,7 @@ TEST(same_seed_same_sequence) {
 
 TEST(below_stays_in_range_and_spreads) {
     Rand r = { 9 };
-    int counts[10] = {};
+    int counts[10] = { 0 };
     for (int i = 0; i < 100000; i++) {
         uint64_t v = rand_below(&r, 10);
         REQUIRE(v < 10);

@@ -35,13 +35,13 @@ static bool book_parse(Book *b, StrView text) {
 
 int main(void) {
     FILE *f = fopen("data/pg2554.txt", "rb");
-    if (f == nullptr) return EXIT_FAILURE;
-    Str text = {};
+    if (f == NULL) return EXIT_FAILURE;
+    Str text = { 0 };
     bool ok = str_append_file(&text, f);
     fclose(f);
     if (!ok) return EXIT_FAILURE;
 
-    Book book = {};
+    Book book = { 0 };
     ok = book_parse(&book, str_view(&text));
     str_free(&text); /* the 1.2 MB buffer goes; the book keeps its copies */
     if (!ok) {

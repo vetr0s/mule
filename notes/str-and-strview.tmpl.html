@@ -5,7 +5,7 @@
 <main>
 
 <h1>Str and StrView in practice</h1>
-<p class="meta"><span>2026-10-31</span><span>mule @ 8b6728b</span><span>Guide</span></p>
+<p class="meta"><span>2026-11-07</span><span>mule</span><span>Guide</span></p>
 
 <p><code>Str</code> owns its bytes and can grow. <code>StrView</code> borrows bytes that something else owns and never allocates. The working pattern is to put text into a <code>Str</code> once, then pass <code>StrView</code>s around to read it, search it and cut it. Copy a view into a new <code>Str</code> only when the bytes must outlive the owner. Every example below is a file in <span class="path">notes/str-examples/</span>. Each output block is the real output of running that file.</p>
 
@@ -44,7 +44,7 @@
 
 <p>Run these from the repository root. The examples read <span class="path">data/pg2554.txt</span>, which is the Project Gutenberg text of <em>Crime and Punishment</em>. Each file includes <span class="path">src/mem/mem.c</span> and <span class="path">src/str/str.c</span> directly, the same way <span class="path">main.c</span> does, so a single compiler call builds it.</p>
 
-<pre><code>cc -std=c23 -Isrc -fsanitize=address,undefined \
+<pre><code>cc -std=c11 -Isrc -fsanitize=address,undefined \
    notes/str-examples/01_build.c -o build/ex &amp;&amp; ./build/ex</code></pre>
 
 <p>Keep the sanitizer flag on while you learn. It turns most memory mistakes into a report that names the line. The <a href="#mistakes">mistakes section</a> shows two of those reports.</p>
@@ -72,7 +72,7 @@ StrView tail                       data ┘ len 10   tail = "Punishment"</code><
     <tr><td>Can change</td><td>Yes, through <code>str_*</code> calls.</td><td>No. The bytes are <code>const</code>.</td></tr>
     <tr><td>Calls can fail</td><td>Calls that may allocate return <code>bool</code>.</td><td>Never. No call allocates.</td></tr>
     <tr><td>NUL-terminated</td><td>Yes. <code>str_cstr</code> is safe to pass to C APIs.</td><td>Not in general. A slice ends mid-string.</td></tr>
-    <tr><td>Start as</td><td><code>Str s = {};</code></td><td><code>SV("lit")</code>, <code>sv_from_cstr(p)</code>, <code>str_view(&amp;s)</code>, <code>sv_slice(v, a, b)</code></td></tr>
+    <tr><td>Start as</td><td><code>Str s = { 0 };</code></td><td><code>SV("lit")</code>, <code>sv_from_cstr(p)</code>, <code>str_view(&amp;s)</code>, <code>sv_slice(v, a, b)</code></td></tr>
     <tr><td>Pass to functions as</td><td><code>Str *</code>. Never by value.</td><td><code>StrView</code> by value. It is small.</td></tr>
     <tr><td>Valid until</td><td><code>str_free</code></td><td>The owner is freed or grows</td></tr>
   </tbody>
@@ -209,7 +209,7 @@ Sonya</code></pre>
 
 <pre><code>Crime and Punishment by Fyodor Dostoyevsky</code></pre>
 
-<p>A struct that holds <code>Str</code> fields owns them. Give it a matching <code>_free</code> function that frees each field, like <code>book_free</code>. Zero-initialise the struct with <code>= {}</code> so the free function is safe to call even if parsing stopped part way.</p>
+<p>A struct that holds <code>Str</code> fields owns them. Give it a matching <code>_free</code> function that frees each field, like <code>book_free</code>. Zero-initialise the struct with <code>= { 0 }</code> so the free function is safe to call even if parsing stopped part way.</p>
 
 <h3 id="together-api">Writing your own functions</h3>
 
@@ -273,7 +273,7 @@ freed by thread T0 here:
     #1 in str_free str.c:49
     #2 in main 11_double_free.c:10</code></pre>
 
-<p>To duplicate a string, make a real copy with <code>str_from(&amp;b, str_view(&amp;a))</code>. To hand ownership over, copy the struct and then reset the source with <code>a = (Str){};</code> so only one owner remains. Pass a <code>Str</code> to functions as <code>Str *</code> so this never happens by accident.</p>
+<p>To duplicate a string, make a real copy with <code>str_from(&amp;b, str_view(&amp;a))</code>. To hand ownership over, copy the struct and then reset the source with <code>a = (Str){ 0 };</code> so only one owner remains. Pass a <code>Str</code> to functions as <code>Str *</code> so this never happens by accident.</p>
 
 <h3>Smaller traps</h3>
 
@@ -285,9 +285,9 @@ freed by thread T0 here:
   <tbody>
     <tr><td><code>printf("%s", v.data)</code> on a view</td><td>Prints past the end of the view, as shown in <a href="#view-slice">Inspect and slice</a></td><td><code>printf("%.*s", STR_FMT(v))</code></td></tr>
     <tr><td><code>SV(p)</code> where <code>p</code> is a <code>char *</code></td><td>Compiles silently. The length is <code>sizeof(char *) - 1</code>, which was 7 for <code>"Sonya"</code> on this machine.</td><td><code>sv_from_cstr(p)</code>. The guide's first exercise makes <code>SV</code> reject pointers.</td></tr>
-    <tr><td>Ignoring the <code>bool</code></td><td><code>warning: ignoring return value of function declared with 'nodiscard' attribute</code></td><td>Check it, or chain the calls with <code>&amp;&amp;</code></td></tr>
+    <tr><td>Ignoring the <code>bool</code></td><td><code>warning: ignoring return value of function declared with 'warn_unused_result' attribute</code></td><td>Check it, or chain the calls with <code>&amp;&amp;</code></td></tr>
     <tr><td>Passing <code>s.data</code> to a C API</td><td>Null for an empty <code>Str</code>, which many APIs crash on</td><td><code>str_cstr(&amp;s)</code>, which never returns null</td></tr>
-    <tr><td>Forgetting <code>str_free</code></td><td>A leak. AddressSanitizer on macOS does not report leaks, so nothing warns you.</td><td>Write the <code>str_free</code> as soon as you write the <code>Str s = {};</code></td></tr>
+    <tr><td>Forgetting <code>str_free</code></td><td>A leak. AddressSanitizer on macOS does not report leaks, so nothing warns you.</td><td>Write the <code>str_free</code> as soon as you write the <code>Str s = { 0 };</code></td></tr>
   </tbody>
 </table>
 </div>
@@ -334,6 +334,6 @@ freed by thread T0 here:
   <li data-state="todo">Write <code>StrView path_basename(StrView path)</code> that returns everything after the last <code>/</code>. It returns a view, so it cannot fail. Test it on <code>""</code>, <code>"a"</code>, <code>"a/"</code> and <code>"/usr/lib/libc.so"</code>.</li>
 </ul>
 
-<p class="footer">Built from <span class="path">src/str/str.h</span>, <span class="path">src/str/str.c</span> and the eleven files in <span class="path">notes/str-examples/</span>. Each example was compiled with Apple clang 21 using <code>-std=c23 -Wall -Wextra -Wconversion -fsanitize=address,undefined</code> and run on 2026-10-31. Sanitizer reports are trimmed to the frames that name a source line.</p>
+<p class="footer">Built from <span class="path">src/str/str.h</span>, <span class="path">src/str/str.c</span> and the eleven files in <span class="path">notes/str-examples/</span>. Each example was compiled with Apple clang 21 using <code>-std=c11 -Wall -Wextra -Wconversion -fsanitize=address,undefined</code> and run on 2026-11-07. Sanitizer reports are trimmed to the frames that name a source line.</p>
 
 </main>

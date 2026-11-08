@@ -53,7 +53,7 @@ static size_t token_end(StrView in, size_t i) {
 
 static size_t run_ingest(const Input *in, Str *out) {
     FILE *f = fopen(in->path, "rb");
-    must(f != nullptr);
+    must(f != NULL);
     must(str_append_file(out, f));
     fclose(f);
     return 1;
@@ -64,7 +64,7 @@ static size_t run_lines(const Input *in, Str *out) {
     size_t calls = 0;
     for (size_t i = 0; i < t.len; calls++) {
         const char *nl = memchr(t.data + i, '\n', t.len - i);
-        size_t end = nl != nullptr ? (size_t)(nl - t.data) + 1 : t.len;
+        size_t end = nl != NULL ? (size_t)(nl - t.data) + 1 : t.len;
         must(str_append(out, (StrView){ t.data + i, end - i }));
         i = end;
     }
@@ -116,7 +116,7 @@ enum { N_WORKLOADS = sizeof workloads / sizeof workloads[0] };
 static double measure(const Workload *w, const Input *in, size_t *calls) {
     double ns[REPS];
     for (int r = 0; r < REPS; r++) {
-        Str out = {};
+        Str out = { 0 };
         double t0 = (double)time_now_ns();
         *calls = w->run(in, &out);
         ns[r] = (double)time_now_ns() - t0;
@@ -161,9 +161,9 @@ int main(int argc, char **argv) {
 
     for (int f = 0; f < n_files; f++) {
         Input in = { .path = paths[f] };
-        Str text = {};
+        Str text = { 0 };
         FILE *fp = fopen(in.path, "rb");
-        if (fp == nullptr) {
+        if (fp == NULL) {
             perror(in.path);
             return EXIT_FAILURE;
         }

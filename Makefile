@@ -40,8 +40,8 @@ CPPFLAGS += -Isrc -Idist -MMD -MP
 cc-options = $(strip $(foreach f,$(1),$(shell echo 'int main(void){return 0;}' | \
                $(CC) $(f) -x c - -o /dev/null 2>&1 | grep -q . || echo '$(f)')))
 
-# gcc 13 only knows the draft name for C23.
-STD := $(or $(call cc-options,-std=c23),-std=c2x)
+# C11 is the floor gcc, clang and MSVC share. The code is written as C99.
+STD := -std=c11
 
 # GCC-only warnings, and hardening that only applies to ELF/GNU ld.
 GCC_WARN   := -Wformat-overflow=2 -Wduplicated-cond -Wduplicated-branches \

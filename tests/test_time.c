@@ -15,7 +15,7 @@
 TEST(measures_a_sleep) {
     /* [time] */
     uint64_t start = time_now_ns();
-    nanosleep(&(struct timespec){ .tv_nsec = 2000000 }, nullptr); /* 2 ms */
+    nanosleep(&(struct timespec){ .tv_nsec = 2000000 }, NULL); /* 2 ms */
     uint64_t elapsed = time_now_ns() - start;
     /* [time] */
     CHECK(elapsed >= 2000000);

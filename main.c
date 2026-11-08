@@ -28,12 +28,12 @@ int main(int argc, char **argv) {
     }
     const char *name = argc == 2 ? argv[1] : "stdin";
     FILE *f = argc == 2 ? fopen(name, "rb") : stdin;
-    if (f == nullptr) {
+    if (f == NULL) {
         perror(name);
         return EXIT_FAILURE;
     }
 
-    Arena arena = {};
+    Arena arena = { 0 };
     Str text = { .alloc = arena_allocator(&arena) };
     bool ok = str_append_file(&text, f);
     bool read_error = ferror(f);

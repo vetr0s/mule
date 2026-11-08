@@ -58,7 +58,7 @@ void log_set_level(LogLevel level);
 void log_set_output(FILE *f);
 /** True when colour escapes written to @p f will render as colour. Reads the
  *  environment on every call, so call it once and keep the answer. */
-[[nodiscard]] bool log_color_enabled(FILE *f);
+MULE_NODISCARD bool log_color_enabled(FILE *f);
 
 /** Log a printf-style message at LOG_TRACE. */
 #define log_trace(...) LOG_AT_(LOG_TRACE, __VA_ARGS__)
@@ -87,7 +87,7 @@ extern LogLevel log_level_;
          : (void)0)
 
 void log_write_(LogLevel level, const char *file, int line, const char *fmt,
-                ...) __attribute__((format(printf, 4, 5)));
-[[noreturn]] void log_fatal_(const char *file, int line, const char *fmt, ...)
-    __attribute__((format(printf, 3, 4)));
+                ...) MULE_PRINTF(4, 5);
+MULE_NORETURN void log_fatal_(const char *file, int line, const char *fmt, ...)
+    MULE_PRINTF(3, 4);
 /** @endcond */

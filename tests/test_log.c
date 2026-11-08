@@ -27,13 +27,13 @@ static void clear_color_env(void) {
  * when the caller closes it with close_pty. */
 static FILE *open_pty(int *master) {
     *master = posix_openpt(O_RDWR | O_NOCTTY);
-    if (*master < 0) return nullptr;
+    if (*master < 0) return NULL;
     const char *name = grantpt(*master) == 0 && unlockpt(*master) == 0
                            ? ptsname(*master)
-                           : nullptr;
-    int fd = name != nullptr ? open(name, O_RDWR | O_NOCTTY) : -1;
-    FILE *f = fd >= 0 ? fdopen(fd, "w") : nullptr;
-    if (f == nullptr) {
+                           : NULL;
+    int fd = name != NULL ? open(name, O_RDWR | O_NOCTTY) : -1;
+    FILE *f = fd >= 0 ? fdopen(fd, "w") : NULL;
+    if (f == NULL) {
         if (fd >= 0) close(fd);
         close(*master);
     }
@@ -48,7 +48,7 @@ static void close_pty(FILE *f, int master) {
 TEST(color_off_for_files_and_pipes) {
     clear_color_env();
     FILE *f = tmpfile();
-    REQUIRE(f != nullptr);
+    REQUIRE(f != NULL);
     CHECK(!log_color_enabled(f));
     fclose(f);
 }
@@ -63,7 +63,7 @@ TEST(color_on_for_terminals) {
     clear_color_env();
     int master;
     FILE *tty = open_pty(&master);
-    REQUIRE(tty != nullptr);
+    REQUIRE(tty != NULL);
     CHECK(log_color_enabled(tty));
 
     setenv("TERM", "dumb", 1);
@@ -77,7 +77,7 @@ TEST(color_on_for_terminals) {
 
 TEST(force_turns_color_on) {
     FILE *f = tmpfile();
-    REQUIRE(f != nullptr);
+    REQUIRE(f != NULL);
     static const char *const names[] = { "CLICOLOR_FORCE", "FORCE_COLOR" };
     for (size_t i = 0; i < sizeof names / sizeof names[0]; i++) {
         clear_color_env();
@@ -95,7 +95,7 @@ TEST(no_color_wins) {
     clear_color_env();
     int master;
     FILE *tty = open_pty(&master);
-    REQUIRE(tty != nullptr);
+    REQUIRE(tty != NULL);
 
     setenv("NO_COLOR", "1", 1);
     CHECK(!log_color_enabled(tty));
@@ -121,7 +121,7 @@ static FILE *capture(void) {
 /* Everything written to `f`, read into `out`. Closes `f` and puts the logger
  * back on stderr at the default level. */
 static bool release(FILE *f, Str *out) {
-    log_set_output(nullptr);
+    log_set_output(NULL);
     log_set_level(LOG_INFO);
     fflush(f);
     rewind(f);
@@ -132,7 +132,7 @@ static bool release(FILE *f, Str *out) {
 
 TEST(writes_level_location_message) {
     FILE *f = capture();
-    REQUIRE(f != nullptr);
+    REQUIRE(f != NULL);
     /* [log] */
     log_set_level(LOG_TRACE);
     log_info("loaded %d records", 3);
@@ -141,7 +141,7 @@ TEST(writes_level_location_message) {
     /* [log] */
     int line = __LINE__ - 4;
 
-    Str got = {}, want = {};
+    Str got = { 0 }, want = { 0 };
     REQUIRE(release(f, &got));
     REQUIRE(str_appendf(&want,
                         "INFO  %s:%d: loaded 3 records\n"
@@ -154,7 +154,7 @@ TEST(writes_level_location_message) {
 
 TEST(level_filters_without_evaluating) {
     FILE *f = capture();
-    REQUIRE(f != nullptr);
+    REQUIRE(f != NULL);
     int calls = 0;
     log_set_level(LOG_WARN);
     log_info("dropped %d", ++calls);
@@ -163,7 +163,7 @@ TEST(level_filters_without_evaluating) {
     log_error("kept %d", ++calls);
     CHECK_EQ_INT(calls, 2);
 
-    Str got = {};
+    Str got = { 0 };
     REQUIRE(release(f, &got));
     CHECK(sv_find(str_view(&got), SV("WARN  ")) != SV_NPOS);
     CHECK(sv_find(str_view(&got), SV("kept 1")) != SV_NPOS);
@@ -174,12 +174,12 @@ TEST(level_filters_without_evaluating) {
 
 TEST(colors_the_level) {
     FILE *f = capture();
-    REQUIRE(f != nullptr);
+    REQUIRE(f != NULL);
     setenv("CLICOLOR_FORCE", "1", 1);
     log_set_output(f); /* colour is decided again after a new output */
     log_warn("careful");
 
-    Str got = {};
+    Str got = { 0 };
     REQUIRE(release(f, &got));
     CHECK(sv_starts_with(str_view(&got), SV(LOG_YELLOW "WARN " LOG_RESET " ")));
     CHECK(sv_ends_with(str_view(&got), SV(": careful\n")));
@@ -189,13 +189,13 @@ TEST(colors_the_level) {
 
 TEST(long_message) {
     FILE *f = capture();
-    REQUIRE(f != nullptr);
+    REQUIRE(f != NULL);
     char big[10000];
     memset(big, 'x', sizeof big - 1);
     big[sizeof big - 1] = '\0';
     log_error("%s", big);
 
-    Str got = {};
+    Str got = { 0 };
     REQUIRE(release(f, &got));
     StrView v = str_view(&got);
     CHECK(sv_ends_with(v, SV("x\n")));
@@ -205,12 +205,12 @@ TEST(long_message) {
 
 TEST(out_of_memory_still_writes) {
     FILE *f = capture();
-    REQUIRE(f != nullptr);
+    REQUIRE(f != NULL);
     test_fail_alloc_after(0);
     log_error("needs %s", "memory");
     test_fail_alloc_after(-1);
 
-    Str got = {};
+    Str got = { 0 };
     REQUIRE(release(f, &got));
     CHECK(sv_starts_with(str_view(&got), SV("ERROR ")));
     CHECK(sv_find(str_view(&got), SV("out of memory")) != SV_NPOS);
@@ -235,8 +235,8 @@ static bool aborts(void (*fn)(void), Str *out) {
     }
     close(fds[1]);
     FILE *r = fdopen(fds[0], "r");
-    bool ok = r != nullptr && str_append_file(out, r);
-    if (r != nullptr) fclose(r);
+    bool ok = r != NULL && str_append_file(out, r);
+    if (r != NULL) fclose(r);
     int status = 0;
     waitpid(pid, &status, 0);
     return ok && WIFSIGNALED(status) && WTERMSIG(status) == SIGABRT;
@@ -258,7 +258,7 @@ static void call_passing_assert(void) {
 
 TEST(fatal_writes_then_aborts) {
     clear_color_env();
-    Str got = {};
+    Str got = { 0 };
     CHECK(aborts(call_fatal, &got));
     CHECK(sv_starts_with(str_view(&got), SV("FATAL ")));
     CHECK(sv_ends_with(str_view(&got), SV(": cannot continue: 7\n")));
@@ -267,7 +267,7 @@ TEST(fatal_writes_then_aborts) {
 
 TEST(assert_aborts_only_when_false) {
     clear_color_env();
-    Str got = {};
+    Str got = { 0 };
     CHECK(aborts(call_failing_assert, &got));
     CHECK(
         sv_ends_with(str_view(&got), SV(": assertion failed: answer == 42\n")));

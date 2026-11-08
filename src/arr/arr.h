@@ -5,7 +5,7 @@
  *
  *   - Name each array type once with a typedef: `typedef Arr(int) IntArr;`.
  *     Every spelling of `Arr(...)` is a distinct type, so use the name.
- *   - A zero-initialised array (`IntArr xs = {};`) is valid, empty, and owns
+ *   - A zero-initialised array (`IntArr xs = { 0 };`) is valid, empty, and owns
  *     no memory.
  *   - The layout matches Str: `data`, `len`, `capacity` and `alloc`, where a
  *     null `alloc` means the libc heap. Index `data` directly to read and
@@ -72,8 +72,8 @@
      (a)->len = 0, (void)((a)->capacity = 0))
 
 /** @cond */
-[[nodiscard]] bool arr_reserve_(void *data_field, size_t *capacity, size_t len,
-                                size_t add, size_t elem,
-                                const Allocator *alloc);
+MULE_NODISCARD bool arr_reserve_(void *data_field, size_t *capacity, size_t len,
+                                 size_t add, size_t elem,
+                                 const Allocator *alloc);
 void arr_free_(void *data_field, size_t bytes, const Allocator *alloc);
 /** @endcond */

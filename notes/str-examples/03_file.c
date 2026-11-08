@@ -8,12 +8,12 @@
 int main(int argc, char **argv) {
     const char *path = argc > 1 ? argv[1] : "data/pg2554.txt";
     FILE *f = fopen(path, "rb");
-    if (f == nullptr) {
+    if (f == NULL) {
         perror(path);
         return EXIT_FAILURE;
     }
 
-    Str text = {};
+    Str text = { 0 };
     bool ok = str_append_file(&text, f);
     bool read_error = ferror(f);
     fclose(f);

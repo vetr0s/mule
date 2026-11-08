@@ -17,19 +17,23 @@ The folder, include and naming rules live in the file comment of
   byte-for-byte as they were. `check_unchanged_on_oom` in
   `tests/test_str.c` proves this for every `str` operation, so new
   operations join its table.
-- A zero-initialised struct is a valid empty value: `Str s = {};`,
-  `Arena a = {};`. New types keep that property.
+- A zero-initialised struct is a valid empty value: `Str s = { 0 };`,
+  `Arena a = { 0 };`. New types keep that property.
 - Code that allocates takes a `const Allocator *`, and null means the heap.
   It allocates through `mem_realloc`. Only `src/mem/` calls libc
   allocation directly.
 - Write a macro only for what a function cannot do: `sizeof` a literal,
   capture `__FILE__` and `__LINE__`, or work for any element type.
-- Mark every function whose result must be checked `[[nodiscard]]`.
+- Mark every function whose result must be checked `MULE_NODISCARD`.
 - A hot path that stores through `s->data` copies the fields it needs into
   locals first, as `str_push` and `str_append` do. A `char` store may alias
   any field of `*s`, so otherwise the compiler reloads them on every call.
 - Targets are Unix with clang 17+ or gcc 13+. A feature missing from either
   goes behind a fallback in `base.h`, the way `ckd_add` does.
+- The floor is C11 and the code reads as C99: `NULL`, `{ 0 }`,
+  `<stdbool.h>` and the `MULE_` attribute macros in `base.h`. Use C11 only
+  where C99 has no spelling, as the arena does for `alignas` and `alignof`.
+  `make release` rejects C23 spellings, because `-Wpedantic` flags them.
 - Projects use `dist/mule.h`, which `tools/amalgamate.sh` joins from `src/`.
   A new module joins `MODULES` in the Makefile, after the modules it
   includes. Commit the regenerated `dist/mule.h` with every change to
@@ -51,7 +55,7 @@ The folder, include and naming rules live in the file comment of
 - `make test`, `make release` and `make docs` all pass. `make release`
   builds with `-Werror`. `make docs` fails on any undocumented member.
 - When a public API changes, every file in `notes/str-examples/` still
-  compiles with `cc -std=c23 -Isrc`. `10_dangling.c` and `11_double_free.c`
+  compiles with `cc -std=c11 -Isrc`. `10_dangling.c` and `11_double_free.c`
   are bugs on purpose and only need to compile.
 - `notes/str-and-strview.html` is generated. Edit
   `notes/str-and-strview.tmpl.html` or the examples, then run
@@ -62,6 +66,9 @@ The folder, include and naming rules live in the file comment of
 
 - `str_with_capacity` and `str_from` initialise. They do not free what the
   `Str` already held, so call `str_free` first on a `Str` that owns memory.
+- gcc ignores a `(void)` cast on a `MULE_NODISCARD` call, so `-Werror`
+  fails there. Free through `mem_realloc` by assigning its null result:
+  `p = mem_realloc(a, p, n, 0);`.
 - An `Arena` must stay put once `arena_allocator` has been called. The
   allocator's context points at it.
 - Doxygen reads both branches of an `#if`. Wrap internal macros in

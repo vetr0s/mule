@@ -1,7 +1,7 @@
 # MULE
 
-Multi-Use Library Essentials. A small standard library for C23 in the
-spirit of stb. It is written to be read as well as used.
+Multi-Use Library Essentials. A small standard library for C11, written in
+the style of C99 and the spirit of stb. It is written to be read as well as used.
 
 It is early. Eight modules exist, and `TODO.md` holds the roadmap.
 
@@ -25,9 +25,9 @@ It is early. Eight modules exist, and `TODO.md` holds the roadmap.
 #include <stdio.h>
 
 int main(void) {
-    Arena arena = {};
+    Arena arena = { 0 };
     Str csv = { .alloc = arena_allocator(&arena) };
-    if (!str_appendf(&csv, "%s,%s,%d", "mule", "c23", 4)) return 1;
+    if (!str_appendf(&csv, "%s,%s,%d", "mule", "c99", 4)) return 1;
 
     StrView rest = str_view(&csv), field;
     while (sv_split_next(&rest, SV(","), &field))
@@ -39,18 +39,18 @@ int main(void) {
 ```
 
 ```sh
-cc -std=c23 -Idist example.c -o example && ./example
+cc -std=c11 -Idist example.c -o example && ./example
 ```
 
-It prints `[mule]`, `[c23]` and `[4]`, each on its own line.
+It prints `[mule]`, `[c99]` and `[4]`, each on its own line.
 
 ## Design
 
 - **Failure is a `bool`.** A function that can fail returns `false` and
   leaves its arguments exactly as they were. The tests force every
   allocation to fail in turn to prove it.
-- **Zero is a valid value.** `Str s = {};` and `Arena a = {};` are ready to
-  use and own nothing.
+- **Zero is a valid value.** `Str s = { 0 };` and `Arena a = { 0 };` are
+  ready to use and own nothing.
 - **Allocation is explicit.** Code that allocates takes an `Allocator`, and
   null means the libc heap. Point a `Str` at an arena and it grows in place
   inside it.
@@ -114,7 +114,7 @@ main.c          a word counter that uses dist/mule.h
   Every example in it is a region of a test file, so the examples compile.
 - `notes/str-and-strview.html` teaches `Str` and `StrView` with programs
   you can run.
-- `notes/modern-c-guide.html` explains the C23 features and idioms the code
-  uses.
+- `notes/modern-c-guide.html` explains C23 features and idioms. It predates
+  the C11 floor, so its examples use spellings the code has dropped.
 - `AGENTS.md` holds the conventions for anyone changing the code, people
   included.

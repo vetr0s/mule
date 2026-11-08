@@ -87,7 +87,7 @@ static size_t ours_tokens(Corpus *c) {
 
 static size_t theirs_tokens(Corpus *c) {
     size_t n = 0;
-    for (char *t = strtok(c->scratch, DELIMS); t; t = strtok(nullptr, DELIMS)) {
+    for (char *t = strtok(c->scratch, DELIMS); t; t = strtok(NULL, DELIMS)) {
         n++;
     }
     return n;
@@ -145,17 +145,17 @@ typedef struct Pair {
 
 static const Pair pairs[] = {
     { "find '\\n'",
-      { nullptr, ours_find_byte },
-      { nullptr, theirs_find_byte },
-      nullptr },
+      { NULL, ours_find_byte },
+      { NULL, theirs_find_byte },
+      NULL },
     { "find \"the\"",
-      { nullptr, ours_find_text },
-      { nullptr, theirs_find_text },
-      nullptr },
+      { NULL, ours_find_text },
+      { NULL, theirs_find_text },
+      NULL },
     { "tokens",
-      { nullptr, ours_tokens },
+      { NULL, ours_tokens },
       { prepare_scratch, theirs_tokens },
-      nullptr },
+      NULL },
     { "sort lines",
       { prepare_views, ours_sort },
       { prepare_cstrs, theirs_sort },
@@ -221,9 +221,9 @@ int main(int argc, char **argv) {
     }
 
     for (int f = 1; f < argc; f++) {
-        Str text = {};
+        Str text = { 0 };
         FILE *fp = fopen(argv[f], "rb");
-        if (fp == nullptr) {
+        if (fp == NULL) {
             perror(argv[f]);
             return EXIT_FAILURE;
         }

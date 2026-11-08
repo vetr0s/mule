@@ -10,7 +10,7 @@
 
 /* Grow so that `needed` content bytes fit. Amortised doubling. */
 static bool str_grow_(Str *s, size_t needed) {
-    if (needed <= s->capacity && s->data != nullptr) return true;
+    if (needed <= s->capacity && s->data != NULL) return true;
 
     size_t cap = s->capacity ? s->capacity : 15;
     while (cap < needed) {
@@ -23,10 +23,10 @@ static bool str_grow_(Str *s, size_t needed) {
     size_t bytes;
     if (ckd_add(&bytes, cap, 1)) return false;
 
-    size_t old = s->data != nullptr ? s->capacity + 1 : 0;
+    size_t old = s->data != NULL ? s->capacity + 1 : 0;
     char *p = mem_realloc(s->alloc, s->data, old, bytes);
-    if (p == nullptr) return false;
-    if (s->data == nullptr) p[0] = '\0';
+    if (p == NULL) return false;
+    if (s->data == NULL) p[0] = '\0';
 
     s->data = p;
     s->capacity = cap;
@@ -48,8 +48,8 @@ bool str_from_cstr(Str *s, const char *cstr) {
 }
 
 void str_free(Str *s) {
-    if (s->data != nullptr)
-        (void)mem_realloc(s->alloc, s->data, s->capacity + 1, 0);
+    if (s->data != NULL)
+        s->data = mem_realloc(s->alloc, s->data, s->capacity + 1, 0);
     *s = (Str){ .alloc = s->alloc };
 }
 
@@ -60,9 +60,9 @@ bool str_reserve(Str *s, size_t additional) {
 }
 
 bool str_shrink_to_fit(Str *s) {
-    if (s->data == nullptr || s->capacity == s->len) return true;
+    if (s->data == NULL || s->capacity == s->len) return true;
     char *p = mem_realloc(s->alloc, s->data, s->capacity + 1, s->len + 1);
-    if (p == nullptr) return false;
+    if (p == NULL) return false;
     s->data = p;
     s->capacity = s->len;
     return true;
@@ -70,14 +70,14 @@ bool str_shrink_to_fit(Str *s) {
 
 void str_clear(Str *s) {
     s->len = 0;
-    if (s->data != nullptr) s->data[0] = '\0';
+    if (s->data != NULL) s->data[0] = '\0';
 }
 
 bool str_push(Str *s, char c) {
     /* Locals, because a char store may alias `*s` and force reloads. */
     char *data = s->data;
     size_t len = s->len;
-    if (data != nullptr && len < s->capacity) {
+    if (data != NULL && len < s->capacity) {
         data[len] = c;
         data[len + 1] = '\0';
         s->len = len + 1;
@@ -93,7 +93,7 @@ bool str_append(Str *s, StrView v) {
      * str_push, so the stores into `data` cannot force reloads of `*s`. */
     char *data = s->data;
     size_t len = s->len;
-    if (data != nullptr && v.len <= s->capacity - len) {
+    if (data != NULL && v.len <= s->capacity - len) {
         memmove(data + len, v.data, v.len);
         data[len + v.len] = '\0';
         s->len = len + v.len;
@@ -102,7 +102,7 @@ bool str_append(Str *s, StrView v) {
 
     /* `v` may point into our own buffer (e.g. str_append(&s, str_view(&s))).
      * Remember its offset, since growing may move the allocation. */
-    const bool aliased = s->data != nullptr &&
+    const bool aliased = s->data != NULL &&
                          v.data >= s->data &&
                          v.data <= s->data + s->len;
     const size_t off = aliased ? (size_t)(v.data - s->data) : 0;
@@ -133,15 +133,15 @@ bool str_vappendf(Str *s, const char *fmt, va_list ap) {
     va_copy(ap2, ap);
 
     /* Format straight into the spare capacity; most calls fit and stop here. */
-    size_t room = s->data != nullptr ? s->capacity - s->len + 1 : 0;
-    char *end = room != 0 ? s->data + s->len : nullptr;
+    size_t room = s->data != NULL ? s->capacity - s->len + 1 : 0;
+    char *end = room != 0 ? s->data + s->len : NULL;
     int n = vsnprintf(end, room, fmt, ap);
     bool ok = n >= 0 && (size_t)n < room;
     if (ok) {
         s->len += (size_t)n;
     } else {
         /* The attempt overwrote the terminator; restore it before failing. */
-        if (end != nullptr) *end = '\0';
+        if (end != NULL) *end = '\0';
         if (n >= 0 && str_reserve(s, (size_t)n)) {
             vsnprintf(s->data + s->len, (size_t)n + 1, fmt, ap2);
             s->len += (size_t)n;
@@ -171,7 +171,7 @@ bool str_append_file(Str *s, FILE *f) {
         }
     }
 
-    if (ok && s->data == nullptr) {
+    if (ok && s->data == NULL) {
         /* `s` owns nothing, so take the buffer instead of copying it. */
         tmp.data[tmp.len] = '\0';
         *s = tmp;
@@ -199,10 +199,10 @@ bool str_read_line(Str *s, FILE *f) {
 
     if (!ok || !got || ferror(f)) {
         s->len = old;
-        if (s->data != nullptr) s->data[old] = '\0';
+        if (s->data != NULL) s->data[old] = '\0';
         return false;
     }
-    if (s->data == nullptr) return true; /* an empty first line */
+    if (s->data == NULL) return true; /* an empty first line */
     memmove(s->data, s->data + old, s->len - old);
     s->len -= old;
     s->data[s->len] = '\0';
@@ -214,7 +214,7 @@ StrView str_view(const Str *s) {
 }
 
 const char *str_cstr(const Str *s) {
-    return s->data != nullptr ? s->data : "";
+    return s->data != NULL ? s->data : "";
 }
 
 bool str_eq(StrView a, StrView b) {
@@ -222,7 +222,7 @@ bool str_eq(StrView a, StrView b) {
 }
 
 StrView sv_from_cstr(const char *cstr) {
-    if (cstr == nullptr) return (StrView){ .data = "", .len = 0 };
+    if (cstr == NULL) return (StrView){ .data = "", .len = 0 };
     return (StrView){ .data = cstr, .len = strlen(cstr) };
 }
 
@@ -231,7 +231,7 @@ StrView sv_from_cstr(const char *cstr) {
 size_t sv_find_byte(StrView v, char c) {
     if (v.len == 0) return SV_NPOS;
     const char *p = memchr(v.data, c, v.len);
-    return p != nullptr ? (size_t)(p - v.data) : SV_NPOS;
+    return p != NULL ? (size_t)(p - v.data) : SV_NPOS;
 }
 
 size_t sv_find(StrView v, StrView needle) {
@@ -242,7 +242,7 @@ size_t sv_find(StrView v, StrView needle) {
     size_t last = v.len - needle.len;
     for (size_t i = 0; i <= last; i++) {
         const char *p = memchr(v.data + i, needle.data[0], last - i + 1);
-        if (p == nullptr) return SV_NPOS;
+        if (p == NULL) return SV_NPOS;
         i = (size_t)(p - v.data);
         if (memcmp(p + 1, needle.data + 1, needle.len - 1) == 0) return i;
     }
@@ -305,7 +305,7 @@ static bool sv_in_set_(const uint64_t set[4], char c) {
 
 bool sv_token_next(StrView *rest, StrView delims, StrView *token) {
     /* One bit per byte value, like strspn builds, so each test is O(1). */
-    uint64_t set[4] = {};
+    uint64_t set[4] = { 0 };
     for (size_t i = 0; i < delims.len; i++) {
         unsigned char c = (unsigned char)delims.data[i];
         set[c >> 6] |= UINT64_C(1) << (c & 63);

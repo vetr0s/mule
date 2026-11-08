@@ -10,14 +10,14 @@
 typedef Arr(int) IntArr;
 
 TEST(every_module_works) {
-    Arena arena = {};
+    Arena arena = { 0 };
     Str s = { .alloc = arena_allocator(&arena) };
     CHECK(str_appendf(&s, "%d,%d", 4, 2));
     int64_t n = 0;
     CHECK(sv_parse_i64(sv_slice(str_view(&s), 0, 1), &n) && n == 4);
     arena_free(&arena);
 
-    IntArr xs = {};
+    IntArr xs = { 0 };
     CHECK(arr_push(&xs, 7));
     CHECK_EQ_INT(arr_pop(&xs), 7);
     arr_free(&xs);
@@ -31,11 +31,11 @@ TEST(every_module_works) {
 }
 
 TEST(hooks_reach_the_library) {
-    Str s = {};
+    Str s = { 0 };
     test_fail_alloc_after(0);
     CHECK(!str_append(&s, SV("x")));
     test_fail_alloc_after(-1);
-    CHECK(s.data == nullptr);
+    CHECK(s.data == NULL);
 }
 
 int main(int argc, char **argv) {

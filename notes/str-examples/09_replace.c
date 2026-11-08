@@ -18,7 +18,7 @@ static bool replace_all(Str *out, StrView text, StrView from, StrView to) {
 }
 
 int main(void) {
-    Str out = {};
+    Str out = { 0 };
     if (!replace_all(&out, SV("Rodya went out. Rodya came back."), SV("Rodya"),
                      SV("Raskolnikov"))) {
         str_free(&out);

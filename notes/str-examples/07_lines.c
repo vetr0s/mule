@@ -7,11 +7,11 @@
 
 int main(void) {
     FILE *f = fopen("data/pg2554.txt", "rb");
-    if (f == nullptr) {
+    if (f == NULL) {
         perror("data/pg2554.txt");
         return EXIT_FAILURE;
     }
-    Str text = {};
+    Str text = { 0 };
     bool ok = str_append_file(&text, f);
     fclose(f);
     if (!ok) return EXIT_FAILURE;

@@ -8,9 +8,9 @@
 #include <stdlib.h>
 
 /* Every benchmark feeds its results here so the optimiser cannot drop work. */
-[[maybe_unused]] static volatile size_t sink;
+MULE_UNUSED static volatile size_t sink;
 
-[[maybe_unused]] static void must(bool ok) {
+MULE_UNUSED static void must(bool ok) {
     if (!ok) {
         fputs("out of memory\n", stderr);
         exit(EXIT_FAILURE);
@@ -23,7 +23,7 @@ static int cmp_double(const void *a, const void *b) {
 }
 
 /* Sorts `xs` in place and returns its median. */
-[[maybe_unused]] static double median(double *xs, size_t n) {
+MULE_UNUSED static double median(double *xs, size_t n) {
     qsort(xs, n, sizeof xs[0], cmp_double);
     return xs[n / 2];
 }

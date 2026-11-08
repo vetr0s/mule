@@ -36,7 +36,9 @@
  *     names apart. Static helpers carry the module prefix and a trailing `_`.
  *   - Something belongs here only once two modules use it.
  *
- * Targets are Unix with clang 17+ or gcc 13+.
+ * Targets are Unix with clang 17+ or gcc 13+. The floor is C11, written as
+ * C99. Attributes go through the MULE_ macros below, so a compiler without
+ * GNU attributes still builds the library.
  */
 
 /** @cond */
@@ -45,8 +47,22 @@
 #define _POSIX_C_SOURCE 200809L
 #endif
 
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+
+/* gcc ignores a (void) cast on warn_unused_result, so discard by assigning. */
+#ifdef __GNUC__
+#define MULE_NODISCARD __attribute__((warn_unused_result))
+#define MULE_UNUSED __attribute__((unused))
+#define MULE_NORETURN __attribute__((noreturn))
+#define MULE_PRINTF(fmt, args) __attribute__((format(printf, fmt, args)))
+#else
+#define MULE_NODISCARD
+#define MULE_UNUSED
+#define MULE_NORETURN _Noreturn
+#define MULE_PRINTF(fmt, args)
+#endif
 
 #if __has_include(<stdckdint.h>)
 #include <stdckdint.h>
@@ -68,7 +84,7 @@
  *     Modules that allocate take a `const Allocator *`, and null means the
  *     libc heap.
  *   - An Arena hands out memory from large blocks and frees it all at once.
- *     A zero-initialised Arena (`Arena a = {};`) is valid and owns nothing.
+ *     A zero-initialised Arena (`Arena a = { 0 };`) is valid and owns nothing.
  *   - Growing the most recent arena allocation happens in place when the
  *     block has room, so a Str growing in an arena does not leave a copy
  *     behind at every doubling.
@@ -76,6 +92,9 @@
  * @snippet{trimleft} test_mem.c arena
  */
 
+
+/* Callers pass alignof(T) to arena_alloc. */
+#include <stdalign.h>
 
 /** Allocate, resize or free, depending on @p old and @p new_size. */
 typedef void *AllocatorFn(void *ctx, void *old, size_t old_size,
@@ -90,8 +109,8 @@ typedef struct Allocator {
 /** Resize @p old from @p old_size to @p new_size bytes through @p a.
  *  Null @p old allocates and a @p new_size of 0 frees. Null @p a means the
  *  libc heap. Returns null on failure, leaving @p old untouched. */
-[[nodiscard]] void *mem_realloc(const Allocator *a, void *old, size_t old_size,
-                                size_t new_size);
+MULE_NODISCARD void *mem_realloc(const Allocator *a, void *old, size_t old_size,
+                                 size_t new_size);
 
 /** Bytes in a regular arena block. Larger requests get a block of their own. */
 #define MEM_ARENA_BLOCK ((size_t)64 * 1024)
@@ -108,10 +127,10 @@ typedef struct Arena {
 } Arena;
 
 /** @p size bytes aligned to @p align, a power of two. Null on failure. */
-[[nodiscard]] void *arena_alloc(Arena *a, size_t size, size_t align);
+MULE_NODISCARD void *arena_alloc(Arena *a, size_t size, size_t align);
 /** An Allocator that draws from @p a. It lives as long as @p a.
  *  @snippet{trimleft} test_mem.c allocator */
-[[nodiscard]] const Allocator *arena_allocator(Arena *a);
+MULE_NODISCARD const Allocator *arena_allocator(Arena *a);
 /** Forget every allocation and keep the newest block for reuse. */
 void arena_reset(Arena *a);
 /** Release every block. Safe to call twice, and @p a stays usable. */
@@ -127,8 +146,8 @@ void arena_free(Arena *a);
  *     C APIs, but `len` is authoritative (embedded NULs are allowed).
  *   - `capacity` is the number of bytes usable for content, excluding the
  *     terminator (the allocation is `capacity + 1` bytes).
- *   - A zero-initialised Str (`Str s = {};`) is a valid empty string and owns
- *     no memory; every function accepts it.
+ *   - A zero-initialised Str (`Str s = { 0 };`) is a valid empty string
+ *     and owns no memory; every function accepts it.
  *   - `alloc` says where the bytes live. Null means the libc heap. Set it
  *     before the first allocation and leave it alone after; str_free keeps it.
  *   - Functions that may allocate return `bool` (false = out of memory, size
@@ -169,11 +188,11 @@ typedef struct StrView {
 /* --- Lifetime ------------------------------------------------------------ */
 
 /** Initialise @p s as empty with room for @p capacity bytes of content. */
-[[nodiscard]] bool str_with_capacity(Str *s, size_t capacity);
+MULE_NODISCARD bool str_with_capacity(Str *s, size_t capacity);
 /** Initialise @p s as a copy of @p v. */
-[[nodiscard]] bool str_from(Str *s, StrView v);
+MULE_NODISCARD bool str_from(Str *s, StrView v);
 /** Initialise @p s as a copy of @p cstr. Null gives an empty string. */
-[[nodiscard]] bool str_from_cstr(Str *s, const char *cstr);
+MULE_NODISCARD bool str_from_cstr(Str *s, const char *cstr);
 /** Free the buffer and reset @p s to the zero state. Safe to call twice.
  *  @snippet{trimleft} test_str.c free */
 void str_free(Str *s);
@@ -181,9 +200,9 @@ void str_free(Str *s);
 /* --- Capacity ------------------------------------------------------------ */
 
 /** Ensure @p additional more bytes fit without another allocation. */
-[[nodiscard]] bool str_reserve(Str *s, size_t additional);
+MULE_NODISCARD bool str_reserve(Str *s, size_t additional);
 /** Shrink the allocation to exactly `len + 1` bytes. */
-[[nodiscard]] bool str_shrink_to_fit(Str *s);
+MULE_NODISCARD bool str_shrink_to_fit(Str *s);
 /** Set the length to zero. Keeps the allocation for reuse.
  *  @snippet{trimleft} test_str.c clear */
 void str_clear(Str *s);
@@ -191,40 +210,39 @@ void str_clear(Str *s);
 /* --- Mutation ------------------------------------------------------------ */
 
 /** Append the single byte @p c. */
-[[nodiscard]] bool str_push(Str *s, char c);
+MULE_NODISCARD bool str_push(Str *s, char c);
 /** Append @p v. @p v may point into @p s itself.
  *  @snippet{trimleft} test_str.c self_append */
-[[nodiscard]] bool str_append(Str *s, StrView v);
+MULE_NODISCARD bool str_append(Str *s, StrView v);
 /** Append @p cstr. A null @p cstr appends nothing. */
-[[nodiscard]] bool str_append_cstr(Str *s, const char *cstr);
+MULE_NODISCARD bool str_append_cstr(Str *s, const char *cstr);
 /** Append the printf-style expansion of @p fmt.
  *  @snippet{trimleft} test_str.c appendf */
-[[nodiscard]] bool str_appendf(Str *s, const char *fmt, ...)
-    __attribute__((format(printf, 2, 3)));
+MULE_NODISCARD bool str_appendf(Str *s, const char *fmt, ...) MULE_PRINTF(2, 3);
 /** str_appendf for a `va_list`, like vprintf. @p ap is used up afterwards. */
-[[nodiscard]] bool str_vappendf(Str *s, const char *fmt, va_list ap)
-    __attribute__((format(printf, 2, 0)));
+MULE_NODISCARD bool str_vappendf(Str *s, const char *fmt, va_list ap)
+    MULE_PRINTF(2, 0);
 /** Append everything left to read from @p f. On false, check ferror(f).
  *  @snippet{trimleft} test_str.c append_file */
-[[nodiscard]] bool str_append_file(Str *s, FILE *f);
+MULE_NODISCARD bool str_append_file(Str *s, FILE *f);
 /** Replace the contents of @p s with the next line of @p f, without its
  *  `\n`. A `\r` before it is kept, and embedded NULs are allowed. False at
  *  end of input, on a read error (check ferror(f)) or out of memory. On false
  *  the contents of @p s are unchanged, though its capacity may have grown.
  *  @snippet{trimleft} test_str.c read_line */
-[[nodiscard]] bool str_read_line(Str *s, FILE *f);
+MULE_NODISCARD bool str_read_line(Str *s, FILE *f);
 
 /* --- Access -------------------------------------------------------------- */
 
 /** Borrow the whole of @p s. Invalidated by any call that may reallocate. */
-[[nodiscard]] StrView str_view(const Str *s);
+MULE_NODISCARD StrView str_view(const Str *s);
 /** NUL-terminated contents of @p s. Never null, even for an empty Str. */
-[[nodiscard]] const char *str_cstr(const Str *s);
+MULE_NODISCARD const char *str_cstr(const Str *s);
 /** True when @p a and @p b hold the same bytes.
  *  @snippet{trimleft} test_str.c eq */
-[[nodiscard]] bool str_eq(StrView a, StrView b);
+MULE_NODISCARD bool str_eq(StrView a, StrView b);
 /** View of @p cstr, measured with strlen. Null gives an empty view. */
-[[nodiscard]] StrView sv_from_cstr(const char *cstr);
+MULE_NODISCARD StrView sv_from_cstr(const char *cstr);
 
 /* --- Views --------------------------------------------------------------- */
 
@@ -232,38 +250,39 @@ void str_clear(Str *s);
 #define SV_NPOS SIZE_MAX
 
 /** Index of the first @p c in @p v, or SV_NPOS. */
-[[nodiscard]] size_t sv_find_byte(StrView v, char c);
+MULE_NODISCARD size_t sv_find_byte(StrView v, char c);
 /** Index of the first @p needle in @p v, or SV_NPOS. An empty needle is at 0.
  *  @snippet{trimleft} test_str.c find */
-[[nodiscard]] size_t sv_find(StrView v, StrView needle);
+MULE_NODISCARD size_t sv_find(StrView v, StrView needle);
 /** Byte order like memcmp: negative, zero or positive. A prefix sorts first. */
-[[nodiscard]] int sv_cmp(StrView a, StrView b);
+MULE_NODISCARD int sv_cmp(StrView a, StrView b);
 /** True when @p v begins with @p prefix. */
-[[nodiscard]] bool sv_starts_with(StrView v, StrView prefix);
+MULE_NODISCARD bool sv_starts_with(StrView v, StrView prefix);
 /** True when @p v ends with @p suffix. */
-[[nodiscard]] bool sv_ends_with(StrView v, StrView suffix);
+MULE_NODISCARD bool sv_ends_with(StrView v, StrView suffix);
 /** Bytes @p from up to but not including @p to. Asserts the range is in @p v.
  */
-[[nodiscard]] StrView sv_slice(StrView v, size_t from, size_t to);
+MULE_NODISCARD StrView sv_slice(StrView v, size_t from, size_t to);
 /** @p v without leading and trailing ASCII whitespace. */
-[[nodiscard]] StrView sv_trim(StrView v);
+MULE_NODISCARD StrView sv_trim(StrView v);
 /** Cut the piece before @p sep off @p rest. `a,,b,` splits as a, "", b.
  *  @snippet{trimleft} test_str.c split */
-[[nodiscard]] bool sv_split_next(StrView *rest, StrView sep, StrView *piece);
+MULE_NODISCARD bool sv_split_next(StrView *rest, StrView sep, StrView *piece);
 /** strtok without the mutation: skip @p delims, cut the next non-empty run.
  *  @snippet{trimleft} test_str.c token */
-[[nodiscard]] bool sv_token_next(StrView *rest, StrView delims, StrView *token);
+MULE_NODISCARD bool sv_token_next(StrView *rest, StrView delims,
+                                  StrView *token);
 
 /* --- Parsing ------------------------------------------------------------- */
 
 /** Parse all of @p v as a base-10 integer with an optional sign. Whitespace,
  *  trailing bytes and overflow fail. On false @p out is unchanged.
  *  @snippet{trimleft} test_str.c parse */
-[[nodiscard]] bool sv_parse_i64(StrView v, int64_t *out);
+MULE_NODISCARD bool sv_parse_i64(StrView v, int64_t *out);
 /** Parse all of @p v as a double, in any form strtod accepts in the C locale.
  *  Whitespace, trailing bytes, overflow to infinity and views over 255 bytes
  *  fail. On false @p out is unchanged. */
-[[nodiscard]] bool sv_parse_f64(StrView v, double *out);
+MULE_NODISCARD bool sv_parse_f64(StrView v, double *out);
 
 /* --- src/arr/arr.h --- */
 
@@ -273,7 +292,7 @@ void str_clear(Str *s);
  *
  *   - Name each array type once with a typedef: `typedef Arr(int) IntArr;`.
  *     Every spelling of `Arr(...)` is a distinct type, so use the name.
- *   - A zero-initialised array (`IntArr xs = {};`) is valid, empty, and owns
+ *   - A zero-initialised array (`IntArr xs = { 0 };`) is valid, empty, and owns
  *     no memory.
  *   - The layout matches Str: `data`, `len`, `capacity` and `alloc`, where a
  *     null `alloc` means the libc heap. Index `data` directly to read and
@@ -338,9 +357,9 @@ void str_clear(Str *s);
      (a)->len = 0, (void)((a)->capacity = 0))
 
 /** @cond */
-[[nodiscard]] bool arr_reserve_(void *data_field, size_t *capacity, size_t len,
-                                size_t add, size_t elem,
-                                const Allocator *alloc);
+MULE_NODISCARD bool arr_reserve_(void *data_field, size_t *capacity, size_t len,
+                                 size_t add, size_t elem,
+                                 const Allocator *alloc);
 void arr_free_(void *data_field, size_t bytes, const Allocator *alloc);
 /** @endcond */
 
@@ -366,9 +385,9 @@ typedef struct Rand {
 } Rand;
 
 /** The next 64 random bits. */
-[[nodiscard]] uint64_t rand_next(Rand *r);
+MULE_NODISCARD uint64_t rand_next(Rand *r);
 /** A uniform value in [0, @p n). @p n must not be 0. */
-[[nodiscard]] uint64_t rand_below(Rand *r, uint64_t n);
+MULE_NODISCARD uint64_t rand_below(Rand *r, uint64_t n);
 
 /* --- src/time/time.h --- */
 
@@ -382,7 +401,7 @@ typedef struct Rand {
 
 /** Nanoseconds on a monotonic clock. It never goes backwards, but its zero is
  *  arbitrary, so only the difference between two readings means anything. */
-[[nodiscard]] uint64_t time_now_ns(void);
+MULE_NODISCARD uint64_t time_now_ns(void);
 
 /* --- src/log/log.h --- */
 
@@ -444,7 +463,7 @@ void log_set_level(LogLevel level);
 void log_set_output(FILE *f);
 /** True when colour escapes written to @p f will render as colour. Reads the
  *  environment on every call, so call it once and keep the answer. */
-[[nodiscard]] bool log_color_enabled(FILE *f);
+MULE_NODISCARD bool log_color_enabled(FILE *f);
 
 /** Log a printf-style message at LOG_TRACE. */
 #define log_trace(...) LOG_AT_(LOG_TRACE, __VA_ARGS__)
@@ -473,9 +492,9 @@ extern LogLevel log_level_;
          : (void)0)
 
 void log_write_(LogLevel level, const char *file, int line, const char *fmt,
-                ...) __attribute__((format(printf, 4, 5)));
-[[noreturn]] void log_fatal_(const char *file, int line, const char *fmt, ...)
-    __attribute__((format(printf, 3, 4)));
+                ...) MULE_PRINTF(4, 5);
+MULE_NORETURN void log_fatal_(const char *file, int line, const char *fmt, ...)
+    MULE_PRINTF(3, 4);
 /** @endcond */
 
 #endif /* MULE_H */
@@ -501,7 +520,7 @@ void log_write_(LogLevel level, const char *file, int line, const char *fmt,
  * #include "str/str.c"
  *
  * TEST(appends) {
- *     Str s = {};
+ *     Str s = { 0 };
  *     REQUIRE(str_append(&s, SV("mule")));
  *     CHECK_EQ_STR(str_cstr(&s), "mule");
  *     str_free(&s);
@@ -545,7 +564,7 @@ static int test_failures_ = 0;
 static int test_checks_ = 0;
 static int test_cur_failed_ = 0;
 static int test_argc_ = 0;
-static char **test_argv_ = nullptr;
+static char **test_argv_ = NULL;
 static const char *test_running_ = "";
 static bool test_color_ = false; /* set once by test_init */
 
@@ -558,7 +577,7 @@ static long test_alloc_budget_ = -1; /* allocations left; -1 means no limit */
 
 /** Let the next @p n allocations succeed and fail every one after. Pass -1
  *  to stop failing. RUN resets it after each test. */
-[[maybe_unused]] static void test_fail_alloc_after(long n) {
+MULE_UNUSED static void test_fail_alloc_after(long n) {
     test_alloc_budget_ = n;
 }
 
@@ -570,29 +589,29 @@ static bool test_alloc_allowed_(void) {
     return true;
 }
 
-[[maybe_unused]] static void *test_malloc_(size_t n) {
-    if (!test_alloc_allowed_()) return nullptr;
+MULE_UNUSED static void *test_malloc_(size_t n) {
+    if (!test_alloc_allowed_()) return NULL;
     void *p = malloc(n);
-    if (p != nullptr) test_live_allocs_++;
+    if (p != NULL) test_live_allocs_++;
     return p;
 }
 
-[[maybe_unused]] static void *test_calloc_(size_t count, size_t n) {
-    if (!test_alloc_allowed_()) return nullptr;
+MULE_UNUSED static void *test_calloc_(size_t count, size_t n) {
+    if (!test_alloc_allowed_()) return NULL;
     void *p = calloc(count, n);
-    if (p != nullptr) test_live_allocs_++;
+    if (p != NULL) test_live_allocs_++;
     return p;
 }
 
-[[maybe_unused]] static void *test_realloc_(void *old, size_t n) {
-    if (!test_alloc_allowed_()) return nullptr;
+MULE_UNUSED static void *test_realloc_(void *old, size_t n) {
+    if (!test_alloc_allowed_()) return NULL;
     void *p = realloc(old, n);
-    if (p != nullptr && old == nullptr) test_live_allocs_++;
+    if (p != NULL && old == NULL) test_live_allocs_++;
     return p;
 }
 
-[[maybe_unused]] static void test_free_(void *p) {
-    if (p != nullptr) test_live_allocs_--;
+MULE_UNUSED static void test_free_(void *p) {
+    if (p != NULL) test_live_allocs_--;
     free(p);
 }
 
@@ -613,7 +632,7 @@ static void test_fail_at_(const char *file, int line) {
 
 /* Print bytes as a C string literal, escaping anything unprintable. */
 static void test_print_bytes_(const char *p, size_t n) {
-    if (p == nullptr) {
+    if (p == NULL) {
         printf("null");
         return;
     }
@@ -628,8 +647,8 @@ static void test_print_bytes_(const char *p, size_t n) {
     putchar('"');
 }
 
-[[maybe_unused]] static bool test_check_(bool ok, const char *file, int line,
-                                         const char *expr) {
+MULE_UNUSED static bool test_check_(bool ok, const char *file, int line,
+                                    const char *expr) {
     test_checks_++;
     if (!ok) {
         test_fail_at_(file, line);
@@ -638,9 +657,8 @@ static void test_print_bytes_(const char *p, size_t n) {
     return ok;
 }
 
-[[maybe_unused]] static bool test_eq_int_(long long a, long long b,
-                                          const char *file, int line,
-                                          const char *ea, const char *eb) {
+MULE_UNUSED static bool test_eq_int_(long long a, long long b, const char *file,
+                                     int line, const char *ea, const char *eb) {
     test_checks_++;
     if (a != b) {
         test_fail_at_(file, line);
@@ -649,10 +667,10 @@ static void test_print_bytes_(const char *p, size_t n) {
     return a == b;
 }
 
-[[maybe_unused]] static bool test_eq_str_(const char *a, const char *b,
-                                          const char *file, int line,
-                                          const char *ea, const char *eb) {
-    bool ok = (a == nullptr || b == nullptr) ? a == b : strcmp(a, b) == 0;
+MULE_UNUSED static bool test_eq_str_(const char *a, const char *b,
+                                     const char *file, int line, const char *ea,
+                                     const char *eb) {
+    bool ok = (a == NULL || b == NULL) ? a == b : strcmp(a, b) == 0;
     test_checks_++;
     if (!ok) {
         test_fail_at_(file, line);
@@ -665,10 +683,9 @@ static void test_print_bytes_(const char *p, size_t n) {
     return ok;
 }
 
-[[maybe_unused]] static bool test_eq_mem_(const char *a, size_t alen,
-                                          const char *b, size_t blen,
-                                          const char *file, int line,
-                                          const char *ea, const char *eb) {
+MULE_UNUSED static bool test_eq_mem_(const char *a, size_t alen, const char *b,
+                                     size_t blen, const char *file, int line,
+                                     const char *ea, const char *eb) {
     bool ok = alen == blen && (alen == 0 || memcmp(a, b, alen) == 0);
     test_checks_++;
     if (!ok) {
@@ -731,7 +748,7 @@ static void test_timeout_(int sig) {
 /** @endcond */
 
 /** Start a test program. Call it first in main with main's arguments. */
-[[maybe_unused]] static void test_init(int argc, char **argv) {
+MULE_UNUSED static void test_init(int argc, char **argv) {
     test_argc_ = argc;
     test_argv_ = argv;
     test_color_ = log_color_enabled(stdout);
@@ -748,7 +765,7 @@ static void test_print_result_(const char *name) {
         printf("[%s] %s\n", tag, name);
 }
 
-[[maybe_unused]] static int test_report_(const char *file) {
+MULE_UNUSED static int test_report_(const char *file) {
     const char *on = test_color_ ? (test_failures_ ? LOG_RED : LOG_GREEN) : "";
     printf("%s%s: %d check(s), %d failing test(s)%s\n", on, file, test_checks_,
            test_failures_, test_color_ ? LOG_RESET : "");
@@ -790,7 +807,6 @@ static bool test_selected_(const char *name) {
 /** Print the totals. Return it from main: it is nonzero when a test failed. */
 #define TEST_REPORT() test_report_(__FILE__)
 
-
 #endif /* MULE_TEST */
 
 #if defined(MULE_IMPLEMENTATION) && !defined(MULE_IMPLEMENTATION_DONE)
@@ -812,18 +828,18 @@ struct ArenaBlock {
 
 void *mem_realloc(const Allocator *a, void *old, size_t old_size,
                   size_t new_size) {
-    if (a != nullptr) return a->fn(a->ctx, old, old_size, new_size);
+    if (a != NULL) return a->fn(a->ctx, old, old_size, new_size);
     /* realloc(p, 0) is undefined in C23, so freeing is its own branch. */
     if (new_size == 0) {
         free(old);
-        return nullptr;
+        return NULL;
     }
 #ifdef __APPLE__
     /* macOS 26 keeps a large block grown by realloc dirty after free, so
      * growing leaked memory. A fresh block and a copy returns it. */
-    if (old != nullptr && new_size > old_size) {
+    if (old != NULL && new_size > old_size) {
         void *p = malloc(new_size);
-        if (p == nullptr) return nullptr;
+        if (p == NULL) return NULL;
         memcpy(p, old, old_size);
         free(old);
         return p;
@@ -839,23 +855,23 @@ static void *mem_bump_(ArenaBlock *b, size_t size, size_t align) {
     if (ckd_add(&start, b->used, pad) ||
         ckd_add(&end, start, size) ||
         end > b->cap)
-        return nullptr;
+        return NULL;
     b->used = end;
     return b->data + start;
 }
 
 void *arena_alloc(Arena *a, size_t size, size_t align) {
     assert(align != 0 && (align & (align - 1)) == 0);
-    void *p = a->head != nullptr ? mem_bump_(a->head, size, align) : nullptr;
-    if (p == nullptr) {
+    void *p = a->head != NULL ? mem_bump_(a->head, size, align) : NULL;
+    if (p == NULL) {
         /* Room for the worst-case padding too, so the bump cannot fail. */
         size_t cap, bytes;
-        if (ckd_add(&cap, size, align - 1)) return nullptr;
+        if (ckd_add(&cap, size, align - 1)) return NULL;
         if (cap < MEM_ARENA_BLOCK) cap = MEM_ARENA_BLOCK;
-        if (ckd_add(&bytes, cap, sizeof(ArenaBlock))) return nullptr;
+        if (ckd_add(&bytes, cap, sizeof(ArenaBlock))) return NULL;
 
         ArenaBlock *b = malloc(bytes);
-        if (b == nullptr) return nullptr;
+        if (b == NULL) return NULL;
         *b = (ArenaBlock){ .prev = a->head, .cap = cap };
         a->head = b;
         p = mem_bump_(b, size, align);
@@ -869,14 +885,14 @@ static void *mem_arena_fn_(void *ctx, void *old, size_t old_size,
     Arena *a = ctx;
 
     /* The newest allocation ends at head->used, so it can move that mark. */
-    if (old != nullptr && old == a->last) {
+    if (old != NULL && old == a->last) {
         ArenaBlock *b = a->head;
         size_t start = (size_t)((char *)old - b->data);
         size_t end;
         if (new_size == 0) {
             b->used = start;
-            a->last = nullptr;
-            return nullptr;
+            a->last = NULL;
+            return NULL;
         }
         if (!ckd_add(&end, start, new_size) && end <= b->cap) {
             b->used = end;
@@ -884,9 +900,9 @@ static void *mem_arena_fn_(void *ctx, void *old, size_t old_size,
         }
     }
 
-    if (new_size == 0) return nullptr; /* older allocations wait for reset */
+    if (new_size == 0) return NULL; /* older allocations wait for reset */
     void *p = arena_alloc(a, new_size, alignof(max_align_t));
-    if (p != nullptr && old != nullptr)
+    if (p != NULL && old != NULL)
         memcpy(p, old, old_size < new_size ? old_size : new_size);
     return p;
 }
@@ -897,19 +913,19 @@ const Allocator *arena_allocator(Arena *a) {
 }
 
 void arena_reset(Arena *a) {
-    if (a->head == nullptr) return;
-    for (ArenaBlock *b = a->head->prev; b != nullptr;) {
+    if (a->head == NULL) return;
+    for (ArenaBlock *b = a->head->prev; b != NULL;) {
         ArenaBlock *prev = b->prev;
         free(b);
         b = prev;
     }
-    a->head->prev = nullptr;
+    a->head->prev = NULL;
     a->head->used = 0;
-    a->last = nullptr;
+    a->last = NULL;
 }
 
 void arena_free(Arena *a) {
-    for (ArenaBlock *b = a->head; b != nullptr;) {
+    for (ArenaBlock *b = a->head; b != NULL;) {
         ArenaBlock *prev = b->prev;
         free(b);
         b = prev;
@@ -931,7 +947,7 @@ void arena_free(Arena *a) {
 
 /* Grow so that `needed` content bytes fit. Amortised doubling. */
 static bool str_grow_(Str *s, size_t needed) {
-    if (needed <= s->capacity && s->data != nullptr) return true;
+    if (needed <= s->capacity && s->data != NULL) return true;
 
     size_t cap = s->capacity ? s->capacity : 15;
     while (cap < needed) {
@@ -944,10 +960,10 @@ static bool str_grow_(Str *s, size_t needed) {
     size_t bytes;
     if (ckd_add(&bytes, cap, 1)) return false;
 
-    size_t old = s->data != nullptr ? s->capacity + 1 : 0;
+    size_t old = s->data != NULL ? s->capacity + 1 : 0;
     char *p = mem_realloc(s->alloc, s->data, old, bytes);
-    if (p == nullptr) return false;
-    if (s->data == nullptr) p[0] = '\0';
+    if (p == NULL) return false;
+    if (s->data == NULL) p[0] = '\0';
 
     s->data = p;
     s->capacity = cap;
@@ -969,8 +985,8 @@ bool str_from_cstr(Str *s, const char *cstr) {
 }
 
 void str_free(Str *s) {
-    if (s->data != nullptr)
-        (void)mem_realloc(s->alloc, s->data, s->capacity + 1, 0);
+    if (s->data != NULL)
+        s->data = mem_realloc(s->alloc, s->data, s->capacity + 1, 0);
     *s = (Str){ .alloc = s->alloc };
 }
 
@@ -981,9 +997,9 @@ bool str_reserve(Str *s, size_t additional) {
 }
 
 bool str_shrink_to_fit(Str *s) {
-    if (s->data == nullptr || s->capacity == s->len) return true;
+    if (s->data == NULL || s->capacity == s->len) return true;
     char *p = mem_realloc(s->alloc, s->data, s->capacity + 1, s->len + 1);
-    if (p == nullptr) return false;
+    if (p == NULL) return false;
     s->data = p;
     s->capacity = s->len;
     return true;
@@ -991,14 +1007,14 @@ bool str_shrink_to_fit(Str *s) {
 
 void str_clear(Str *s) {
     s->len = 0;
-    if (s->data != nullptr) s->data[0] = '\0';
+    if (s->data != NULL) s->data[0] = '\0';
 }
 
 bool str_push(Str *s, char c) {
     /* Locals, because a char store may alias `*s` and force reloads. */
     char *data = s->data;
     size_t len = s->len;
-    if (data != nullptr && len < s->capacity) {
+    if (data != NULL && len < s->capacity) {
         data[len] = c;
         data[len + 1] = '\0';
         s->len = len + 1;
@@ -1014,7 +1030,7 @@ bool str_append(Str *s, StrView v) {
      * str_push, so the stores into `data` cannot force reloads of `*s`. */
     char *data = s->data;
     size_t len = s->len;
-    if (data != nullptr && v.len <= s->capacity - len) {
+    if (data != NULL && v.len <= s->capacity - len) {
         memmove(data + len, v.data, v.len);
         data[len + v.len] = '\0';
         s->len = len + v.len;
@@ -1023,7 +1039,7 @@ bool str_append(Str *s, StrView v) {
 
     /* `v` may point into our own buffer (e.g. str_append(&s, str_view(&s))).
      * Remember its offset, since growing may move the allocation. */
-    const bool aliased = s->data != nullptr &&
+    const bool aliased = s->data != NULL &&
                          v.data >= s->data &&
                          v.data <= s->data + s->len;
     const size_t off = aliased ? (size_t)(v.data - s->data) : 0;
@@ -1054,15 +1070,15 @@ bool str_vappendf(Str *s, const char *fmt, va_list ap) {
     va_copy(ap2, ap);
 
     /* Format straight into the spare capacity; most calls fit and stop here. */
-    size_t room = s->data != nullptr ? s->capacity - s->len + 1 : 0;
-    char *end = room != 0 ? s->data + s->len : nullptr;
+    size_t room = s->data != NULL ? s->capacity - s->len + 1 : 0;
+    char *end = room != 0 ? s->data + s->len : NULL;
     int n = vsnprintf(end, room, fmt, ap);
     bool ok = n >= 0 && (size_t)n < room;
     if (ok) {
         s->len += (size_t)n;
     } else {
         /* The attempt overwrote the terminator; restore it before failing. */
-        if (end != nullptr) *end = '\0';
+        if (end != NULL) *end = '\0';
         if (n >= 0 && str_reserve(s, (size_t)n)) {
             vsnprintf(s->data + s->len, (size_t)n + 1, fmt, ap2);
             s->len += (size_t)n;
@@ -1092,7 +1108,7 @@ bool str_append_file(Str *s, FILE *f) {
         }
     }
 
-    if (ok && s->data == nullptr) {
+    if (ok && s->data == NULL) {
         /* `s` owns nothing, so take the buffer instead of copying it. */
         tmp.data[tmp.len] = '\0';
         *s = tmp;
@@ -1120,10 +1136,10 @@ bool str_read_line(Str *s, FILE *f) {
 
     if (!ok || !got || ferror(f)) {
         s->len = old;
-        if (s->data != nullptr) s->data[old] = '\0';
+        if (s->data != NULL) s->data[old] = '\0';
         return false;
     }
-    if (s->data == nullptr) return true; /* an empty first line */
+    if (s->data == NULL) return true; /* an empty first line */
     memmove(s->data, s->data + old, s->len - old);
     s->len -= old;
     s->data[s->len] = '\0';
@@ -1135,7 +1151,7 @@ StrView str_view(const Str *s) {
 }
 
 const char *str_cstr(const Str *s) {
-    return s->data != nullptr ? s->data : "";
+    return s->data != NULL ? s->data : "";
 }
 
 bool str_eq(StrView a, StrView b) {
@@ -1143,7 +1159,7 @@ bool str_eq(StrView a, StrView b) {
 }
 
 StrView sv_from_cstr(const char *cstr) {
-    if (cstr == nullptr) return (StrView){ .data = "", .len = 0 };
+    if (cstr == NULL) return (StrView){ .data = "", .len = 0 };
     return (StrView){ .data = cstr, .len = strlen(cstr) };
 }
 
@@ -1152,7 +1168,7 @@ StrView sv_from_cstr(const char *cstr) {
 size_t sv_find_byte(StrView v, char c) {
     if (v.len == 0) return SV_NPOS;
     const char *p = memchr(v.data, c, v.len);
-    return p != nullptr ? (size_t)(p - v.data) : SV_NPOS;
+    return p != NULL ? (size_t)(p - v.data) : SV_NPOS;
 }
 
 size_t sv_find(StrView v, StrView needle) {
@@ -1163,7 +1179,7 @@ size_t sv_find(StrView v, StrView needle) {
     size_t last = v.len - needle.len;
     for (size_t i = 0; i <= last; i++) {
         const char *p = memchr(v.data + i, needle.data[0], last - i + 1);
-        if (p == nullptr) return SV_NPOS;
+        if (p == NULL) return SV_NPOS;
         i = (size_t)(p - v.data);
         if (memcmp(p + 1, needle.data + 1, needle.len - 1) == 0) return i;
     }
@@ -1226,7 +1242,7 @@ static bool sv_in_set_(const uint64_t set[4], char c) {
 
 bool sv_token_next(StrView *rest, StrView delims, StrView *token) {
     /* One bit per byte value, like strspn builds, so each test is O(1). */
-    uint64_t set[4] = {};
+    uint64_t set[4] = { 0 };
     for (size_t i = 0; i < delims.len; i++) {
         unsigned char c = (unsigned char)delims.data[i];
         set[c >> 6] |= UINT64_C(1) << (c & 63);
@@ -1309,7 +1325,7 @@ bool arr_reserve_(void *data_field, size_t *capacity, size_t len, size_t add,
     void *old;
     memcpy(&old, data_field, sizeof old);
     void *p = mem_realloc(alloc, old, *capacity * elem, bytes);
-    if (p == nullptr) return false;
+    if (p == NULL) return false;
     memcpy(data_field, &p, sizeof p);
     *capacity = cap;
     return true;
@@ -1318,8 +1334,7 @@ bool arr_reserve_(void *data_field, size_t *capacity, size_t len, size_t add,
 void arr_free_(void *data_field, size_t bytes, const Allocator *alloc) {
     void *p;
     memcpy(&p, data_field, sizeof p);
-    if (p != nullptr) (void)mem_realloc(alloc, p, bytes, 0);
-    p = nullptr;
+    if (p != NULL) p = mem_realloc(alloc, p, bytes, 0);
     memcpy(data_field, &p, sizeof p);
 }
 
@@ -1389,31 +1404,31 @@ void log_set_output(FILE *f) {
 /* Set to anything other than empty or "0". */
 static bool log_env_on_(const char *name) {
     const char *v = getenv(name);
-    return v != nullptr && v[0] != '\0' && strcmp(v, "0") != 0;
+    return v != NULL && v[0] != '\0' && strcmp(v, "0") != 0;
 }
 
 bool log_color_enabled(FILE *f) {
     const char *no_color = getenv("NO_COLOR");
-    if (no_color != nullptr && no_color[0] != '\0') return false;
+    if (no_color != NULL && no_color[0] != '\0') return false;
     if (log_env_on_("CLICOLOR_FORCE") || log_env_on_("FORCE_COLOR"))
         return true;
     if (!isatty(fileno(f))) return false;
 
     const char *term = getenv("TERM");
-    return term != nullptr && term[0] != '\0' && strcmp(term, "dumb") != 0;
+    return term != NULL && term[0] != '\0' && strcmp(term, "dumb") != 0;
 }
 
-__attribute__((format(printf, 4, 0))) static FILE *
-log_vwrite_(LogLevel level, const char *file, int line, const char *fmt,
-            va_list ap) {
-    FILE *out = log_out_ != nullptr ? log_out_ : stderr;
+MULE_PRINTF(4, 0)
+static FILE *log_vwrite_(LogLevel level, const char *file, int line,
+                         const char *fmt, va_list ap) {
+    FILE *out = log_out_ != NULL ? log_out_ : stderr;
     if (log_color_ < 0) log_color_ = log_color_enabled(out);
     const char *on = log_color_ ? log_colors_[level] : "";
     const char *off = on[0] != '\0' ? LOG_RESET : "";
 
     /* shortcut: one allocation per line. Reuse a thread_local buffer if
      * logging ever shows up in a profile. */
-    Str s = {};
+    Str s = { 0 };
     bool ok = str_appendf(&s, "%s%s%s %s:%d: ", on, log_names_[level], off,
                           file, line) &&
               str_vappendf(&s, fmt, ap) &&

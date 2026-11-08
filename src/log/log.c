@@ -31,31 +31,31 @@ void log_set_output(FILE *f) {
 /* Set to anything other than empty or "0". */
 static bool log_env_on_(const char *name) {
     const char *v = getenv(name);
-    return v != nullptr && v[0] != '\0' && strcmp(v, "0") != 0;
+    return v != NULL && v[0] != '\0' && strcmp(v, "0") != 0;
 }
 
 bool log_color_enabled(FILE *f) {
     const char *no_color = getenv("NO_COLOR");
-    if (no_color != nullptr && no_color[0] != '\0') return false;
+    if (no_color != NULL && no_color[0] != '\0') return false;
     if (log_env_on_("CLICOLOR_FORCE") || log_env_on_("FORCE_COLOR"))
         return true;
     if (!isatty(fileno(f))) return false;
 
     const char *term = getenv("TERM");
-    return term != nullptr && term[0] != '\0' && strcmp(term, "dumb") != 0;
+    return term != NULL && term[0] != '\0' && strcmp(term, "dumb") != 0;
 }
 
-__attribute__((format(printf, 4, 0))) static FILE *
-log_vwrite_(LogLevel level, const char *file, int line, const char *fmt,
-            va_list ap) {
-    FILE *out = log_out_ != nullptr ? log_out_ : stderr;
+MULE_PRINTF(4, 0)
+static FILE *log_vwrite_(LogLevel level, const char *file, int line,
+                         const char *fmt, va_list ap) {
+    FILE *out = log_out_ != NULL ? log_out_ : stderr;
     if (log_color_ < 0) log_color_ = log_color_enabled(out);
     const char *on = log_color_ ? log_colors_[level] : "";
     const char *off = on[0] != '\0' ? LOG_RESET : "";
 
     /* shortcut: one allocation per line. Reuse a thread_local buffer if
      * logging ever shows up in a profile. */
-    Str s = {};
+    Str s = { 0 };
     bool ok = str_appendf(&s, "%s%s%s %s:%d: ", on, log_names_[level], off,
                           file, line) &&
               str_vappendf(&s, fmt, ap) &&

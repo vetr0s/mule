@@ -20,6 +20,6 @@ typedef struct Rand {
 } Rand;
 
 /** The next 64 random bits. */
-[[nodiscard]] uint64_t rand_next(Rand *r);
+MULE_NODISCARD uint64_t rand_next(Rand *r);
 /** A uniform value in [0, @p n). @p n must not be 0. */
-[[nodiscard]] uint64_t rand_below(Rand *r, uint64_t n);
+MULE_NODISCARD uint64_t rand_below(Rand *r, uint64_t n);

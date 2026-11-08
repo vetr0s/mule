@@ -13,18 +13,18 @@ struct ArenaBlock {
 
 void *mem_realloc(const Allocator *a, void *old, size_t old_size,
                   size_t new_size) {
-    if (a != nullptr) return a->fn(a->ctx, old, old_size, new_size);
+    if (a != NULL) return a->fn(a->ctx, old, old_size, new_size);
     /* realloc(p, 0) is undefined in C23, so freeing is its own branch. */
     if (new_size == 0) {
         free(old);
-        return nullptr;
+        return NULL;
     }
 #ifdef __APPLE__
     /* macOS 26 keeps a large block grown by realloc dirty after free, so
      * growing leaked memory. A fresh block and a copy returns it. */
-    if (old != nullptr && new_size > old_size) {
+    if (old != NULL && new_size > old_size) {
         void *p = malloc(new_size);
-        if (p == nullptr) return nullptr;
+        if (p == NULL) return NULL;
         memcpy(p, old, old_size);
         free(old);
         return p;
@@ -40,23 +40,23 @@ static void *mem_bump_(ArenaBlock *b, size_t size, size_t align) {
     if (ckd_add(&start, b->used, pad) ||
         ckd_add(&end, start, size) ||
         end > b->cap)
-        return nullptr;
+        return NULL;
     b->used = end;
     return b->data + start;
 }
 
 void *arena_alloc(Arena *a, size_t size, size_t align) {
     assert(align != 0 && (align & (align - 1)) == 0);
-    void *p = a->head != nullptr ? mem_bump_(a->head, size, align) : nullptr;
-    if (p == nullptr) {
+    void *p = a->head != NULL ? mem_bump_(a->head, size, align) : NULL;
+    if (p == NULL) {
         /* Room for the worst-case padding too, so the bump cannot fail. */
         size_t cap, bytes;
-        if (ckd_add(&cap, size, align - 1)) return nullptr;
+        if (ckd_add(&cap, size, align - 1)) return NULL;
         if (cap < MEM_ARENA_BLOCK) cap = MEM_ARENA_BLOCK;
-        if (ckd_add(&bytes, cap, sizeof(ArenaBlock))) return nullptr;
+        if (ckd_add(&bytes, cap, sizeof(ArenaBlock))) return NULL;
 
         ArenaBlock *b = malloc(bytes);
-        if (b == nullptr) return nullptr;
+        if (b == NULL) return NULL;
         *b = (ArenaBlock){ .prev = a->head, .cap = cap };
         a->head = b;
         p = mem_bump_(b, size, align);
@@ -70,14 +70,14 @@ static void *mem_arena_fn_(void *ctx, void *old, size_t old_size,
     Arena *a = ctx;
 
     /* The newest allocation ends at head->used, so it can move that mark. */
-    if (old != nullptr && old == a->last) {
+    if (old != NULL && old == a->last) {
         ArenaBlock *b = a->head;
         size_t start = (size_t)((char *)old - b->data);
         size_t end;
         if (new_size == 0) {
             b->used = start;
-            a->last = nullptr;
-            return nullptr;
+            a->last = NULL;
+            return NULL;
         }
         if (!ckd_add(&end, start, new_size) && end <= b->cap) {
             b->used = end;
@@ -85,9 +85,9 @@ static void *mem_arena_fn_(void *ctx, void *old, size_t old_size,
         }
     }
 
-    if (new_size == 0) return nullptr; /* older allocations wait for reset */
+    if (new_size == 0) return NULL; /* older allocations wait for reset */
     void *p = arena_alloc(a, new_size, alignof(max_align_t));
-    if (p != nullptr && old != nullptr)
+    if (p != NULL && old != NULL)
         memcpy(p, old, old_size < new_size ? old_size : new_size);
     return p;
 }
@@ -98,19 +98,19 @@ const Allocator *arena_allocator(Arena *a) {
 }
 
 void arena_reset(Arena *a) {
-    if (a->head == nullptr) return;
-    for (ArenaBlock *b = a->head->prev; b != nullptr;) {
+    if (a->head == NULL) return;
+    for (ArenaBlock *b = a->head->prev; b != NULL;) {
         ArenaBlock *prev = b->prev;
         free(b);
         b = prev;
     }
-    a->head->prev = nullptr;
+    a->head->prev = NULL;
     a->head->used = 0;
-    a->last = nullptr;
+    a->last = NULL;
 }
 
 void arena_free(Arena *a) {
-    for (ArenaBlock *b = a->head; b != nullptr;) {
+    for (ArenaBlock *b = a->head; b != NULL;) {
         ArenaBlock *prev = b->prev;
         free(b);
         b = prev;

@@ -7,7 +7,7 @@
 #include <stdlib.h>
 
 int main(void) {
-    Str line = {};
+    Str line = { 0 };
     for (int part = 1; part <= 3; part++) {
         str_clear(&line);
         if (!str_appendf(&line, "PART %d", part)) {

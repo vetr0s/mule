@@ -26,19 +26,19 @@ static bool holds(const IntArr *a, const int *want, size_t n) {
 
 TEST(push_pop_and_free) {
     /* [arr] */
-    IntArr squares = {};
+    IntArr squares = { 0 };
     for (int i = 0; i < 100; i++) CHECK(arr_push(&squares, i * i));
     CHECK_EQ_INT(squares.len, 100);
     CHECK_EQ_INT(squares.data[99], 9801);
     CHECK_EQ_INT(arr_pop(&squares), 9801);
     arr_free(&squares);
     /* [arr] */
-    CHECK(squares.data == nullptr && squares.len == 0 && squares.capacity == 0);
+    CHECK(squares.data == NULL && squares.len == 0 && squares.capacity == 0);
     arr_free(&squares);
 }
 
 TEST(structs) {
-    PointArr pts = {};
+    PointArr pts = { 0 };
     CHECK(arr_push(&pts, ((Point){ 1, 2 })));
     CHECK(arr_push(&pts, ((Point){ 3, 4 })));
     Point last = arr_pop(&pts);
@@ -49,7 +49,7 @@ TEST(structs) {
 }
 
 TEST(push_reads_own_element_across_growth) {
-    IntArr a = {};
+    IntArr a = { 0 };
     REQUIRE(arr_push(&a, 7));
     while (a.len < a.capacity) REQUIRE(arr_push(&a, 0));
     int *before = a.data;
@@ -60,7 +60,7 @@ TEST(push_reads_own_element_across_growth) {
 }
 
 TEST(insert_and_remove) {
-    IntArr a = {};
+    IntArr a = { 0 };
     REQUIRE(arr_insert(&a, 0, 2)); /* into an empty array */
     REQUIRE(arr_insert(&a, 0, 1)); /* at the front */
     REQUIRE(arr_insert(&a, 2, 4)); /* at the end */
@@ -74,12 +74,12 @@ TEST(insert_and_remove) {
     arr_remove(&a, 1);
     CHECK(holds(&a, (int[]){ 2 }, 1));
     arr_remove(&a, 0);
-    CHECK(holds(&a, nullptr, 0));
+    CHECK(holds(&a, NULL, 0));
     arr_free(&a);
 }
 
 TEST(reserve_and_clear) {
-    IntArr a = {};
+    IntArr a = { 0 };
     REQUIRE(arr_reserve(&a, 1000));
     CHECK(a.capacity >= 1000);
     int *data = a.data;
@@ -93,7 +93,7 @@ TEST(reserve_and_clear) {
 }
 
 TEST(reserve_rejects_overflow) {
-    IntArr a = {};
+    IntArr a = { 0 };
     REQUIRE(arr_push(&a, 5));
     IntArr before = a;
     CHECK(!arr_reserve(&a, SIZE_MAX));     /* len + n overflows */
@@ -104,7 +104,7 @@ TEST(reserve_rejects_overflow) {
 }
 
 TEST(oom_leaves_array_unchanged) {
-    IntArr a = {};
+    IntArr a = { 0 };
     while (a.len < 8) REQUIRE(arr_push(&a, (int)a.len));
     REQUIRE(a.len == a.capacity); /* the next push must grow */
     IntArr before = a;
@@ -121,11 +121,11 @@ TEST(oom_leaves_array_unchanged) {
 }
 
 TEST(arena_backed) {
-    Arena arena = {};
+    Arena arena = { 0 };
     IntArr a = { .alloc = arena_allocator(&arena) };
     for (int i = 0; i < 10000; i++) REQUIRE(arr_push(&a, i));
     /* Every doubling extended the same allocation in place. */
-    CHECK(arena.head->prev == nullptr);
+    CHECK(arena.head->prev == NULL);
     CHECK_EQ_INT(arena.head->used, a.capacity * sizeof(int));
     CHECK_EQ_INT(a.data[9999], 9999);
 
@@ -189,11 +189,11 @@ static void check_against_model(const Allocator *alloc) {
 }
 
 TEST(matches_model_under_random_ops) {
-    check_against_model(nullptr);
+    check_against_model(NULL);
 }
 
 TEST(matches_model_in_arena) {
-    Arena arena = {};
+    Arena arena = { 0 };
     check_against_model(arena_allocator(&arena));
     arena_free(&arena);
 }
