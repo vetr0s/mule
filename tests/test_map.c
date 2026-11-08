@@ -224,8 +224,8 @@ TEST(oom_leaves_map_unchanged) {
     }
 }
 
-/* Random puts, finds and clears over a small key pool, checked against a
- * plain array of the keys in the order they were added. */
+/* Random puts, finds, removes and clears over a small key pool, checked against
+ * a plain array of the keys in the order they were added. */
 static void check_against_model(const Allocator *alloc) {
     enum { POOL = 300 };
     size_t order[POOL], counts[POOL] = { 0 };
@@ -256,6 +256,12 @@ static void check_against_model(const Allocator *alloc) {
                 m.data[i].count++;
                 counts[k]++;
             }
+        } else if (r % 4 == 1) {
+            ok = map_remove(&m, many_key(k)) == (at != SIZE_MAX);
+            if (ok && at != SIZE_MAX) {
+                order[at] = order[--n];
+                counts[k] = 0;
+            }
         } else {
             bool found = map_find(&m, many_key(k), &i);
             ok = found == (at != SIZE_MAX) && (!found || i == at);
@@ -281,6 +287,117 @@ TEST(matches_model_in_arena) {
     arena_free(&arena);
 }
 
+static WordMap filled(const Allocator *alloc, size_t n) {
+    WordMap m = { .alloc = alloc };
+    for (size_t k = 0; k < n; k++) {
+        size_t i;
+        bool ok = map_put(&m, many_key(k), &i);
+        CHECK(ok);
+        if (ok) m.data[i].count = k + 100;
+    }
+    return m;
+}
+
+static bool finds_with_value(WordMap *m, size_t k) {
+    size_t i;
+    return map_find(m, many_key(k), &i) && m->data[i].count == k + 100;
+}
+
+TEST(remove_deletes_key) {
+    WordMap m = filled(NULL, 5);
+    size_t i;
+    CHECK(map_remove(&m, many_key(2)));
+    CHECK(!map_find(&m, many_key(2), &i));
+    CHECK_EQ_INT(m.len, 4);
+    CHECK(finds_with_value(&m, 0) &&
+          finds_with_value(&m, 1) &&
+          finds_with_value(&m, 3) &&
+          finds_with_value(&m, 4));
+    map_free(&m);
+}
+
+TEST(remove_missing_key) {
+    WordMap m = filled(NULL, 5);
+    WordMap before = m;
+    WordCount data[5];
+    uint64_t slots[128];
+    REQUIRE(m.slot_count <= 128);
+    memcpy(data, m.data, sizeof data);
+    memcpy(slots, m.slots, m.slot_count * sizeof *m.slots);
+    CHECK(!map_remove(&m, many_key(50)));
+    CHECK(m.len == 5 &&
+          m.data == before.data &&
+          m.slots == before.slots &&
+          m.slot_count == before.slot_count);
+    CHECK(memcmp(data, m.data, sizeof data) == 0);
+    CHECK(memcmp(slots, m.slots, m.slot_count * sizeof *m.slots) == 0);
+    map_free(&m);
+
+    WordMap z = { 0 };
+    CHECK(!map_remove(&z, many_key(1)));
+    CHECK(z.len == 0 && z.data == NULL && z.slots == NULL);
+}
+
+TEST(remove_swaps_last_into_hole) {
+    WordMap m = filled(NULL, 3);
+    CHECK(map_remove(&m, many_key(0)));
+    CHECK_EQ_INT(m.len, 2);
+    CHECK(str_eq(m.data[0].key, many_key(2)) && m.data[0].count == 102);
+    CHECK(str_eq(m.data[1].key, many_key(1)) && m.data[1].count == 101);
+    size_t i;
+    CHECK(map_find(&m, many_key(2), &i) && i == 0);
+
+    CHECK(map_remove(&m, many_key(1))); /* the last entry */
+    CHECK_EQ_INT(m.len, 1);
+    CHECK(str_eq(m.data[0].key, many_key(2)) && m.data[0].count == 102);
+    map_free(&m);
+}
+
+TEST(remove_with_colliding_keys) {
+    enum { N = 5000 };
+    WordMap m = filled(NULL, N);
+    bool removed_all = true;
+    for (size_t k = 100; k < 4000; k += 3)
+        removed_all &= map_remove(&m, many_key(k));
+    CHECK(removed_all);
+    bool ok = true;
+    size_t kept = 0;
+    for (size_t k = 0; k < N; k++) {
+        bool removed = k >= 100 && k < 4000 && (k - 100) % 3 == 0;
+        size_t i;
+        if (removed)
+            ok &= !map_find(&m, many_key(k), &i);
+        else
+            ok &= finds_with_value(&m, k), kept++;
+    }
+    CHECK(ok);
+    CHECK_EQ_INT(m.len, kept);
+    map_free(&m);
+}
+
+TEST(remove_does_not_allocate) {
+    WordMap m = filled(NULL, 50);
+    test_fail_alloc_after(0);
+    bool ok = map_remove(&m, many_key(7));
+    test_fail_alloc_after(-1);
+    CHECK(ok);
+    map_free(&m);
+}
+
+TEST(remove_in_arena) {
+    Arena arena = { 0 };
+    WordMap m = filled(arena_allocator(&arena), 200);
+    bool ok = true;
+    for (size_t k = 0; k < 200; k += 2) ok &= map_remove(&m, many_key(k));
+    CHECK(ok);
+    CHECK_EQ_INT(m.len, 100);
+    for (size_t k = 0; k < 200; k++) {
+        size_t i;
+        CHECK(map_find(&m, many_key(k), &i) == (k % 2 == 1));
+    }
+    arena_free(&arena);
+}
+
 int main(int argc, char **argv) {
     test_init(argc, argv);
     for (size_t k = 0; k < MANY; k++)
@@ -294,6 +411,12 @@ int main(int argc, char **argv) {
     RUN(reserve_then_put_does_not_allocate);
     RUN(reserve_rejects_overflow);
     RUN(oom_leaves_map_unchanged);
+    RUN(remove_deletes_key);
+    RUN(remove_missing_key);
+    RUN(remove_swaps_last_into_hole);
+    RUN(remove_with_colliding_keys);
+    RUN(remove_does_not_allocate);
+    RUN(remove_in_arena);
     RUN(matches_model_under_random_ops);
     RUN(matches_model_in_arena);
     return TEST_REPORT();

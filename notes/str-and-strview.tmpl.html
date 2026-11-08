@@ -273,7 +273,7 @@ freed by thread T0 here:
     #1 in str_free str.c:49
     #2 in main 11_double_free.c:10</code></pre>
 
-<p>To duplicate a string, make a real copy with <code>str_from(&amp;b, str_view(&amp;a))</code>. To hand ownership over, copy the struct and then reset the source with <code>a = (Str){ 0 };</code> so only one owner remains. Pass a <code>Str</code> to functions as <code>Str *</code> so this never happens by accident.</p>
+<p>To duplicate a string, make a real copy with <code>str_from(&amp;b, str_view(&amp;a))</code>. To hand ownership over, write <code>Str b = str_take(&amp;a);</code>. It moves the buffer to <code>b</code> and leaves <code>a</code> empty, so only one owner remains. Pass a <code>Str</code> to functions as <code>Str *</code> so this never happens by accident.</p>
 
 <h3>Smaller traps</h3>
 

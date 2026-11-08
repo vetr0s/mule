@@ -279,6 +279,40 @@ TEST(str_free_keeps_allocator) {
     arena_free(&a);
 }
 
+TEST(take_moves_ownership) {
+    /* [take] */
+    Str a = { 0 };
+    REQUIRE(str_from_cstr(&a, "handed over"));
+    char *old = a.data;
+    Str b = str_take(&a); /* b owns the bytes, a is empty */
+    CHECK(b.data == old);
+    CHECK_EQ_STR(str_cstr(&b), "handed over");
+    CHECK(a.data == NULL && a.len == 0 && a.capacity == 0);
+    str_free(&b);
+    /* [take] */
+}
+
+TEST(take_zero_str) {
+    Str a = { 0 };
+    Str b = str_take(&a);
+    CHECK(b.data == NULL && b.len == 0 && b.capacity == 0 && b.alloc == NULL);
+    CHECK(a.data == NULL && a.len == 0 && a.capacity == 0 && a.alloc == NULL);
+}
+
+TEST(take_keeps_allocator) {
+    Arena arena = { 0 };
+    const Allocator *al = arena_allocator(&arena);
+    Str a = { .alloc = al };
+    REQUIRE(str_from_cstr(&a, "in the arena"));
+    size_t len = a.len, cap = a.capacity;
+    test_fail_alloc_after(0);
+    Str b = str_take(&a);
+    test_fail_alloc_after(-1);
+    CHECK(b.alloc == al && a.alloc == al);
+    CHECK(b.len == len && b.capacity == cap && a.data == NULL);
+    arena_free(&arena);
+}
+
 TEST(arena_str_append_file) {
     FILE *f = pattern_file(10000);
     REQUIRE(f != NULL);
@@ -896,6 +930,9 @@ int main(int argc, char **argv) {
     RUN(arena_str);
     RUN(arena_str_grows_in_place);
     RUN(str_free_keeps_allocator);
+    RUN(take_moves_ownership);
+    RUN(take_zero_str);
+    RUN(take_keeps_allocator);
     RUN(arena_str_append_file);
     RUN(equality);
     RUN(fmt_prints_exact_bytes);

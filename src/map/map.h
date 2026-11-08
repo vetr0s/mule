@@ -5,7 +5,8 @@
  *
  * Map(E) is an Arr(E) with a hash index beside it. The entries sit in
  * `data` in the order they were added, so a plain loop visits them, and the
- * index finds one by its key in constant time.
+ * index finds one by its key in constant time. map_remove() breaks that
+ * order, because it moves the last entry into the hole.
  *
  * @snippet{trimleft} test_map.c map_type
  * @snippet{trimleft} test_map.c map
@@ -20,6 +21,7 @@
  *     live, and null means the libc heap.
  *   - map_put() and map_find() give the index of an entry in `data`. An
  *     index stays valid as the map grows. A pointer into `data` does not.
+ *     map_remove() gives the last entry the removed one's index.
  *   - Change any field of an entry except `key`. Changing a key or
  *     reordering `data`, as qsort does, breaks every later lookup, so sort
  *     only after the last one.
@@ -93,6 +95,22 @@
 
 /** @} */
 
+/** @name Remove
+ *  Delete an entry by its key.
+ *  @{ */
+
+/** Remove @p key. The last entry moves into its place in `data`, so
+ *  `data` stays dense. It never allocates.
+ *  @return False when @p key is not in the map. The map is then unchanged.
+ *  @warning The last entry changes index. `data` does not move, but a
+ *  pointer at the removed index now points at the old last entry, and a
+ *  pointer at the old last entry points past `len`. */
+#define map_remove(m, key)                                                     \
+    map_remove_((m)->data, &(m)->len, (m)->slots, (m)->slot_count,             \
+                sizeof *(m)->data, (key))
+
+/** @} */
+
 /** @name Capacity
  *  Make room ahead of time, empty the map, and free it.
  *  @{ */
@@ -130,6 +148,8 @@ MULE_NODISCARD bool map_reserve_(void *data_field, size_t *capacity, size_t len,
                                  size_t add, size_t elem,
                                  const Allocator *alloc, uint64_t **slots,
                                  size_t *slot_count);
+MULE_NODISCARD bool map_remove_(void *data, size_t *len, uint64_t *slots,
+                                size_t slot_count, size_t elem, StrView key);
 void map_clear_(uint64_t *slots, size_t slot_count);
 void map_free_(uint64_t **slots, size_t *slot_count, const Allocator *alloc);
 /** @endcond */

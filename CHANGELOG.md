@@ -10,8 +10,12 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Before
 ### Added
 
 - `map`: `Map(E)`, a hash map from `StrView` keys to entries of any struct
-  type. Entries stay in insertion order in an array, and the map borrows
-  its keys rather than copying them.
+  type. Entries stay in insertion order in an array until a remove, which
+  moves the last entry into the hole. The map borrows its keys rather than
+  copying them.
+- `map_remove`: removes a key by moving the last entry into its place. It
+  never allocates.
+- `str_take`: moves the buffer out of a `Str` and leaves the source empty.
 
 ## [0.0.1] - 2026-11-07
 

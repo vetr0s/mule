@@ -249,7 +249,8 @@ void arena_free(Arena *a);
  *     it before the first allocation and leave it alone after. str_free()
  *     keeps it.
  *   - Pass a Str to functions as `Str *`. `Str b = a;` copies the pointer,
- *     not the bytes, and freeing both is a double free.
+ *     not the bytes, and freeing both is a double free. Move the bytes with
+ *     `Str b = str_take(&a);`, which leaves `a` empty.
  *
  * @snippet{trimleft} test_str.c arena_str
  *
@@ -332,6 +333,11 @@ MULE_NODISCARD bool str_from_cstr(Str *s, const char *cstr);
  *  @par Example
  *  @snippet{trimleft} test_str.c free */
 void str_free(Str *s);
+/** Move the buffer out of @p s. The result owns the bytes, and @p s is left
+ *  empty with no memory. It keeps `alloc` in both, and never allocates.
+ *  @par Example
+ *  @snippet{trimleft} test_str.c take */
+MULE_NODISCARD Str str_take(Str *s);
 
 /** @} */
 
@@ -638,7 +644,8 @@ void arr_free_(void *data_field, size_t bytes, const Allocator *alloc);
  *
  * Map(E) is an Arr(E) with a hash index beside it. The entries sit in
  * `data` in the order they were added, so a plain loop visits them, and the
- * index finds one by its key in constant time.
+ * index finds one by its key in constant time. map_remove() breaks that
+ * order, because it moves the last entry into the hole.
  *
  * @snippet{trimleft} test_map.c map_type
  * @snippet{trimleft} test_map.c map
@@ -653,6 +660,7 @@ void arr_free_(void *data_field, size_t bytes, const Allocator *alloc);
  *     live, and null means the libc heap.
  *   - map_put() and map_find() give the index of an entry in `data`. An
  *     index stays valid as the map grows. A pointer into `data` does not.
+ *     map_remove() gives the last entry the removed one's index.
  *   - Change any field of an entry except `key`. Changing a key or
  *     reordering `data`, as qsort does, breaks every later lookup, so sort
  *     only after the last one.
@@ -722,6 +730,22 @@ void arr_free_(void *data_field, size_t bytes, const Allocator *alloc);
 
 /** @} */
 
+/** @name Remove
+ *  Delete an entry by its key.
+ *  @{ */
+
+/** Remove @p key. The last entry moves into its place in `data`, so
+ *  `data` stays dense. It never allocates.
+ *  @return False when @p key is not in the map. The map is then unchanged.
+ *  @warning The last entry changes index. `data` does not move, but a
+ *  pointer at the removed index now points at the old last entry, and a
+ *  pointer at the old last entry points past `len`. */
+#define map_remove(m, key)                                                     \
+    map_remove_((m)->data, &(m)->len, (m)->slots, (m)->slot_count,             \
+                sizeof *(m)->data, (key))
+
+/** @} */
+
 /** @name Capacity
  *  Make room ahead of time, empty the map, and free it.
  *  @{ */
@@ -759,6 +783,8 @@ MULE_NODISCARD bool map_reserve_(void *data_field, size_t *capacity, size_t len,
                                  size_t add, size_t elem,
                                  const Allocator *alloc, uint64_t **slots,
                                  size_t *slot_count);
+MULE_NODISCARD bool map_remove_(void *data, size_t *len, uint64_t *slots,
+                                size_t slot_count, size_t elem, StrView key);
 void map_clear_(uint64_t *slots, size_t slot_count);
 void map_free_(uint64_t **slots, size_t *slot_count, const Allocator *alloc);
 /** @endcond */
@@ -1441,6 +1467,12 @@ void str_free(Str *s) {
     *s = (Str){ .alloc = s->alloc };
 }
 
+Str str_take(Str *s) {
+    Str taken = *s;
+    *s = (Str){ .alloc = s->alloc };
+    return taken;
+}
+
 bool str_reserve(Str *s, size_t additional) {
     size_t needed;
     if (ckd_add(&needed, s->len, additional)) return false;
@@ -1795,7 +1827,9 @@ void arr_free_(void *data_field, size_t bytes, const Allocator *alloc) {
  * table of uint64_t slots. A slot holds the top 32 bits of its key's hash
  * above the entry's index plus one, so 0 marks an empty slot. A probe
  * compares the stored hash before touching the entry, and growth moves
- * slots without hashing a key again. */
+ * slots without hashing a key again. Removal fills the hole in `data` with
+ * the last entry, and backward-shift deletion closes the gap in the index
+ * without tombstones. */
 
 #include <string.h>
 
@@ -1928,6 +1962,41 @@ void map_free_(uint64_t **slots, size_t *slot_count, const Allocator *alloc) {
     if (*slots != NULL)
         *slots = mem_realloc(alloc, *slots, *slot_count * sizeof **slots, 0);
     *slot_count = 0;
+}
+
+bool map_remove_(void *data, size_t *len, uint64_t *slots, size_t slot_count,
+                 size_t elem, StrView key) {
+    char *d = data;
+    size_t hole;
+    if (slot_count == 0 ||
+        !map_probe_(d, elem, slots, slot_count, key, map_hash_(key), &hole))
+        return false;
+
+    /* Repoint the last entry's slot before its bytes move, so the probe
+     * cannot stop at the hole's slot. */
+    size_t at = (uint32_t)slots[hole] - 1, last = *len - 1;
+    if (at != last) {
+        StrView k;
+        size_t p;
+        memcpy(&k, d + last * elem, sizeof k);
+        (void)map_probe_(d, elem, slots, slot_count, k, map_hash_(k), &p);
+        slots[p] = (slots[p] & ~(uint64_t)UINT32_MAX) | (uint64_t)(at + 1);
+        memcpy(d + at * elem, d + last * elem, elem);
+    }
+
+    /* Pull back each later slot in the run whose home is at or before the
+     * hole, so no probe chain crosses an empty slot. */
+    size_t mask = slot_count - 1;
+    for (size_t j = (hole + 1) & mask; slots[j] != 0; j = (j + 1) & mask) {
+        size_t home = (uint32_t)(slots[j] >> 32) & mask;
+        if (((j - home) & mask) >= ((j - hole) & mask)) {
+            slots[hole] = slots[j];
+            hole = j;
+        }
+    }
+    slots[hole] = 0;
+    *len = last;
+    return true;
 }
 
 /* --- src/rand/rand.c --- */

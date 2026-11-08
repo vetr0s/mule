@@ -26,7 +26,8 @@
  *     it before the first allocation and leave it alone after. str_free()
  *     keeps it.
  *   - Pass a Str to functions as `Str *`. `Str b = a;` copies the pointer,
- *     not the bytes, and freeing both is a double free.
+ *     not the bytes, and freeing both is a double free. Move the bytes with
+ *     `Str b = str_take(&a);`, which leaves `a` empty.
  *
  * @snippet{trimleft} test_str.c arena_str
  *
@@ -111,6 +112,11 @@ MULE_NODISCARD bool str_from_cstr(Str *s, const char *cstr);
  *  @par Example
  *  @snippet{trimleft} test_str.c free */
 void str_free(Str *s);
+/** Move the buffer out of @p s. The result owns the bytes, and @p s is left
+ *  empty with no memory. It keeps `alloc` in both, and never allocates.
+ *  @par Example
+ *  @snippet{trimleft} test_str.c take */
+MULE_NODISCARD Str str_take(Str *s);
 
 /** @} */
 

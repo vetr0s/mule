@@ -2,7 +2,9 @@
  * table of uint64_t slots. A slot holds the top 32 bits of its key's hash
  * above the entry's index plus one, so 0 marks an empty slot. A probe
  * compares the stored hash before touching the entry, and growth moves
- * slots without hashing a key again. */
+ * slots without hashing a key again. Removal fills the hole in `data` with
+ * the last entry, and backward-shift deletion closes the gap in the index
+ * without tombstones. */
 #include "map/map.h"
 
 #include <string.h>
@@ -136,4 +138,39 @@ void map_free_(uint64_t **slots, size_t *slot_count, const Allocator *alloc) {
     if (*slots != NULL)
         *slots = mem_realloc(alloc, *slots, *slot_count * sizeof **slots, 0);
     *slot_count = 0;
+}
+
+bool map_remove_(void *data, size_t *len, uint64_t *slots, size_t slot_count,
+                 size_t elem, StrView key) {
+    char *d = data;
+    size_t hole;
+    if (slot_count == 0 ||
+        !map_probe_(d, elem, slots, slot_count, key, map_hash_(key), &hole))
+        return false;
+
+    /* Repoint the last entry's slot before its bytes move, so the probe
+     * cannot stop at the hole's slot. */
+    size_t at = (uint32_t)slots[hole] - 1, last = *len - 1;
+    if (at != last) {
+        StrView k;
+        size_t p;
+        memcpy(&k, d + last * elem, sizeof k);
+        (void)map_probe_(d, elem, slots, slot_count, k, map_hash_(k), &p);
+        slots[p] = (slots[p] & ~(uint64_t)UINT32_MAX) | (uint64_t)(at + 1);
+        memcpy(d + at * elem, d + last * elem, elem);
+    }
+
+    /* Pull back each later slot in the run whose home is at or before the
+     * hole, so no probe chain crosses an empty slot. */
+    size_t mask = slot_count - 1;
+    for (size_t j = (hole + 1) & mask; slots[j] != 0; j = (j + 1) & mask) {
+        size_t home = (uint32_t)(slots[j] >> 32) & mask;
+        if (((j - home) & mask) >= ((j - hole) & mask)) {
+            slots[hole] = slots[j];
+            hole = j;
+        }
+    }
+    slots[hole] = 0;
+    *len = last;
+    return true;
 }

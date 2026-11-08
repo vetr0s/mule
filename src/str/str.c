@@ -53,6 +53,12 @@ void str_free(Str *s) {
     *s = (Str){ .alloc = s->alloc };
 }
 
+Str str_take(Str *s) {
+    Str taken = *s;
+    *s = (Str){ .alloc = s->alloc };
+    return taken;
+}
+
 bool str_reserve(Str *s, size_t additional) {
     size_t needed;
     if (ckd_add(&needed, s->len, additional)) return false;

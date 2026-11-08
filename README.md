@@ -11,7 +11,7 @@ It is early. Nine modules exist, and `TODO.md` holds the roadmap.
 | `base` | The header every module includes first: feature macros and checked arithmetic. |
 | `mem` | An allocator interface and an arena that frees everything in one call. |
 | `arr` | `Arr(T)`, a growable array of any element type, with the same layout and rules as `Str`. |
-| `map` | `Map(E)`, a hash map from `StrView` keys to entries of any struct type, kept in insertion order. |
+| `map` | `Map(E)`, a hash map from `StrView` keys to entries of any struct type. Entries stay in insertion order until a remove, which moves the last entry into the hole. |
 | `rand` | A seeded splitmix64 generator that gives the same sequence on every platform, with an unbiased `rand_below`. |
 | `str` | `Str`, an owned growable byte string, and `StrView`, a borrowed slice with search, split and trim. |
 | `time` | A monotonic nanosecond clock for timing code. |

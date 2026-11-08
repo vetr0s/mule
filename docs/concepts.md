@@ -107,8 +107,7 @@ that holds owning fields gets its own `_free` function that frees each one.
 
 Never copy an owning struct by assignment. `Str b = a;` copies the pointer,
 not the bytes, and freeing both is a double free. Copy the contents with
-str_from(), or move them by copying the struct and resetting the source to
-`{ 0 }`.
+str_from(), or move a Str with str_take(), which leaves the source empty.
 
 ### How long a pointer lives
 
@@ -118,7 +117,8 @@ Anything that points into a buffer dies when the buffer moves:
   - A pointer into an Arr's `data` dies at the next arr_push(), arr_insert() or
     arr_reserve().
   - A pointer into a Map's `data` dies at the next map_put() that adds a key,
-    or map_reserve(). An index from map_put() lives until map_clear().
+    or map_reserve(). An index from map_put() lives until map_clear(), or
+    until map_remove() moves the last entry into another index.
   - A Map's keys borrow their bytes, so each key's owner must outlive the map.
   - Memory from an arena dies at arena_reset() or arena_free().
   - An Arena must not move once arena_allocator() has been called on it.
