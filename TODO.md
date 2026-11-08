@@ -113,9 +113,8 @@ modules still need.
       them to `dist/mule.h`, which is how readers will use the library.
 - [x] Publish `dist/mule.h` as a release asset. The Release workflow does it
       for every version tag.
-- [x] `main.c` is a word counter built on every module, and `bench-scale`
-      times it.
-- [ ] Turn `main.c` into a word-frequency counter once the hash map exists.
+- [x] `main.c` is a word-frequency counter on `str`, `map`, `mem` and
+      `log`, and `bench-scale` times it.
 - [x] Run `make test` on Linux with gcc and sanitizers in CI.
 - [ ] Fuzz the splitters and parsers with libFuzzer. Apple clang does not ship
       libFuzzer, so this runs on Linux.

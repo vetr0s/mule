@@ -1,18 +1,57 @@
-/* A small word counter that shows MULE in use.
+/* A word-frequency counter that shows MULE in use.
  *
  *   build/debug/main [file]      reads stdin when no file is given
  *
- * The file is read into a Str that lives in an arena. Lines and words are
- * StrViews into that one buffer, so counting allocates nothing more, and one
- * arena_free releases it all.
+ * The file is read into a Str that lives in an arena and is folded to lower
+ * case in place, with UTF-8 quotes and dashes blanked. Words are StrViews into
+ * that one buffer, so the map that counts them borrows its keys and copies no
+ * text. The map's entries and index live in the same arena, and one arena_free
+ * releases it all.
  *
  * It uses the single-header distribution, dist/mule.h, the way any project
  * would. */
 #define MULE_IMPLEMENTATION
 #include "mule.h"
 
+#include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
+
+enum { TOP = 10 };
+
+typedef struct WordCount {
+    StrView key;
+    size_t count;
+} WordCount;
+typedef Map(WordCount) WordMap;
+
+/* Most frequent first, and ties in byte order, so the output is stable. */
+static int by_count(const void *a, const void *b) {
+    const WordCount *x = a, *y = b;
+    if (x->count != y->count) return x->count < y->count ? 1 : -1;
+    return sv_cmp(x->key, y->key);
+}
+
+/* Fold ASCII to lower case, and blank the UTF-8 dashes, quotes and ellipsis,
+ * E2 80 90 to E2 80 A6. ’ stays, because it is the apostrophe in "don’t". */
+static void fold(Str *text) {
+    unsigned char *p = (unsigned char *)text->data;
+    size_t n = text->len;
+    for (size_t i = 0; i < n; i++) {
+        if (p[i] == 0xE2 &&
+            i + 2 < n &&
+            p[i + 1] == 0x80 &&
+            p[i + 2] >= 0x90 &&
+            p[i + 2] <= 0xA6 &&
+            p[i + 2] != 0x99) {
+            memset(p + i, ' ', 3);
+            i += 2;
+        } else {
+            p[i] = (unsigned char)tolower(p[i]);
+        }
+    }
+}
 
 static void print_count(bool color, const char *label, size_t n) {
     if (color)
@@ -44,22 +83,31 @@ int main(int argc, char **argv) {
         arena_free(&arena);
         return EXIT_FAILURE;
     }
+    fold(&text);
 
-    size_t lines = 0, words = 0, longest = 0;
-    StrView rest = str_view(&text), line, word;
-    while (sv_split_next(&rest, SV("\n"), &line)) {
-        lines++;
-        if (sv_ends_with(line, SV("\r")))
-            line = sv_slice(line, 0, line.len - 1);
-        if (line.len > longest) longest = line.len;
-        while (sv_token_next(&line, SV(" \t\v\f\r"), &word)) words++;
+    WordMap counts = { .alloc = arena_allocator(&arena) };
+    size_t words = 0;
+    StrView rest = str_view(&text), word;
+    while (sv_token_next(&rest, SV(" \t\n\v\f\r.,;:!?\"()[]{}<>*_-"), &word)) {
+        size_t i;
+        if (!map_put(&counts, word, &i)) {
+            fprintf(stderr, "%s: out of memory\n", name);
+            arena_free(&arena);
+            return EXIT_FAILURE;
+        }
+        counts.data[i].count++;
+        words++;
     }
+    /* Sorting reorders the entries, so the map takes no lookups after it. */
+    if (counts.len > 0)
+        qsort(counts.data, counts.len, sizeof *counts.data, by_count);
 
     bool color = log_color_enabled(stdout);
-    print_count(color, "lines", lines);
     print_count(color, "words", words);
-    print_count(color, "bytes", text.len);
-    print_count(color, "longest", longest);
+    print_count(color, "unique", counts.len);
+    for (size_t i = 0; i < counts.len && i < TOP; i++)
+        printf("%8zu %.*s\n", counts.data[i].count,
+               STR_FMT(counts.data[i].key));
 
     arena_free(&arena);
     return EXIT_SUCCESS;
