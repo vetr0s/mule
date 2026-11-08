@@ -4,12 +4,32 @@
 PROJECT_NAME           = MULE
 PROJECT_BRIEF          = "Multi-Use Library Essentials"
 OUTPUT_DIRECTORY       = build/docs
-INPUT                  = src
+
+# make docs passes the module folders in dependency order, which is also the
+# order the topics appear in and a sensible order to learn them.
+INPUT                  = README.md docs $(MULE_DOC_MODULES)
+USE_MDFILE_AS_MAINPAGE = README.md
+FILE_PATTERNS          = *.h *.c *.md *.dox
 RECURSIVE              = YES
-FILE_PATTERNS          = *.h
-EXAMPLE_PATH           = tests
+EXAMPLE_PATH           = tests notes/str-examples main.c
+LAYOUT_FILE            = docs/DoxygenLayout.xml
+HTML_EXTRA_FILES       = notes/str-and-strview.html
+
 OPTIMIZE_OUTPUT_FOR_C  = YES
 JAVADOC_AUTOBRIEF      = YES
+TYPEDEF_HIDES_STRUCT   = YES
+INLINE_SIMPLE_STRUCTS  = YES
+SORT_MEMBER_DOCS       = NO
+
+# Link every declaration to its definition, comments included.
+SOURCE_BROWSER         = YES
+STRIP_CODE_COMMENTS    = NO
+
+# Internal names end in an underscore and stay out of the reference.
+EXCLUDE_SYMBOLS        = *_
+
+GENERATE_TREEVIEW      = YES
+HTML_COLORSTYLE        = TOGGLE
 GENERATE_LATEX         = NO
 QUIET                  = YES
 

@@ -1,7 +1,7 @@
 #pragma once
 /**
- * @file
- * @brief Log: levelled messages for people reading a terminal or a log file.
+ * @defgroup mod_log Log
+ * @brief Levelled messages for people reading a terminal or a log file.
  *
  *   - Each call writes one line, `LEVEL file:line: message`, with the level
  *     coloured when the output supports it.
@@ -14,6 +14,8 @@
  *
  * @snippet{trimleft} test_log.c log
  *
+ * ## Colour
+ *
  * log_color_enabled() follows the conventions other command-line tools use:
  *   - `NO_COLOR` set to anything non-empty turns colour off. It wins over
  *     everything else (https://no-color.org).
@@ -23,18 +25,16 @@
  *     and is not `dumb`.
  *
  * @snippet{trimleft} test_log.c color
+ * @{
  */
 
 #include "base/base.h"
 
 #include <stdio.h>
 
-/* ANSI escape sequences. Macros, so they join string literals:
- * `LOG_GREEN "ok" LOG_RESET`. Print them only when log_color_enabled(). */
-#define LOG_RED "\x1b[31m"    /**< Red text. */
-#define LOG_GREEN "\x1b[32m"  /**< Green text. */
-#define LOG_YELLOW "\x1b[33m" /**< Yellow text. */
-#define LOG_RESET "\x1b[0m"   /**< Back to the terminal's default style. */
+/** @name Levels and output
+ *  What gets written, and where.
+ *  @{ */
 
 /** How much a message matters, from chattiest to most severe. */
 typedef enum LogLevel {
@@ -56,9 +56,13 @@ typedef enum LogLevel {
 void log_set_level(LogLevel level);
 /** Write messages to @p f from now on. Null means stderr, the default. */
 void log_set_output(FILE *f);
-/** True when colour escapes written to @p f will render as colour. Reads the
- *  environment on every call, so call it once and keep the answer. */
-MULE_NODISCARD bool log_color_enabled(FILE *f);
+
+/** @} */
+
+/** @name Logging
+ *  Each macro takes a printf format and its arguments, which the compiler
+ *  checks.
+ *  @{ */
 
 /** Log a printf-style message at LOG_TRACE. */
 #define log_trace(...) LOG_AT_(LOG_TRACE, __VA_ARGS__)
@@ -78,6 +82,25 @@ MULE_NODISCARD bool log_color_enabled(FILE *f);
     ((cond) ? (void)0                                                          \
             : log_fatal_(__FILE__, __LINE__, "assertion failed: %s", #cond))
 
+/** @} */
+
+/** @name Colour
+ *  Decide whether to colour output, and the escapes to do it with.
+ *  @{ */
+
+/** True when colour escapes written to @p f will render as colour. Reads the
+ *  environment on every call, so call it once and keep the answer. */
+MULE_NODISCARD bool log_color_enabled(FILE *f);
+
+/* ANSI escape sequences. Macros, so they join string literals:
+ * `LOG_GREEN "ok" LOG_RESET`. Print them only when log_color_enabled(). */
+#define LOG_RED "\x1b[31m"    /**< Red text. */
+#define LOG_GREEN "\x1b[32m"  /**< Green text. */
+#define LOG_YELLOW "\x1b[33m" /**< Yellow text. */
+#define LOG_RESET "\x1b[0m"   /**< Back to the terminal's default style. */
+
+/** @} */
+
 /** @cond */
 extern LogLevel log_level_;
 
@@ -91,3 +114,5 @@ void log_write_(LogLevel level, const char *file, int line, const char *fmt,
 MULE_NORETURN void log_fatal_(const char *file, int line, const char *fmt, ...)
     MULE_PRINTF(3, 4);
 /** @endcond */
+
+/** @} */

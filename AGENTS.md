@@ -47,6 +47,17 @@ The folder, include and naming rules live in the file comment of
 - Every public declaration has a doc comment. Examples are regions of the
   test files pulled in with `@snippet`, so every documented example compiles
   and runs.
+- Each module header is a Doxygen topic. A `@defgroup mod_<name>` comment at
+  the top holds the module's design and rules, `@name` sections group its
+  members, and `@}` closes it at the end. `MODULES` in the Makefile sets the
+  order of the topics.
+- A function that can fail says what false means under `@return`. Asserts
+  go under `@pre`, and pointers it invalidates under `@warning`. Document
+  all of a function's parameters or none, because `make docs` fails on a
+  partial set.
+- `docs/concepts.md` holds the rules that span modules. A program in
+  `notes/str-examples/` joins `docs/examples.dox`, so its calls link to the
+  reference.
 - Watch a new test fail once against a broken implementation before you
   trust it.
 
@@ -73,6 +84,14 @@ The folder, include and naming rules live in the file comment of
   allocator's context points at it.
 - Doxygen reads both branches of an `#if`. Wrap internal macros in
   `/** @cond */` and `/** @endcond */`.
+- Doxygen links a code span that matches a topic id, and shows the title
+  instead. Topic ids carry `mod_` so that `make test` stays as written.
+- Doxygen links a macro only when it is written with `()`, as `arr_push()`.
+- `docs/DoxygenLayout.xml` is a whole `doxygen -l` file from 1.18 with one
+  change. A partial layout file drops the main page and the navigation, and
+  another doxygen version rejects or warns about this one. After upgrading
+  doxygen, regenerate it with `doxygen -l` and move the `<group>` overview
+  above `<memberdecl>` again.
 - Doxygen wants a comment on each member. A `@name` group comment does not
   count, so give each macro a trailing `/**< ... */`.
 - In the Makefile, a `:=` variable that calls a function must come after the

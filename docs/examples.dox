@@ -1,0 +1,48 @@
+/**
+@example main.c
+@details A word counter built on the single header, dist/mule.h. The file
+lives in a Str inside an Arena, and every line and word is a StrView into it.
+
+@example 01_build.c
+@details Build a Str with appends that chain with `&&`, print it two ways,
+free it.
+
+@example 02_reuse.c
+@details Clear and refill one Str in a loop, so one allocation serves every
+pass.
+
+@example 03_file.c
+@details Read a whole file into a Str, and tell a read error from out of
+memory.
+
+@example 04_views.c
+@details Trim, find and slice a StrView without allocating, and see why `%s`
+is the wrong way to print one.
+
+@example 05_split.c
+@details Split fields with sv_split_next() and words with sv_token_next(),
+and see how they treat empty pieces.
+
+@example 06_sort.c
+@details Sort an array of StrViews with qsort and sv_cmp().
+
+@example 07_lines.c
+@details One Str owns a whole novel, and views walk its 22,750 lines without
+a single further allocation.
+
+@example 08_keep.c
+@details Copy a view into a Str of its own when the text must outlive the
+buffer it came from.
+
+@example 09_replace.c
+@details Write your own function in the library's shape: StrViews in, a Str
+to append to, a `bool` out.
+
+@example 10_dangling.c
+@details A bug on purpose. A view kept across an append that moves the
+buffer reads freed memory.
+
+@example 11_double_free.c
+@details A bug on purpose. Copying a Str struct makes two owners of one
+buffer.
+*/

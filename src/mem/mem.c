@@ -5,10 +5,10 @@
 #include <string.h>
 
 struct ArenaBlock {
-    ArenaBlock *prev;
-    size_t used;
-    size_t cap;
-    alignas(max_align_t) char data[];
+    ArenaBlock *prev;                 /**< Older block, or null. */
+    size_t used;                      /**< Bytes of `data` handed out. */
+    size_t cap;                       /**< Bytes in `data`. */
+    alignas(max_align_t) char data[]; /**< The memory itself. */
 };
 
 void *mem_realloc(const Allocator *a, void *old, size_t old_size,

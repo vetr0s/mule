@@ -211,10 +211,11 @@ compile_commands.json: Makefile $(TEST_SRCS) $(BENCH_SRCS)
 	    sep=,; \
 	done; printf '\n]\n' >> $@
 
-# HTML API reference from the doc comments in src/*/*.h (needs doxygen).
+# HTML reference from README.md, docs/ and the doc comments in src/ (needs
+# doxygen). The test harness is not in MODULES, so it is added last.
 docs:
 	@mkdir -p $(BUILD)/docs # doxygen before 1.10 does not create parents
-	doxygen Doxyfile
+	MULE_DOC_MODULES="$(MODULES:%=src/%) src/test" doxygen Doxyfile
 	@echo "open $(BUILD)/docs/html/index.html"
 
 format:

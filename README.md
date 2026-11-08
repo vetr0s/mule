@@ -65,9 +65,10 @@ It prints `[mule]`, `[c99]` and `[4]`, each on its own line.
 - A Unix-like system. macOS and Linux are tested.
 - clang 17+ or gcc 13+.
 - `make`.
-- Optional: `doxygen` for `make docs`, `hyperfine` for `make bench-scale`,
-  and `clang-format` for `make format`. `make bench-corpus` downloads about
-  1.6 GB with `curl`, `gunzip` and `unzip`, and needs about 4 GB of RAM.
+- Optional: `doxygen` 1.18 for `make docs`, `hyperfine` for
+  `make bench-scale`, and `clang-format` for `make format`.
+  `make bench-corpus` downloads about 1.6 GB with `curl`, `gunzip` and
+  `unzip`, and needs about 4 GB of RAM.
 
 ## Using it in a project
 
@@ -110,8 +111,10 @@ main.c          a word counter that uses dist/mule.h
 
 ## Documentation
 
-- `make docs` builds the API reference from the doc comments in `src/`.
-  Every example in it is a region of a test file, so the examples compile.
+- `make docs` builds the reference in `build/docs/html/`. It has a topic
+  per module, a page on the rules every module shares (`docs/concepts.md`),
+  and the example programs with every library call linked. Every snippet in
+  it is a region of a test file, so the examples compile.
 - `notes/str-and-strview.html` teaches `Str` and `StrView` with programs
   you can run.
 - `notes/modern-c-guide.html` explains C23 features and idioms. It predates

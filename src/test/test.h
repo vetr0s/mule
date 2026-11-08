@@ -1,7 +1,7 @@
 #pragma once
 /**
- * @file
- * @brief Test: a small unit-test harness that catches leaks, hangs and
+ * @defgroup mod_test Test
+ * @brief A small unit-test harness that catches leaks, hangs and
  * out-of-memory bugs.
  *
  * A test file is a program. Include this header first, then the `.c` files
@@ -40,6 +40,10 @@
  *   - Pass test names as arguments to run only those tests.
  *   - Results are coloured when stdout supports it, as log_color_enabled()
  *     decides. The harness needs the log module, and log needs mem and str.
+ *
+ * Every test in tests/ is written this way, so they are the best place to
+ * see the harness and the library in use.
+ * @{
  */
 #include "base/base.h" /* first: it sets the POSIX feature macros */
 #include "log/log.h"
@@ -303,3 +307,5 @@ static bool test_selected_(const char *name) {
 
 /** Print the totals. Return it from main: it is nonzero when a test failed. */
 #define TEST_REPORT() test_report_(__FILE__)
+
+/** @} */

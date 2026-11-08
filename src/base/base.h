@@ -1,9 +1,24 @@
 #pragma once
 /**
- * @file
- * @brief Base: what every MULE module needs, included before anything else.
+ * @defgroup mod_base Base
+ * @brief What every module needs, included before anything else.
  *
- * Layout rules for the library:
+ * Every header includes base.h first, so a program that includes any
+ * module gets all of this:
+ *   - `_POSIX_C_SOURCE` set to 200809L, unless the program set it first.
+ *     It only takes effect before the first system header, so include MULE
+ *     before any of them.
+ *   - `<stdbool.h>`, `<stddef.h>` and `<stdint.h>`.
+ *   - `ckd_add`, `ckd_sub` and `ckd_mul` for overflow-checked arithmetic.
+ *     They come from C23's `<stdckdint.h>` when the compiler has it, and
+ *     from the gcc and clang builtins otherwise.
+ *   - The `MULE_NODISCARD`, `MULE_UNUSED`, `MULE_NORETURN` and
+ *     `MULE_PRINTF` attribute macros. They are left out of the signatures
+ *     in this reference.
+ *
+ * ## Layout rules
+ *
+ * These are for changing the library, not using it.
  *   - One folder per module under src/, holding `name.h` and `name.c`. A
  *     module of only macros and static functions is `name.h` alone.
  *   - Every header includes `base/base.h` first, and include paths are
@@ -18,6 +33,7 @@
  * Targets are Unix with clang 17+ or gcc 13+. The floor is C11, written as
  * C99. Attributes go through the MULE_ macros below, so a compiler without
  * GNU attributes still builds the library.
+ * @{
  */
 
 /** @cond */
@@ -52,3 +68,5 @@
 #define ckd_mul(r, a, b) __builtin_mul_overflow((a), (b), (r))
 #endif
 /** @endcond */
+
+/** @} */
