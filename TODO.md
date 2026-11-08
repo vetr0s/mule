@@ -21,7 +21,8 @@ modules still need.
 - [x] The reference is published to https://mule.vetr0s.dev by CI.
 - [ ] MSVC: a `ckd_*` fallback without the gcc builtins, and Windows
       versions of the POSIX calls in `log`, `rand` and `time`.
-- [ ] Rewrite `notes/modern-c-guide.html` for C99 style, or retire it.
+- [x] Retire `notes/modern-c-guide.html`, which taught the C23 spellings the
+      code dropped. Git history keeps it.
 
 ## Modules, in build order
 
@@ -111,8 +112,6 @@ modules still need.
 - [x] `main.c` is a word counter built on every module, and `bench-scale`
       times it.
 - [ ] Turn `main.c` into a word-frequency counter once the hash map exists.
-- [ ] `notes/modern-c-guide.html` exercises 2 and 3 ask for `sv_find` and
-      `sv_trim`, which already exist. Rewrite or drop them.
 - [x] Run `make test` on Linux with gcc and sanitizers in CI.
 - [ ] Fuzz the splitters and parsers with libFuzzer. Apple clang does not ship
       libFuzzer, so this runs on Linux.

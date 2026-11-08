@@ -124,7 +124,5 @@ main.c          a word counter that uses dist/mule.h
   it is a region of a test file, so the examples compile.
 - `notes/str-and-strview.html` teaches `Str` and `StrView` with programs
   you can run.
-- `notes/modern-c-guide.html` explains C23 features and idioms. It predates
-  the C11 floor, so its examples use spellings the code has dropped.
 - `AGENTS.md` holds the conventions for anyone changing the code, people
   included.
