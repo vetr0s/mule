@@ -33,7 +33,7 @@ typedef struct WordCount {
 } WordCount;
 typedef Map(WordCount) WordMap;
 
-static const StrView delims = SV(" \t\n\v\f\r.,;:!?\"()[]{}<>*_-");
+#define DELIMS " \t\n\v\f\r.,;:!?\"()[]{}<>*_-"
 
 static int by_count(const void *a, const void *b) {
     const WordCount *x = a, *y = b;
@@ -44,7 +44,7 @@ static int by_count(const void *a, const void *b) {
 static size_t count_words(StrView text, WordMap *m) {
     size_t words = 0;
     StrView rest = text, word;
-    while (sv_token_next(&rest, delims, &word)) {
+    while (sv_token_next(&rest, SV(DELIMS), &word)) {
         size_t i;
         must(map_put(m, word, &i));
         m->data[i].count++;
@@ -91,7 +91,7 @@ static void bench_file(const char *path) {
     TIME(ns, {
         StrView rest = all, word;
         words = 0;
-        while (sv_token_next(&rest, delims, &word)) words++;
+        while (sv_token_next(&rest, SV(DELIMS), &word)) words++;
         sink += words;
     });
     double tokens_ns = ns;
@@ -99,7 +99,7 @@ static void bench_file(const char *path) {
     TIME(ns, {
         StrView rest = all, word;
         uint32_t h = 0;
-        while (sv_token_next(&rest, delims, &word)) h ^= map_hash_(word);
+        while (sv_token_next(&rest, SV(DELIMS), &word)) h ^= map_hash_(word);
         sink += h;
     });
     double hash_ns = ns;
@@ -124,7 +124,7 @@ static void bench_file(const char *path) {
     TIME(ns, {
         StrView rest = all, word;
         size_t i, hits = 0;
-        while (sv_token_next(&rest, delims, &word))
+        while (sv_token_next(&rest, SV(DELIMS), &word))
             hits += map_find(&m, word, &i);
         sink += hits;
     });
