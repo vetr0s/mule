@@ -25,7 +25,7 @@ static char chunk1k[1024];
 /* --- Cases --------------------------------------------------------------- */
 
 static size_t finish(Str *s) {
-    size_t r = s->len + (unsigned char)s->data[s->len / 2];
+    size_t r = s->len + (unsigned char)str_cstr(s)[s->len / 2];
     str_free(s);
     return r;
 }
