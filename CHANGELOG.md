@@ -7,6 +7,13 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Before
 
 ## [Unreleased]
 
+### Added
+
+- `err`: `Err`, which says why a call that can fail more than one way
+  failed. It holds a portable `ErrKind`, the raw code and a message, and
+  needs no allocation. `err_set` fills one, and `err_os` fills one from an
+  `errno` value.
+
 ## [0.2.0] - 2026-11-08
 
 ### Added

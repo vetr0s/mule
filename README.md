@@ -4,12 +4,13 @@ Multi-Use Library Essentials. A small standard library for C11, written in
 the style of C99 and the spirit of stb. It is written to be read as well as
 used.
 
-It is early. Nine modules exist, and `TODO.md` holds the roadmap.
+It is early. Ten modules exist, and `TODO.md` holds the roadmap.
 
 | Module | What it gives you |
 | --- | --- |
 | `base` | The header every module includes first: feature macros and checked arithmetic. |
 | `mem` | An allocator interface and an arena that frees everything in one call. |
+| `err` | `Err`, which says why a call failed: a kind to branch on, the OS code and a message. |
 | `arr` | `Arr(T)`, a growable array of any element type, with the same layout and rules as `Str`. |
 | `map` | `Map(E)`, a hash map from `StrView` keys to entries of any struct type. Entries stay in insertion order until a remove, which moves the last entry into the hole. |
 | `rand` | A seeded splitmix64 generator that gives the same sequence on every platform, with an unbiased `rand_below`. |

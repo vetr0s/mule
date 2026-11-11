@@ -27,6 +27,10 @@ TEST(every_module_works) {
     CHECK_EQ_INT(arr_pop(&xs), 7);
     arr_free(&xs);
 
+    Err e = { 0 };
+    err_set(&e, ERR_INVALID, 2, "bad %s", "flag");
+    CHECK(e.kind == ERR_INVALID && strcmp(e.msg, "bad flag") == 0);
+
     Rand r = { 1 };
     CHECK(rand_below(&r, 6) < 6);
     CHECK(time_now_ns() > 0);

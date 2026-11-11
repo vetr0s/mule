@@ -44,10 +44,10 @@ way and the Makefile is gone.
 
 ### `err`: why a call failed
 
-- [ ] Implement `err_set` and `err_os` against the sketch in
+- [x] Implement `err_set` and `err_os` against the sketch in
       `src/err/err.h`. `err_os` maps `errno` to an `ErrKind`, and its reason
       comes from the XSI `strerror_r`, because `strerror` is not thread safe.
-- [ ] Add `err` to `MODULES` after `str`, with `tests/test_err.c`. Turn the
+- [x] Add `err` to `MODULES` after `str`, with `tests/test_err.c`. Turn the
       header's example into a `@snippet`, and add `err` to the module table
       in `docs/concepts.md`.
 

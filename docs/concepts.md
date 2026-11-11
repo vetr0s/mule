@@ -39,6 +39,7 @@ other in this order, so a module only uses the ones above it.
 | @ref mod_base | Feature macros, `bool`, checked arithmetic | |
 | @ref mod_mem | Allocator, Arena | base |
 | @ref mod_str | Str, StrView | mem |
+| @ref mod_err | Err, why a call failed | str |
 | @ref mod_arr | Arr(T) | mem |
 | @ref mod_map | Map(E), keyed by StrView | str, arr |
 | @ref mod_rand | Rand | base |

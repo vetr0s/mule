@@ -24,28 +24,11 @@
  *
  * A caller's own function can report in the same style:
  *
- * @code
- * static bool load_config(Str *out, const char *path, Err *err) {
- *     FILE *f = fopen(path, "rb");
- *     if (f == NULL) {
- *         err_os(err, errno, "open", sv_from_cstr(path));
- *         return false;
- *     }
- *     bool ok = str_append_file(out, f);
- *     if (!ok && ferror(f))
- *         err_os(err, errno, "read", sv_from_cstr(path));
- *     else if (!ok)
- *         err_set(err, ERR_NO_MEMORY, 0, "read %s: out of memory", path);
- *     fclose(f);
- *     return ok;
- * }
+ * @snippet{trimleft} test_err.c load_config
  *
- * Err err = { 0 };
- * if (!load_config(&cfg, "mule.ini", &err) && err.kind != ERR_NOT_FOUND) {
- *     log_error("%s", err.msg); // "open mule.ini: Permission denied"
- *     return 1;
- * }
- * @endcode
+ * The caller branches on the kind and prints the message:
+ *
+ * @snippet{trimleft} test_err.c report
  *
  * Read `errno` straight after the call that set it, and pass it in. A later
  * call such as `fclose` may overwrite it.
