@@ -34,6 +34,11 @@ TEST(every_module_works) {
     CHECK(fs_exists("tests/test_dist.c"));
     CHECK(str_eq(fs_extension(SV("a/b.c")), SV(".c")));
 
+    Args args = { 0 };
+    char *argv[] = { NULL, NULL };
+    CHECK(args_parse(&args, 1, argv, NULL) && args.rest.len == 0);
+    args_free(&args);
+
     Rand r = { 1 };
     CHECK(rand_below(&r, 6) < 6);
     CHECK(time_now_ns() > 0);

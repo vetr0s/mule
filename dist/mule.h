@@ -1293,6 +1293,99 @@ MULE_NODISCARD bool fs_join(Str *path, StrView part);
 
 /** @} */
 
+/* --- src/args/args.h --- */
+
+/**
+ * @defgroup mod_args Args
+ * @brief Command-line options, positional arguments and subcommands.
+ *
+ * Describe the options in a table of ArgOpt, each pointing at the variable
+ * it sets, and pass the table to args_parse() in an Args. The same table
+ * writes the `--help` text with args_help().
+ *
+ * @snippet{trimleft} test_args.c args
+ *
+ * args_parse() understands:
+ *   - `--name=value` and `--name value`, `-n value` and `-nvalue`.
+ *   - `--flag` and `-f`, and flags grouped as `-vq`.
+ *   - `--`, after which every argument is positional.
+ *   - `-h` and `--help`, which set `help` unless an option claims them.
+ *   - With subcommands in `cmds`, the first positional must name one, and
+ *     lands in `cmd`. The other positionals land in `rest`.
+ *
+ * It checks every argument before setting anything, so a failed parse
+ * leaves every variable as it was. String values point into `argv`, so
+ * they live as long as `argv` does.
+ * @{
+ */
+
+
+/** @name Describing a command line
+ *  The tables args_parse() reads.
+ *  @{ */
+
+/** What an option's `out` points at. */
+typedef enum ArgKind {
+    ARG_FLAG, /**< A `bool`, set to true when the option appears. */
+    ARG_STR,  /**< A `const char *`, set to the value. */
+    ARG_U64,  /**< A `uint64_t`, set to the value read in base 10. */
+} ArgKind;
+
+/** One option. */
+typedef struct ArgOpt {
+    const char *name;       /**< The long name without `--`, or null. */
+    char short_name;        /**< The letter after `-`, or 0 for none. */
+    ArgKind kind;           /**< What `out` points at. */
+    void *out;              /**< The variable the option sets. */
+    const char *value_name; /**< Shown in the help, such as "N". */
+    const char *help;       /**< One line for the help. */
+} ArgOpt;
+
+/** One subcommand. */
+typedef struct ArgCmd {
+    const char *name; /**< What the user types. */
+    const char *help; /**< One line for the help. */
+} ArgCmd;
+
+/** Positional arguments, borrowed from `argv`. */
+typedef Arr(const char *) ArgList;
+
+/** A command line's description, and what parsing it found. A zeroed Args
+ *  takes no options, and every argument is positional. */
+typedef struct Args {
+    const char *usage;  /**< The usage line for the help, after "usage: ". */
+    const ArgOpt *opts; /**< The options. */
+    size_t opt_count;   /**< Entries in `opts`. */
+    const ArgCmd *cmds; /**< The subcommands, or null for none. */
+    size_t cmd_count;   /**< Entries in `cmds`. */
+    const char *cmd;    /**< Set to the subcommand given, or left null. */
+    bool help;          /**< Set when `-h` or `--help` appears. */
+    ArgList rest;       /**< Positional arguments are appended here. */
+} Args;
+
+/** @} */
+
+/** @name Parsing
+ *  Read a command line, and describe it.
+ *  @{ */
+
+/** Parse `argv[1]` to `argv[argc - 1]` against @p a.
+ *  @return False with #ERR_INVALID for an unknown option or subcommand, a
+ *  missing value, a value given to a flag, or a number that does not
+ *  parse, and with #ERR_NO_MEMORY when `rest` cannot grow. The message
+ *  names the argument. Every variable and @p a are then unchanged. */
+MULE_NODISCARD bool args_parse(Args *a, int argc, char **argv, Err *err);
+/** Append the help text for @p a to @p out: the usage line, the
+ *  subcommands and the options, each with its help line.
+ *  @return False when memory runs out. @p out is then unchanged. */
+MULE_NODISCARD bool args_help(Str *out, const Args *a);
+/** Free `rest`. Safe to call twice. */
+void args_free(Args *a);
+
+/** @} */
+
+/** @} */
+
 #endif /* MULE_H */
 
 #if defined(MULE_TEST) && !defined(MULE_TEST_DONE)
@@ -3080,6 +3173,199 @@ bool fs_join(Str *path, StrView part) {
     bool slash = path->len > 0 && path->data[path->len - 1] != '/';
     if (!str_reserve(path, part.len + slash)) return false;
     return (!slash || str_push(path, '/')) && str_append(path, part);
+}
+
+/* --- src/args/args.c --- */
+
+
+#include <string.h>
+
+static const ArgOpt *args_find_long_(const Args *a, StrView name) {
+    for (size_t i = 0; i < a->opt_count; i++) {
+        const char *n = a->opts[i].name;
+        if (n != NULL && str_eq(sv_from_cstr(n), name)) return &a->opts[i];
+    }
+    return NULL;
+}
+
+static const ArgOpt *args_find_short_(const Args *a, char c) {
+    for (size_t i = 0; i < a->opt_count; i++) {
+        if (a->opts[i].short_name == c) return &a->opts[i];
+    }
+    return NULL;
+}
+
+/* Check `value` for `o`, and store it when `apply` is set. */
+static bool args_set_(const ArgOpt *o, const char *value, bool apply,
+                      Err *err) {
+    uint64_t n = 0;
+    if (o->kind == ARG_U64 && !sv_parse_u64(sv_from_cstr(value), 10, &n)) {
+        err_set(err, ERR_INVALID, 0, "%s%s: expected a number, got '%s'",
+                o->name != NULL ? "--" : "-",
+                o->name != NULL ? o->name : (char[]){ o->short_name, '\0' },
+                value);
+        return false;
+    }
+    if (!apply) return true;
+    switch (o->kind) {
+    case ARG_FLAG:
+        *(bool *)o->out = true;
+        break;
+    case ARG_STR:
+        *(const char **)o->out = value;
+        break;
+    case ARG_U64:
+        *(uint64_t *)o->out = n;
+        break;
+    }
+    return true;
+}
+
+/* One pass over argv. The first only checks and counts positionals, the
+ * second stores, so a failed parse changes nothing. */
+static bool args_pass_(Args *a, int argc, char **argv, bool apply,
+                       size_t *positionals, Err *err) {
+    bool options = true, have_cmd = a->cmd != NULL;
+    for (int i = 1; i < argc; i++) {
+        const char *arg = argv[i];
+        if (options && strcmp(arg, "--") == 0) {
+            options = false;
+        } else if (options && arg[0] == '-' && arg[1] == '-') {
+            StrView name = sv_from_cstr(arg + 2);
+            size_t eq = sv_find_byte(name, '=');
+            if (eq != SV_NPOS) name = sv_slice(name, 0, eq);
+            const ArgOpt *o = args_find_long_(a, name);
+            if (o == NULL && str_eq(name, SV("help")) && eq == SV_NPOS) {
+                if (apply) a->help = true;
+                continue;
+            }
+            if (o == NULL) {
+                err_set(err, ERR_INVALID, 0, "unknown option '%s'", arg);
+                return false;
+            }
+            const char *value = eq != SV_NPOS ? arg + 2 + eq + 1 : NULL;
+            if (o->kind == ARG_FLAG && value != NULL) {
+                err_set(err, ERR_INVALID, 0, "--%s takes no value", o->name);
+                return false;
+            }
+            if (o->kind != ARG_FLAG && value == NULL) {
+                if (i + 1 == argc) {
+                    err_set(err, ERR_INVALID, 0, "--%s needs a value", o->name);
+                    return false;
+                }
+                value = argv[++i];
+            }
+            if (!args_set_(o, value, apply, err)) return false;
+        } else if (options && arg[0] == '-' && arg[1] != '\0') {
+            /* A group of short options, the last of which may take a value. */
+            for (const char *c = arg + 1; *c != '\0'; c++) {
+                const ArgOpt *o = args_find_short_(a, *c);
+                if (o == NULL && *c == 'h') {
+                    if (apply) a->help = true;
+                    continue;
+                }
+                if (o == NULL) {
+                    err_set(err, ERR_INVALID, 0, "unknown option '-%c' in '%s'",
+                            *c, arg);
+                    return false;
+                }
+                if (o->kind == ARG_FLAG) {
+                    if (!args_set_(o, NULL, apply, err)) return false;
+                    continue;
+                }
+                const char *value = c[1] != '\0' ? c + 1 : NULL;
+                if (value == NULL && i + 1 == argc) {
+                    err_set(err, ERR_INVALID, 0, "-%c needs a value", *c);
+                    return false;
+                }
+                if (value == NULL) value = argv[++i];
+                if (!args_set_(o, value, apply, err)) return false;
+                break;
+            }
+        } else if (a->cmd_count > 0 && !have_cmd) {
+            size_t k = 0;
+            while (k < a->cmd_count && strcmp(a->cmds[k].name, arg) != 0) k++;
+            if (k == a->cmd_count) {
+                err_set(err, ERR_INVALID, 0, "unknown command '%s'", arg);
+                return false;
+            }
+            have_cmd = true;
+            if (apply) a->cmd = a->cmds[k].name;
+        } else if (apply) {
+            a->rest.data[a->rest.len++] = arg;
+        } else {
+            (*positionals)++;
+        }
+    }
+    return true;
+}
+
+bool args_parse(Args *a, int argc, char **argv, Err *err) {
+    size_t positionals = 0;
+    if (!args_pass_(a, argc, argv, false, &positionals, err)) return false;
+    if (!arr_reserve(&a->rest, positionals)) {
+        err_set(err, ERR_NO_MEMORY, 0, "parse arguments: out of memory");
+        return false;
+    }
+    return args_pass_(a, argc, argv, true, NULL, err);
+}
+
+/* The left column of an option's help line, such as "-j, --jobs=N". */
+static bool args_opt_left_(Str *s, const ArgOpt *o) {
+    const char *value = o->value_name != NULL ? o->value_name : "VALUE";
+    bool ok = o->short_name != 0 ? str_appendf(s, "-%c", o->short_name)
+                                 : str_append_cstr(s, "  ");
+    if (ok && o->name != NULL)
+        ok = str_appendf(s, "%s--%s", o->short_name != 0 ? ", " : "  ",
+                         o->name);
+    if (ok && o->kind != ARG_FLAG)
+        ok = o->name != NULL ? str_appendf(s, "=%s", value)
+                             : str_appendf(s, " %s", value);
+    return ok;
+}
+
+bool args_help(Str *out, const Args *a) {
+    Str s = { .alloc = out->alloc }, left = { .alloc = out->alloc };
+    bool ok = str_appendf(&s, "usage: %s\n", a->usage != NULL ? a->usage : "");
+
+    /* One column width for commands and options alike. */
+    size_t width = sizeof "-h, --help" - 1;
+    for (size_t i = 0; ok && i < a->cmd_count; i++) {
+        size_t n = strlen(a->cmds[i].name);
+        if (n > width) width = n;
+    }
+    for (size_t i = 0; ok && i < a->opt_count; i++) {
+        str_clear(&left);
+        ok = args_opt_left_(&left, &a->opts[i]);
+        if (left.len > width) width = left.len;
+    }
+
+    if (ok && a->cmd_count > 0) ok = str_append_cstr(&s, "\ncommands:\n");
+    for (size_t i = 0; ok && i < a->cmd_count; i++) {
+        const ArgCmd *c = &a->cmds[i];
+        ok = str_appendf(&s, "  %-*s  %s\n", (int)width, c->name,
+                         c->help != NULL ? c->help : "");
+    }
+    if (ok) ok = str_append_cstr(&s, "\noptions:\n");
+    for (size_t i = 0; ok && i < a->opt_count; i++) {
+        str_clear(&left);
+        ok = args_opt_left_(&left, &a->opts[i]) &&
+             str_appendf(&s, "  %-*s  %s\n", (int)width, str_cstr(&left),
+                         a->opts[i].help != NULL ? a->opts[i].help : "");
+    }
+    bool builtin_help = args_find_long_(a, SV("help")) == NULL &&
+                        args_find_short_(a, 'h') == NULL;
+    if (ok && builtin_help)
+        ok = str_appendf(&s, "  %-*s  %s\n", (int)width, "-h, --help",
+                         "show this help");
+    ok = ok && str_append(out, str_view(&s));
+    str_free(&s);
+    str_free(&left);
+    return ok;
+}
+
+void args_free(Args *a) {
+    arr_free(&a->rest);
 }
 
 #endif /* MULE_IMPLEMENTATION */

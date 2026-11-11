@@ -18,6 +18,8 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Before
   atomic write, `fs_mkdir_p`, `fs_remove_all`, copying files and trees, a
   sorted `fs_walk`, `FsStat` with nanosecond modification times, the
   running program's path, and `StrView` path pieces.
+- `args`: command-line parsing from a table of options, with subcommands,
+  positionals and generated `--help`. A failed parse changes nothing.
 
 ## [0.2.0] - 2026-11-08
 

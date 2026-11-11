@@ -103,9 +103,9 @@ way and the Makefile is gone.
 
 ### `args`: command lines
 
-- [ ] `--name=value`, `--flag`, `-v`, positional arguments and
+- [x] `--name=value`, `--flag`, `-v`, positional arguments and
       subcommands. `./build test --sanitize=off` needs all of them.
-- [ ] Generated `--help` output.
+- [x] Generated `--help` output.
 
 ### `build`: the nob part
 
