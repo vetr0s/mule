@@ -36,7 +36,8 @@ follows that rule.
 ## 0.3.0: build in C
 
 A project's build is a C program. Bootstrapping it needs only a C compiler:
-`cc -o build build.c && ./build`. After that the binary rebuilds itself
+`cc build.c && ./a.out`, or `cc -o build build.c && ./build` to name it.
+After that the binary rebuilds itself
 whenever its source changes. nob.h does this. MULE goes further where nob
 cuts corners: sub-second mtimes, header tracking, `compile_commands.json`
 and exit codes that pass through. 0.3.0 ships when MULE builds itself this
@@ -51,14 +52,29 @@ way and the Makefile is gone.
       header's example into a `@snippet`, and add `err` to the module table
       in `docs/concepts.md`.
 
+### Decided for 0.3.0
+
+- [x] Paths and command arguments are `const char *`, because they go to the
+      operating system. Functions that only slice a path use `StrView`.
+- [x] Only an atomic write is all or nothing on disk. Other `fs` calls say
+      what a failure leaves behind.
+- [x] A `Cmd` borrows its arguments.
+- [x] Build output goes to `.build/`, as Jai does, so the build binary may
+      take any name, `a.out` by default.
+
+### `str`: what the path functions need
+
+- [ ] `sv_find_last`, `sv_trim_left` and `sv_trim_right`.
+
 ### `fs`: files and paths
 
 - [ ] Read a whole file from a path into a `Str`, on top of
       `str_append_file`.
 - [ ] Write a file, and write one atomically: write to a temporary file in
       the same directory, then `rename`.
-- [ ] `fs_mkdir_p`, `fs_exists`, `fs_remove`, `fs_rename`, and a file type
-      from `lstat`: regular, directory, symlink or other.
+- [ ] `fs_mkdir_p`, `fs_exists`, `fs_remove`, `fs_remove_all`,
+      `fs_rename`, and a file type from `lstat`: regular, directory,
+      symlink or other.
 - [ ] `fs_mtime_ns`: modification time in nanoseconds, from `st_mtim` on
       Linux and `st_mtimespec` on macOS. nob compares whole seconds, which
       misses an edit made in the same second as the build.
@@ -167,8 +183,7 @@ way and the Makefile is gone.
 
 ## When a caller needs it
 
-- [ ] `sv_find_last`, `sv_trim_left`, `sv_trim_right` and an ASCII
-      `sv_eq_ignore_case`.
+- [ ] An ASCII `sv_eq_ignore_case`.
 - [ ] Seed the map hash, if a map is ever keyed on untrusted input.
 - [ ] Reuse a per-thread log line buffer, if logging shows up in a profile.
 - [ ] Pipe one `Cmd` into another, as nob's chain API does.

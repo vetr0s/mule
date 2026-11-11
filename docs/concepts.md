@@ -87,6 +87,11 @@ Err, so nothing is allocated and nothing needs freeing.
 MULE never reports through `errno`. A function that takes an `Err *` reads
 `errno` itself, straight after the call that set it.
 
+A failed call that touches the disk may already have changed it. Only an
+atomic write is all or nothing. Every other such function says under
+*Returns* what a failure can leave behind, such as the directories a
+partial mkdir has made, and its message names the path where it stopped.
+
 Two other kinds of failure do not return `bool`:
   - **Programming errors** are caught by `assert`, such as slicing past the
     end of a view with sv_slice(). Each function lists them under
@@ -142,12 +147,29 @@ Anything that points into a buffer dies when the buffer moves:
     or map_reserve(). An index from map_put() lives until map_clear(), or
     until map_remove() moves the last entry into another index.
   - A Map's keys borrow their bytes, so each key's owner must outlive the map.
+  - A command's arguments are borrowed `const char *` strings, so each one
+    must outlive every run of the command.
   - Memory from an arena dies at arena_reset() or arena_free(), or at
     arena_restore() of a mark taken before it was allocated.
   - An Arena must not move once arena_allocator() has been called on it.
 
 Reserve the full size first with str_reserve() or arr_reserve(), and the
 appends that fit will not move the buffer.
+
+## Views or C strings {#cstrings}
+
+A StrView is the better tool for working on text, and a C string is often
+the simpler one for handing text to someone else. MULE uses each where it
+fits and forces neither:
+  - A function that searches, slices or splits takes and returns StrViews,
+    because a view cuts text without copying it.
+  - A function that passes text to the operating system, such as a path or
+    a program's arguments, takes `const char *`, because that is what the
+    system call needs.
+
+Move between them freely. sv_from_cstr() views a C string. str_cstr()
+gives the C string of a Str, and a view becomes one by copying it into a
+Str.
 
 ## Naming {#naming}
 
