@@ -381,6 +381,18 @@ TEST(find_edges) {
     CHECK(sv_find_byte((StrView){ 0 }, 'a') == SV_NPOS);
 }
 
+TEST(find_last) {
+    CHECK_EQ_INT(sv_find_last(SV("src/str/str.c"), SV("/")), 7);
+    CHECK_EQ_INT(sv_find_last(SV("aaaa"), SV("aa")), 2);
+    CHECK_EQ_INT(sv_find_last(SV("abc"), SV("abc")), 0);
+    CHECK_EQ_INT(sv_find_last(SV("abc"), SV("")), 3);
+    CHECK_EQ_INT(sv_find_last((StrView){ 0 }, SV("")), 0);
+    CHECK(sv_find_last(SV("abc"), SV("x")) == SV_NPOS);
+    CHECK(sv_find_last(SV("ab"), SV("abc")) == SV_NPOS);
+    CHECK(sv_find_last((StrView){ 0 }, SV("a")) == SV_NPOS);
+    CHECK_EQ_INT(sv_find_last(SV("a\0b\0b"), SV("\0b")), 3);
+}
+
 TEST(compare) {
     CHECK(sv_cmp(SV("abc"), SV("abd")) < 0);
     CHECK(sv_cmp(SV("abd"), SV("abc")) > 0);
@@ -409,6 +421,13 @@ TEST(slice_and_trim) {
     CHECK_SV(sv_trim(SV(" \n ")), "");
     CHECK_SV(sv_trim(SV("x")), "x");
     CHECK_SV(sv_trim((StrView){ 0 }), "");
+
+    CHECK_SV(sv_trim_left(SV(" \t a b \n")), "a b \n");
+    CHECK_SV(sv_trim_right(SV(" \t a b \n")), " \t a b");
+    CHECK_SV(sv_trim_left(SV("  ")), "");
+    CHECK_SV(sv_trim_right(SV("  ")), "");
+    CHECK_SV(sv_trim_left((StrView){ 0 }), "");
+    CHECK_SV(sv_trim_right((StrView){ 0 }), "");
 }
 
 TEST(split) {
@@ -1045,6 +1064,7 @@ int main(int argc, char **argv) {
     RUN(fmt_prints_exact_bytes);
     RUN(find);
     RUN(find_edges);
+    RUN(find_last);
     RUN(compare);
     RUN(slice_and_trim);
     RUN(split);

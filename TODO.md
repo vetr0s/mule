@@ -64,7 +64,7 @@ way and the Makefile is gone.
 
 ### `str`: what the path functions need
 
-- [ ] `sv_find_last`, `sv_trim_left` and `sv_trim_right`.
+- [x] `sv_find_last`, `sv_trim_left` and `sv_trim_right`.
 
 ### `fs`: files and paths
 

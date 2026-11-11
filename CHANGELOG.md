@@ -13,6 +13,7 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Before
   failed. It holds a portable `ErrKind`, the raw code and a message, and
   needs no allocation. `err_set` fills one, and `err_os` fills one from an
   `errno` value.
+- `sv_find_last`, `sv_trim_left` and `sv_trim_right`.
 
 ## [0.2.0] - 2026-11-08
 

@@ -230,6 +230,9 @@ MULE_NODISCARD size_t sv_find_byte(StrView v, char c);
  *  @par Example
  *  @snippet{trimleft} test_str.c find */
 MULE_NODISCARD size_t sv_find(StrView v, StrView needle);
+/** Index of the last @p needle in @p v. An empty needle is at `v.len`.
+ *  @return The index, or #SV_NPOS when @p needle does not occur. */
+MULE_NODISCARD size_t sv_find_last(StrView v, StrView needle);
 /** Byte order like memcmp. A prefix sorts before the longer string, so it
  *  works as a qsort comparison on views.
  *  @return Negative, zero or positive as @p a sorts before, with or after
@@ -245,6 +248,10 @@ MULE_NODISCARD StrView sv_slice(StrView v, size_t from, size_t to);
 /** @p v without leading and trailing ASCII whitespace: space, `\t`, `\n`,
  *  `\v`, `\f` and `\r`. */
 MULE_NODISCARD StrView sv_trim(StrView v);
+/** @p v without leading ASCII whitespace, as sv_trim() counts it. */
+MULE_NODISCARD StrView sv_trim_left(StrView v);
+/** @p v without trailing ASCII whitespace, as sv_trim() counts it. */
+MULE_NODISCARD StrView sv_trim_right(StrView v);
 
 /** @} */
 

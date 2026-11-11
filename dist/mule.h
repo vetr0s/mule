@@ -493,6 +493,9 @@ MULE_NODISCARD size_t sv_find_byte(StrView v, char c);
  *  @par Example
  *  @snippet{trimleft} test_str.c find */
 MULE_NODISCARD size_t sv_find(StrView v, StrView needle);
+/** Index of the last @p needle in @p v. An empty needle is at `v.len`.
+ *  @return The index, or #SV_NPOS when @p needle does not occur. */
+MULE_NODISCARD size_t sv_find_last(StrView v, StrView needle);
 /** Byte order like memcmp. A prefix sorts before the longer string, so it
  *  works as a qsort comparison on views.
  *  @return Negative, zero or positive as @p a sorts before, with or after
@@ -508,6 +511,10 @@ MULE_NODISCARD StrView sv_slice(StrView v, size_t from, size_t to);
 /** @p v without leading and trailing ASCII whitespace: space, `\t`, `\n`,
  *  `\v`, `\f` and `\r`. */
 MULE_NODISCARD StrView sv_trim(StrView v);
+/** @p v without leading ASCII whitespace, as sv_trim() counts it. */
+MULE_NODISCARD StrView sv_trim_left(StrView v);
+/** @p v without trailing ASCII whitespace, as sv_trim() counts it. */
+MULE_NODISCARD StrView sv_trim_right(StrView v);
 
 /** @} */
 
@@ -1820,6 +1827,15 @@ size_t sv_find(StrView v, StrView needle) {
     return SV_NPOS;
 }
 
+size_t sv_find_last(StrView v, StrView needle) {
+    if (needle.len > v.len) return SV_NPOS;
+    if (needle.len == 0) return v.len;
+    for (size_t i = v.len - needle.len + 1; i-- > 0;) {
+        if (memcmp(v.data + i, needle.data, needle.len) == 0) return i;
+    }
+    return SV_NPOS;
+}
+
 int sv_cmp(StrView a, StrView b) {
     size_t n = a.len < b.len ? a.len : b.len;
     int c = n != 0 ? memcmp(a.data, b.data, n) : 0;
@@ -1847,11 +1863,20 @@ static bool sv_space_(char c) {
     return c == ' ' || (c >= '\t' && c <= '\r');
 }
 
+StrView sv_trim_left(StrView v) {
+    size_t from = 0;
+    while (from < v.len && sv_space_(v.data[from])) from++;
+    return sv_slice(v, from, v.len);
+}
+
+StrView sv_trim_right(StrView v) {
+    size_t to = v.len;
+    while (to > 0 && sv_space_(v.data[to - 1])) to--;
+    return sv_slice(v, 0, to);
+}
+
 StrView sv_trim(StrView v) {
-    size_t from = 0, to = v.len;
-    while (from < to && sv_space_(v.data[from])) from++;
-    while (to > from && sv_space_(v.data[to - 1])) to--;
-    return sv_slice(v, from, to);
+    return sv_trim_right(sv_trim_left(v));
 }
 
 bool sv_split_next(StrView *rest, StrView sep, StrView *piece) {
