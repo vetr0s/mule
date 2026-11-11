@@ -99,7 +99,7 @@ $(BUILD)/tests/%: tests/%.c
 
 # The single-header distribution. It is committed, so regenerate it with every
 # change to src/. MODULES lists them in dependency order.
-MODULES := base mem str err arr map rand time log
+MODULES := base mem str err arr map rand time log fs
 DIST    := dist/mule.h
 
 dist: $(DIST)

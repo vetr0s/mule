@@ -68,22 +68,22 @@ way and the Makefile is gone.
 
 ### `fs`: files and paths
 
-- [ ] Read a whole file from a path into a `Str`, on top of
+- [x] Read a whole file from a path into a `Str`, on top of
       `str_append_file`.
-- [ ] Write a file, and write one atomically: write to a temporary file in
+- [x] Write a file, and write one atomically: write to a temporary file in
       the same directory, then `rename`.
-- [ ] `fs_mkdir_p`, `fs_exists`, `fs_remove`, `fs_remove_all`,
+- [x] `fs_mkdir_p`, `fs_exists`, `fs_remove`, `fs_remove_all`,
       `fs_rename`, and a file type from `lstat`: regular, directory,
       symlink or other.
-- [ ] `fs_mtime_ns`: modification time in nanoseconds, from `st_mtim` on
-      Linux and `st_mtimespec` on macOS. nob compares whole seconds, which
-      misses an edit made in the same second as the build.
-- [ ] Copy a file and keep its mode. Copy a directory tree.
-- [ ] Walk a directory tree, with a way to skip a subtree or stop.
-- [ ] The path of the running executable: `/proc/self/exe` on Linux and
+- [x] Modification time in nanoseconds, as `FsStat.mtime_ns`: `st_mtim`
+      on Linux and `st_mtimensec` on macOS. nob compares whole seconds,
+      which misses an edit made in the same second as the build.
+- [x] Copy a file and keep its mode. Copy a directory tree.
+- [x] Walk a directory tree, with a way to skip a subtree or stop.
+- [x] The path of the running executable: `/proc/self/exe` on Linux and
       `_NSGetExecutablePath` on macOS. `argv[0]` is wrong when the binary
       was found on `PATH`.
-- [ ] Path functions on `StrView`: basename, dirname, extension, and join
+- [x] Path functions on `StrView`: basename, dirname, extension, and join
       into a `Str`.
 
 ### `proc`: run programs

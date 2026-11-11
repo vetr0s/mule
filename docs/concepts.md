@@ -45,6 +45,7 @@ other in this order, so a module only uses the ones above it.
 | @ref mod_rand | Rand | base |
 | @ref mod_time | time_now_ns() | base |
 | @ref mod_log | log_info() and friends, log_assert() | str |
+| @ref mod_fs | Files, directories and paths | err, str, arr |
 | @ref mod_test | TEST, CHECK, RUN | log |
 
 ## Failure is a bool {#errors}

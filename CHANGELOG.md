@@ -14,6 +14,10 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Before
   needs no allocation. `err_set` fills one, and `err_os` fills one from an
   `errno` value.
 - `sv_find_last`, `sv_trim_left` and `sv_trim_right`.
+- `fs`: files, directories and paths. Whole-file reads and writes, an
+  atomic write, `fs_mkdir_p`, `fs_remove_all`, copying files and trees, a
+  sorted `fs_walk`, `FsStat` with nanosecond modification times, the
+  running program's path, and `StrView` path pieces.
 
 ## [0.2.0] - 2026-11-08
 

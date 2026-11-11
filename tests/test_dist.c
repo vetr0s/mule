@@ -31,6 +31,9 @@ TEST(every_module_works) {
     err_set(&e, ERR_INVALID, 2, "bad %s", "flag");
     CHECK(e.kind == ERR_INVALID && strcmp(e.msg, "bad flag") == 0);
 
+    CHECK(fs_exists("tests/test_dist.c"));
+    CHECK(str_eq(fs_extension(SV("a/b.c")), SV(".c")));
+
     Rand r = { 1 };
     CHECK(rand_below(&r, 6) < 6);
     CHECK(time_now_ns() > 0);
