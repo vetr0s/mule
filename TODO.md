@@ -18,6 +18,9 @@ follows that rule.
       the libc heap.
 - [x] Errors: functions return `bool`, and a failed call leaves its argument
       unchanged. Macros only where a function cannot do the job.
+- [x] Error reasons: a call that can fail more than one way also takes an
+      optional `Err *` last, filled on false. Never `errno`.
+      `docs/concepts.md` has the rule.
 - [x] Naming: one prefix per module. Never name anything plain `log`.
 - [x] Platforms: Unix with clang 17+ or gcc 13+. Windows comes in 0.6.0, so
       new platform code keeps its POSIX calls behind one function per call
@@ -38,6 +41,15 @@ whenever its source changes. nob.h does this. MULE goes further where nob
 cuts corners: sub-second mtimes, header tracking, `compile_commands.json`
 and exit codes that pass through. 0.3.0 ships when MULE builds itself this
 way and the Makefile is gone.
+
+### `err`: why a call failed
+
+- [ ] Implement `err_set` and `err_os` against the sketch in
+      `src/err/err.h`. `err_os` maps `errno` to an `ErrKind`, and its reason
+      comes from the XSI `strerror_r`, because `strerror` is not thread safe.
+- [ ] Add `err` to `MODULES` after `str`, with `tests/test_err.c`. Turn the
+      header's example into a `@snippet`, and add `err` to the module table
+      in `docs/concepts.md`.
 
 ### `fs`: files and paths
 

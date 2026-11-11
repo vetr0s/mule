@@ -49,7 +49,8 @@ other in this order, so a module only uses the ones above it.
 ## Failure is a bool {#errors}
 
 A function that can fail returns `bool`. False means it did nothing: a
-failed call leaves every argument byte for byte as it was. The tests prove
+failed call leaves every argument byte for byte as it was. The one
+exception is an `Err`, which a failed call fills in. The tests prove
 this by making each allocation fail in turn and comparing the arguments
 afterwards.
 
@@ -64,6 +65,26 @@ bool ok = str_append_cstr(&s, "Rodion") &&
 
 The compiler warns when a result that must be checked is ignored. gcc warns
 even through a `(void)` cast.
+
+### Why a call failed {#why}
+
+Out of memory is the only way most functions fail, so the `bool` says
+everything. A function that can fail in more than one way, such as one that
+opens a file or runs a program, also takes an `Err *` as its last argument:
+
+  - On false it fills the Err. The Err is the one argument a failed call
+    changes.
+  - On true it leaves the Err alone, so a chain of calls keeps its first
+    failure.
+  - Null means the caller wants only the `bool`.
+
+An Err holds a `kind` to branch on, such as `ERR_NOT_FOUND`, the raw `code`
+behind it, and a `msg` for a person, such as
+`open build/main.o: No such file or directory`. The message lives inside the
+Err, so nothing is allocated and nothing needs freeing.
+
+MULE never reports through `errno`. A function that takes an `Err *` reads
+`errno` itself, straight after the call that set it.
 
 Two other kinds of failure do not return `bool`:
   - **Programming errors** are caught by `assert`, such as slicing past the
