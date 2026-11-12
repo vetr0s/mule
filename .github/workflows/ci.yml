@@ -34,6 +34,17 @@ jobs:
       - run: cc -Isrc -o build build.c
       - run: ./build ci
 
+  # Each clang-format major version formats differently, so this pins the
+  # version AGENTS.md names for local use. Change both together.
+  format:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - run: pipx install clang-format==23.1.5
+      - run: clang-format --version
+      - run: cc -Isrc -o build build.c
+      - run: ./build format --check
+
   docs:
     runs-on: ubuntu-24.04
     steps:
@@ -57,7 +68,7 @@ jobs:
   # Publishes the reference to GitHub Pages once everything above passes.
   pages:
     if: github.event_name == 'push'
-    needs: [linux, macos, docs]
+    needs: [linux, macos, format, docs]
     runs-on: ubuntu-24.04
     permissions:
       pages: write

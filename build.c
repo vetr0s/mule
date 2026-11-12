@@ -98,6 +98,7 @@ static struct {
     const char *cc;
     const char *scale;
     const char *profile;
+    bool check;
     uint64_t jobs;
 } opt = { .out = ".build", .scale = "10,100,1000", .profile = "debug" };
 
@@ -510,9 +511,16 @@ static void cmd_examples(const Profile *p) {
     }
 }
 
+/* Format every source file in place, or with --check only report the ones
+ * that differ. */
 static void cmd_format(void) {
     Cmd c = cmd_new();
-    add(&c, "clang-format", "-i", "main.c", "build.c");
+    add(&c, "clang-format");
+    if (opt.check)
+        add(&c, "--dry-run", "--Werror");
+    else
+        add(&c, "-i");
+    add(&c, "main.c", "build.c");
     glob(&c, "src", 2, ".c");
     glob(&c, "src", 2, ".h");
     glob(&c, "tests", 1, ".c");
@@ -520,6 +528,7 @@ static void cmd_format(void) {
     glob(&c, "bench", 1, ".c");
     glob(&c, "bench", 1, ".h");
     glob(&c, "examples", 2, ".c");
+    glob(&c, "notes/str-examples", 1, ".c");
     run(&c);
 }
 
@@ -747,7 +756,7 @@ static const ArgCmd commands[] = {
     { "bench-scale", "benchmarks on generated files, and hyperfine on main" },
     { "data", "download data/pg2554.txt, the book main and the guide read" },
     { "corpus", "download the benchmark corpus into data/corpus/" },
-    { "format", "clang-format every source file in place" },
+    { "format", "clang-format every source file, or --check them" },
     { "clean", "remove <out>, including generated scale files" },
 };
 
@@ -765,6 +774,8 @@ int main(int argc, char **argv) {
         { "out", 'o', ARG_STR, &opt.out, "DIR", "where output goes (.build)" },
         { "profile", 'p', ARG_STR, &opt.profile, "NAME",
           "debug, nosan or release, for debug, run, test and examples" },
+        { "check", 0, ARG_FLAG, &opt.check, NULL,
+          "with format: report unformatted files, change nothing" },
         { "jobs", 'j', ARG_U64, &opt.jobs, "N",
           "compile N at once (the CPU count)" },
         { "scale", 0, ARG_STR, &opt.scale, "MIBS",
