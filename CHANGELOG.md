@@ -25,6 +25,8 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Before
 
 ### Changed
 
+- MULE is released into the public domain under the Unlicense. `LICENSE`
+  holds the text, and the `dist/mule.h` preamble names it.
 - `--profile=nosan` replaces `--no-sanitize`. Test binaries moved from
   `.build/tests/` to `.build/<profile>/tests/`.
 - `data/pg2554.txt` is no longer in the repository. `./build data`

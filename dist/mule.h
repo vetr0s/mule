@@ -1,4 +1,5 @@
 /* MULE: Multi-Use Library Essentials, as one header.
+ * Public domain under the Unlicense: https://unlicense.org
  *
  * Generated from src/ by `./build dist`. Edit src/ and regenerate.
  *
