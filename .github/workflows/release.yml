@@ -14,14 +14,14 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
+      - run: cc -Isrc -o build build.c
       - name: Tag matches MULE_VERSION in src/base/base.h
-        run: test "v$(make -s version)" = "$GITHUB_REF_NAME"
-      # -B, because a fresh checkout gives dist/mule.h and src/ equal mtimes.
+        run: test "v$(./build version)" = "$GITHUB_REF_NAME"
       - name: dist/mule.h matches src/
-        run: make -B dist && git diff --exit-code dist/
+        run: ./build dist && git diff --exit-code dist/
       # ASan crashes at startup when the kernel randomises mmap with more bits.
       - run: sudo sysctl vm.mmap_rnd_bits=28
-      - run: make test
+      - run: ./build test
       - name: Notes from CHANGELOG.md
         run: |
           awk -v v="${GITHUB_REF_NAME#v}" '

@@ -1,4 +1,4 @@
-/* Benchmarks for str_append and friends. `make bench` builds this with the
+/* Benchmarks for str_append and friends. `./build bench` builds this with the
  * release flags, so no sanitizers and full optimisation.
  *
  * Each case builds one string from scratch with `ops` calls, frees it, and is

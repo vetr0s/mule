@@ -2,7 +2,7 @@
  *
  * self_rebuild compiles small programs against dist/mule.h with $CC or cc,
  * so it needs a compiler on PATH and the current directory at the repo root,
- * as `make test` runs it.
+ * as `./build test` runs it.
  */
 #include "test/test.h"
 

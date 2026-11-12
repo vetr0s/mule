@@ -5,9 +5,9 @@
  *                                  files must be one kind of data at
  *                                  increasing sizes
  *
- * `make bench-corpus` runs it on Project Gutenberg books and Pizza & Chili
+ * `./build bench-corpus` runs it on Project Gutenberg books and Pizza & Chili
  * English (human language), Pizza & Chili source code and XML (dense
- * symbols), and enwik9, 1 GB of Wikipedia markup and text. `make
+ * symbols), and enwik9, 1 GB of Wikipedia markup and text. `./build
  * bench-scale` runs it on generated 10, 100 and 1000 MiB files.
  *
  * Each file is read once, then built again from scratch in several ways:

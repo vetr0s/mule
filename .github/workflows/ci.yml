@@ -12,6 +12,8 @@ jobs:
       fail-fast: false
       matrix:
         cc: [gcc-13, gcc-14, clang]
+    env:
+      CC: ${{ matrix.cc }}
     steps:
       - uses: actions/checkout@v4
       - name: Install gcc 14
@@ -20,24 +22,29 @@ jobs:
       # ASan crashes at startup when the kernel randomises mmap with more bits.
       - name: Lower mmap randomisation for AddressSanitizer
         run: sudo sysctl vm.mmap_rnd_bits=28
-      - run: ${{ matrix.cc }} --version
-      - run: make test CC=${{ matrix.cc }}
+      - run: $CC --version
+      - run: $CC -Isrc -o build build.c
+      - run: ./build test
       # glibc's realloc can grow in place, which ASan's never does.
-      - run: make test CC=${{ matrix.cc }} SANITIZE= BUILD=build/nosan
-      - run: make release CC=${{ matrix.cc }}
-      - run: make examples CC=${{ matrix.cc }}
-      - run: build/release/main data/pg2554.txt
+      - run: ./build test --no-sanitize --out=.build/nosan
+      - run: ./build release
+      - run: ./build examples
+      - run: .build/release/main data/pg2554.txt
+      - name: Example project
+        working-directory: examples/project
+        run: $CC build.c && ./a.out run
 
   macos:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
       - run: cc --version
-      - run: make test
+      - run: cc -Isrc -o build build.c
+      - run: ./build test
       # heap_growth_returns_memory needs the real libmalloc, not ASan's.
-      - run: make test SANITIZE= BUILD=build/nosan
-      - run: make release
-      - run: build/release/main data/pg2554.txt
+      - run: ./build test --no-sanitize --out=.build/nosan
+      - run: ./build release
+      - run: .build/release/main data/pg2554.txt
 
   docs:
     runs-on: ubuntu-24.04
@@ -52,14 +59,14 @@ jobs:
           tar -xzf "$RUNNER_TEMP/doxygen.tar.gz" -C "$RUNNER_TEMP"
           echo "$RUNNER_TEMP/doxygen-1.18.0/bin" >> "$GITHUB_PATH"
       - run: doxygen --version
-      - run: make docs
-      # -B, because a fresh checkout gives dist/mule.h and src/ equal mtimes.
+      - run: cc -Isrc -o build build.c
+      - run: ./build docs
       - name: dist/mule.h matches src/
-        run: make -B dist && git diff --exit-code dist/
+        run: ./build dist && git diff --exit-code dist/
       - if: github.event_name == 'push'
         uses: actions/upload-pages-artifact@v5
         with:
-          path: build/docs/html
+          path: .build/docs/html
 
   # Publishes the reference to GitHub Pages once everything above passes.
   pages:

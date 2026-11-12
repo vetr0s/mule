@@ -31,6 +31,16 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Before
   quoted before they run, and `CompDb` writes `compile_commands.json`.
   `examples/project/` is a complete example.
 
+### Changed
+
+- The repository builds with `build.c` instead of `make`. Bootstrap it
+  with `cc -Isrc -o build build.c`, then run `./build --help`. Output moves
+  from `build/` to `.build/`.
+
+### Removed
+
+- The Makefile and `tools/amalgamate.sh`.
+
 ## [0.2.0] - 2026-11-08
 
 ### Added

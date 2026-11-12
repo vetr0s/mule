@@ -1,5 +1,5 @@
 /* The StrView search and comparison functions against their string.h
- * counterparts, on the same files. `make bench-corpus` runs it.
+ * counterparts, on the same files. `./build bench-corpus` runs it.
  *
  *   find '\n'   sv_find_byte vs strchr, counting newlines
  *   find "the"  sv_find vs strstr, counting non-overlapping matches

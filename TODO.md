@@ -141,9 +141,9 @@ way and the Makefile is gone.
       directory options, dist, docs, version, format, the bench and corpus
       targets, `compile_commands.json` and clean.
 - [x] Port `tools/amalgamate.sh` to C inside `build.c`.
-- [ ] CI and the Release workflow bootstrap with
+- [x] CI and the Release workflow bootstrap with
       `cc -Isrc -o build build.c`.
-- [ ] Delete the Makefile and `tools/amalgamate.sh`. Update the commands
+- [x] Delete the Makefile and `tools/amalgamate.sh`. Update the commands
       and pitfalls in AGENTS.md. The GNU Make 3.81 one-second pitfall goes
       with them.
 

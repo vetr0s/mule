@@ -1,4 +1,4 @@
-# Doxygen config for `make docs`. Only non-default settings are listed;
+# Doxygen config for `./build docs`. Only non-default settings are listed;
 # run `doxygen -x Doxyfile` to see what differs, `doxygen -g` for the rest.
 
 PROJECT_NAME           = MULE
@@ -6,7 +6,7 @@ PROJECT_BRIEF          = "Multi-Use Library Essentials"
 PROJECT_NUMBER         = $(MULE_DOC_VERSION)
 OUTPUT_DIRECTORY       = $(MULE_DOC_OUT)
 
-# make docs passes the module folders in dependency order, which is also the
+# ./build docs passes the module folders in dependency order, which is also the
 # order the topics appear in and a sensible order to learn them.
 INPUT                  = README.md docs $(MULE_DOC_MODULES)
 USE_MDFILE_AS_MAINPAGE = README.md
@@ -40,6 +40,6 @@ EXPAND_ONLY_PREDEF     = YES
 PREDEFINED             = MULE_NODISCARD= MULE_UNUSED= \
                          MULE_NORETURN= "MULE_PRINTF(f,a)="
 
-# Every public declaration must be documented, or `make docs` fails.
+# Every public declaration must be documented, or `./build docs` fails.
 WARN_AS_ERROR          = FAIL_ON_WARNINGS
 HAVE_DOT               = NO   # older doxygen draws graphs by default and needs graphviz

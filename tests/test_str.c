@@ -4,7 +4,7 @@
  * src/str.h pulls into the Doxygen reference with @snippet. Every documented
  * example is therefore compiled and run here. Doxygen matches the bracketed
  * name anywhere in this file, so never write one outside a marker. Renaming a
- * marker without updating str.h makes `make docs` fail.
+ * marker without updating str.h makes `./build docs` fail.
  */
 #include "test/test.h"
 

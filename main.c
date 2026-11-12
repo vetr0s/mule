@@ -1,6 +1,6 @@
 /* A word-frequency counter that shows MULE in use.
  *
- *   build/debug/main [file]      reads stdin when no file is given
+ *   .build/debug/main [file]     reads stdin when no file is given
  *
  * The file is read into a Str that lives in an arena and is folded to lower
  * case in place, with UTF-8 quotes and dashes blanked. Words are StrViews into

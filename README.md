@@ -64,17 +64,16 @@ It prints `[mule]`, `[c99]` and `[4]`, each on its own line.
 - **Views over copies.** Splitting, trimming and searching return
   `StrView`s into the original bytes and never allocate.
 - **One header to use, many files to read.** Each module is a `.h`/`.c`
-  pair under `src/`. `make dist` joins them into `dist/mule.h`, so a project
+  pair under `src/`. `./build dist` joins them into `dist/mule.h`, so a project
   copies one file and has nothing to link.
 
 ## Requirements
 
 - A Unix-like system. macOS and Linux are tested.
 - clang 17+ or gcc 13+.
-- `make`.
-- Optional: `doxygen` 1.18 for `make docs`, `hyperfine` for
-  `make bench-scale`, and `clang-format` for `make format`.
-  `make bench-corpus` downloads about 1.6 GB with `curl`, `gunzip` and
+- Optional: `doxygen` 1.18 for `./build docs`, `hyperfine` for
+  `./build bench-scale`, and `clang-format` for `./build format`.
+  `./build bench-corpus` downloads about 1.6 GB with `curl`, `gunzip` and
   `unzip`, and needs about 4 GB of RAM.
 
 ## Using it in a project
@@ -96,16 +95,26 @@ in each. Before 1.0.0, a minor release may break the API.
 
 ## Building this repository
 
+The build is a C program, `build.c`. Compile it once:
+
+```sh
+cc -Isrc -o build build.c
+```
+
+After that it rebuilds itself whenever `build.c` or the library changes.
+Output goes to `.build/`, or to `--out=DIR`. The compiler is `$CC`, or
+`cc`. `./build --help` lists every command and option.
+
 | Command | What it does |
 | --- | --- |
-| `make` | Debug build with AddressSanitizer and UBSan, when the toolchain has them. |
-| `make run` | Runs the example word counter in `main.c` on `data/pg2554.txt`. Pass `ARGS=file` for another file. |
-| `make test` | Builds and runs every `tests/test_*.c`. `T=name` runs one test. |
-| `make release` | Optimised build with `-Werror` and hardening flags. |
-| `make dist` | Regenerates `dist/mule.h` from `src/`. Builds of `main` and `test_dist` do it too. |
-| `make docs` | API reference in `build/docs/html/`. |
-| `make examples` | Compile-checks `notes/str-examples/` against `dist/mule.h`. |
-| `make bench` | Micro-benchmarks for `str`. `bench-corpus` and `bench-scale` run on real data. |
+| `./build` | Debug build with AddressSanitizer and UBSan, when the toolchain has them, and `compile_commands.json`. |
+| `./build run [file]` | Runs the example word counter in `main.c` on `data/pg2554.txt`, or on `file`. |
+| `./build test [names]` | Builds and runs every `tests/test_*.c`. Names run only those tests. `--no-sanitize` drops the sanitizers. |
+| `./build release` | Optimised build with `-Werror` and hardening flags, and the benchmarks. |
+| `./build dist` | Regenerates `dist/mule.h` from `src/`. Builds of `main` and the tests do it too. |
+| `./build docs` | API reference in `.build/docs/html/`. |
+| `./build examples` | Compile-checks `notes/str-examples/` against `dist/mule.h`. |
+| `./build bench` | Micro-benchmarks for `str`. `bench-corpus` and `bench-scale` run on real data. |
 
 Test output is coloured on a colour terminal. Set `NO_COLOR=1` to turn it
 off.
@@ -115,7 +124,8 @@ off.
 ```
 src/<module>/   one folder per module, holding <module>.h and usually <module>.c
 dist/mule.h     the single-header library, generated from src/ and committed
-tools/          generators for dist/mule.h and the notes guide
+tools/          the generator for the notes guide
+build.c         the build, which also generates dist/mule.h
 tests/          one test file per module, and test_dist.c for dist/mule.h
 bench/          benchmarks against string.h
 notes/          guides for learning the library, with runnable examples
@@ -125,7 +135,7 @@ main.c          a word counter that uses dist/mule.h
 ## Documentation
 
 - The reference is online at https://mule.vetr0s.dev, built from `main`.
-- `make docs` builds the reference in `build/docs/html/`. It has a topic
+- `./build docs` builds the reference in `.build/docs/html/`. It has a topic
   per module, a page on the rules every module shares (`docs/concepts.md`),
   and the example programs with every library call linked. Every snippet in
   it is a region of a test file, so the examples compile.

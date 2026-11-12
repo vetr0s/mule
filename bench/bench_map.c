@@ -1,5 +1,5 @@
 /* The word-frequency pipeline of main.c, split into its phases and timed on
- * real files. `make bench-map` runs it on the corpus.
+ * real files. `./build bench-map` runs it on the corpus.
  *
  *   fold     ASCII to lower case, in place
  *   tokens   sv_token_next over the folded text, with main.c's delimiters
