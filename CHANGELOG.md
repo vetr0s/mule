@@ -27,6 +27,8 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Before
 - The test harness compiles with `-Werror` under glibc's
   `_FORTIFY_SOURCE`. Its hang report ignored what `write` returned, which
   glibc marks `warn_unused_result`.
+- `proc_pool_start` builds with `-Werror` under gcc 13 with LTO, which
+  reported a null dereference that could not happen.
 
 ## [0.3.0] - 2026-11-11
 

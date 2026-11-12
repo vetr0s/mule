@@ -250,7 +250,8 @@ static size_t proc_cpu_count_(void) {
 
 bool proc_pool_start(ProcPool *pool, const Cmd *c, Err *err) {
     size_t max = pool->max != 0 ? pool->max : proc_cpu_count_();
-    while (pool->running.len >= max) {
+    /* max is at least 1, but gcc 13 with LTO cannot see that past sysconf. */
+    while (pool->running.len > 0 && pool->running.len >= max) {
         ProcJob oldest = pool->running.data[0];
         arr_remove(&pool->running, 0);
         if (!proc_wait_(&oldest.proc, oldest.name, err)) return false;
