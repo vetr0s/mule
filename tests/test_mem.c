@@ -56,7 +56,7 @@ static size_t footprint(void) {
     mach_msg_type_number_t n = TASK_VM_INFO_COUNT;
     kern_return_t err = task_info(mach_task_self(), TASK_VM_INFO,
                                   (task_info_t)&info, &n);
-    assert(err == KERN_SUCCESS);
+    log_assert(err == KERN_SUCCESS);
     return (size_t)info.phys_footprint;
 }
 
@@ -93,7 +93,10 @@ TEST(libc_oom_leaves_block) {
     char *p = mem_realloc(NULL, NULL, 0, 8);
     CHECK(p != NULL);
     if (p != NULL) memcpy(p, "intact", 7);
-    CHECK(mem_realloc(NULL, p, 8, SIZE_MAX) == NULL);
+    /* Unused, the malloc may be removed and its null check folded to false,
+     * as clang -O2 does. Storing it through volatile keeps it real. */
+    void *volatile grown = mem_realloc(NULL, p, 8, SIZE_MAX);
+    CHECK(grown == NULL);
     CHECK_EQ_STR(p, "intact");
     p = mem_realloc(NULL, p, 8, 0);
     mem_set_heap(harness);
