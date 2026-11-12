@@ -1,11 +1,24 @@
 # MULE
 
 MULE, Multi-Use Library Essentials, is a personal standard library for C.
-Each module lives in its own folder under `src/`. `TODO.md` is the roadmap,
-grouped by release. Check off what you finish and add what you find under
-the release that will ship it.
+Each module lives in its own folder under `src/`. `TODO.md` holds the
+decisions and the goal of each release. The work itself is tracked in
+GitHub issues, one milestone per release.
 
 `CLAUDE.md` is a symlink to this file. Edit `AGENTS.md`.
+
+## Tracking
+
+- Start from the issue. `gh issue list --milestone 0.4.0` lists a
+  release's open work, and `gh issue view N` has its acceptance criteria.
+- A commit that finishes an issue ends its body with `Closes #N`. The
+  issue closes when the commit reaches `main`.
+- File what you find instead of fixing it on the side: a bug, a follow-up
+  or a missing test. Give it the milestone of the release that will ship
+  it, and one label: `bug`, `enhancement`, `testing`, `documentation` or
+  `chore`. An idea with no caller yet gets `parked` and no milestone.
+- An issue body states the problem and what done looks like, as a
+  check someone could run.
 
 ## Commands
 
@@ -129,13 +142,15 @@ does not happen on every commit.
   major version, an addition the minor and a fix the patch.
 - To release: rename `## [Unreleased]` in `CHANGELOG.md` to
   `## [X.Y.Z] - YYYY-MM-DD`, open a new empty Unreleased section above it,
-  and update the links at the bottom. Delete the shipped items from
-  `TODO.md`, because the changelog now records them. Set the version
+  and update the links at the bottom. Remove the release's row from
+  `TODO.md`. Its milestone must have no open issues: move what is left to
+  the next one. Set the version
   macros, run `./build dist`, and check that `./build ci` and
   `./build docs` pass. Commit as `Release vX.Y.Z`
   and push it. Once CI passes on it, tag that commit with
   `git tag -a vX.Y.Z -m "MULE vX.Y.Z"` and push the tag. A fix that CI
-  needs lands as a new commit, and the tag goes on that one.
+  needs lands as a new commit, and the tag goes on that one. Close the
+  milestone once the release is published.
 - The tag starts `.github/workflows/release.yml`. It checks the tag against
   `MULE_VERSION`, runs the tests, and publishes `dist/mule.h` with the
   version's changelog section as the notes.

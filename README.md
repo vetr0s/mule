@@ -4,7 +4,9 @@ Multi-Use Library Essentials. A small standard library for C11, written in
 the style of C99 and the spirit of stb. It is written to be read as well as
 used.
 
-It is early. Fourteen modules exist, and `TODO.md` holds the roadmap.
+It is early. Fourteen modules exist. `TODO.md` holds the roadmap, and the
+work is tracked in [issues](https://github.com/vetr0s/mule/issues) under
+one milestone per release.
 
 | Module | What it gives you |
 | --- | --- |
