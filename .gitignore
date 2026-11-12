@@ -2,6 +2,6 @@
 /main
 compile_commands.json
 .cache/
-data/corpus/
+/data/
 .build/
 a.out

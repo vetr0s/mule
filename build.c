@@ -516,10 +516,24 @@ static void run_to(Cmd *c, const char *out) {
     must(proc_start(&p, c, &io, &err_) && proc_wait(&p, &err_));
 }
 
+/* Download `url` to `dest` through a temporary, so a failed download leaves
+ * nothing that fs_exists would take for the file. */
 static void fetch(const char *url, const char *dest) {
+    const char *tmp = fmt("%s.tmp", dest);
     Cmd c = cmd_new();
-    add(&c, "curl", "-fsSL", "-o", dest, url);
+    add(&c, "curl", "-fsSL", "-o", tmp, url);
     run(&c);
+    must(fs_rename(tmp, dest, &err_));
+}
+
+/* The Project Gutenberg book `id` as data/pg<id>.txt, downloaded if missing. */
+static const char *book(const char *id) {
+    const char *path = fmt("data/pg%s.txt", id);
+    must(fs_mkdir_p("data", &err_));
+    if (!fs_exists(path))
+        fetch(fmt("https://www.gutenberg.org/cache/epub/%s/pg%s.txt", id, id),
+              path);
+    return path;
 }
 
 /* Download a gzipped Pizza & Chili text into `dest`. */
@@ -534,18 +548,12 @@ static void fetch_gz(const char *path, const char *dest) {
 
 /* Download each missing corpus file into data/corpus/, which clean keeps. */
 static void cmd_corpus(void) {
-    must(fs_mkdir_p(CORPUS "/gutenberg", &err_));
+    must(fs_mkdir_p(CORPUS, &err_));
     if (!fs_exists(corpus_files[0])) {
         Str all = { .alloc = mem_ };
         for (size_t i = 0; i < sizeof gutenberg_ids / sizeof *gutenberg_ids;
-             i++) {
-            const char *id = gutenberg_ids[i];
-            const char *book = fmt(CORPUS "/gutenberg/pg%s.txt", id);
-            fetch(
-                fmt("https://www.gutenberg.org/cache/epub/%s/pg%s.txt", id, id),
-                book);
-            must(fs_read(&all, book, &err_));
-        }
+             i++)
+            must(fs_read(&all, book(gutenberg_ids[i]), &err_));
         must(fs_write_atomic(corpus_files[0], str_view(&all), &err_));
     }
     if (!fs_exists(corpus_files[1]))
@@ -655,7 +663,7 @@ static void cmd_run_main(const ArgList *rest) {
     Cmd c = cmd_new();
     add(&c, debug_main());
     if (rest->len == 0)
-        add(&c, "data/pg2554.txt");
+        add(&c, book("2554"));
     else
         add_list(&c, rest->data, rest->len);
     run(&c);
@@ -675,6 +683,7 @@ static const ArgCmd commands[] = {
     { "bench-corpus", "benchmarks on the corpus, against string.h" },
     { "bench-map", "main.c's word-count phases and the map on the corpus" },
     { "bench-scale", "benchmarks on generated files, and hyperfine on main" },
+    { "data", "download data/pg2554.txt, the book main and the guide read" },
     { "corpus", "download the benchmark corpus into data/corpus/" },
     { "format", "clang-format every source file in place" },
     { "clean", "remove <out>, including generated scale files" },
@@ -740,6 +749,8 @@ int main(int argc, char **argv) {
         puts(version());
     } else if (strncmp(cmd, "bench", 5) == 0) {
         cmd_bench(cmd);
+    } else if (strcmp(cmd, "data") == 0) {
+        book("2554");
     } else if (strcmp(cmd, "corpus") == 0) {
         cmd_corpus();
     } else if (strcmp(cmd, "format") == 0) {

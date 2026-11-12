@@ -7,6 +7,11 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Before
 
 ## [Unreleased]
 
+### Changed
+
+- `data/pg2554.txt` is no longer in the repository. `./build data`
+  downloads it, and `./build run` does too when it is missing.
+
 ## [0.3.0] - 2026-11-11
 
 ### Added

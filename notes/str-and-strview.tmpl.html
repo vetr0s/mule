@@ -42,7 +42,7 @@
 
 <h2 id="run">Running the examples</h2>
 
-<p>Run these from the repository root. The examples read <span class="path">data/pg2554.txt</span>, which is the Project Gutenberg text of <em>Crime and Punishment</em>. Each file defines <code>MULE_IMPLEMENTATION</code> and includes <span class="path">dist/mule.h</span>, the same way a project uses the library, so a single compiler call builds it.</p>
+<p>Run these from the repository root. The examples read <span class="path">data/pg2554.txt</span>, which is the Project Gutenberg text of <em>Crime and Punishment</em>. Run <code>./build data</code> once to download it. Each file defines <code>MULE_IMPLEMENTATION</code> and includes <span class="path">dist/mule.h</span>, the same way a project uses the library, so a single compiler call builds it.</p>
 
 <pre><code>mkdir -p .build &amp;&amp; cc -std=c11 -Idist -fsanitize=address,undefined -g \
    notes/str-examples/01_build.c -o .build/ex &amp;&amp; .build/ex</code></pre>

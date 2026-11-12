@@ -29,6 +29,7 @@ jobs:
       - run: ./build test --no-sanitize --out=.build/nosan
       - run: ./build release
       - run: ./build examples
+      - run: ./build data
       - run: .build/release/main data/pg2554.txt
       - name: Example project
         working-directory: examples/project
@@ -45,6 +46,7 @@ jobs:
       - run: ./build test --no-sanitize --out=.build/nosan
       - run: ./build release
       - run: ./build examples
+      - run: ./build data
       - run: .build/release/main data/pg2554.txt
 
   docs:

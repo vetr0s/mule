@@ -73,7 +73,8 @@ It prints `[mule]`, `[c99]` and `[4]`, each on its own line.
 - clang 17+ or gcc 13+.
 - Optional: `doxygen` 1.18 for `./build docs`, `hyperfine` for
   `./build bench-scale`, and `clang-format` for `./build format`.
-  `./build bench-corpus` downloads about 1.6 GB with `curl`, `gunzip` and
+  `./build data` downloads one book with `curl`. `./build bench-corpus`
+  downloads about 1.6 GB with `curl`, `gunzip` and
   `unzip`, and needs about 4 GB of RAM.
 
 ## Using it in a project
@@ -109,6 +110,7 @@ Output goes to `.build/`, or to `--out=DIR`. The compiler is `$CC`, or
 | --- | --- |
 | `./build` | Debug build with AddressSanitizer and UBSan, when the toolchain has them, and `compile_commands.json`. |
 | `./build run [file]` | Runs the example word counter in `main.c` on `data/pg2554.txt`, or on `file`. |
+| `./build data` | Downloads `data/pg2554.txt`, the book that `main.c` and the str guide read. `run` does it when the file is missing. |
 | `./build test [names]` | Builds and runs every `tests/test_*.c`. Names run only those tests. `--no-sanitize` drops the sanitizers. |
 | `./build release` | Optimised build with `-Werror` and hardening flags, and the benchmarks. |
 | `./build dist` | Regenerates `dist/mule.h` from `src/`. Builds of `main` and the tests do it too. |
