@@ -3,6 +3,7 @@
 [![CI](https://github.com/vetr0s/mule/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/vetr0s/mule/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/vetr0s/mule)](https://github.com/vetr0s/mule/releases/latest)
 [![Reference](https://img.shields.io/badge/reference-mule.vetr0s.dev-blue)](https://mule.vetr0s.dev)
+[![License: Unlicense](https://img.shields.io/badge/license-Unlicense-blue)](https://github.com/vetr0s/mule/blob/main/LICENSE)
 
 Multi-Use Library Essentials. A small standard library for C11, written in
 the style of C99 and the spirit of stb. It is written to be read as well as
@@ -168,3 +169,9 @@ dev/            what a maintainer uses
   you can run.
 - `AGENTS.md` holds the conventions for anyone changing the code, people
   included.
+
+## License
+
+MULE is in the public domain under the
+[Unlicense](https://github.com/vetr0s/mule/blob/main/LICENSE). Copy it,
+change it and ship it, with or without credit.

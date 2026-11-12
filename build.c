@@ -293,6 +293,7 @@ static void compile(const char *src, const char *out, const Cmd *flags,
 
 static const char dist_preamble[] =
     "/* MULE: Multi-Use Library Essentials, as one header.\n"
+    " * Public domain under the Unlicense: https://unlicense.org\n"
     " *\n"
     " * Generated from src/ by `./build dist`. Edit src/ and regenerate.\n"
     " *\n"
