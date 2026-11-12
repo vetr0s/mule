@@ -4,7 +4,7 @@
 PROJECT_NAME           = MULE
 PROJECT_BRIEF          = "Multi-Use Library Essentials"
 PROJECT_NUMBER         = $(MULE_DOC_VERSION)
-OUTPUT_DIRECTORY       = build/docs
+OUTPUT_DIRECTORY       = $(MULE_DOC_OUT)
 
 # make docs passes the module folders in dependency order, which is also the
 # order the topics appear in and a sensible order to learn them.
@@ -12,7 +12,7 @@ INPUT                  = README.md docs $(MULE_DOC_MODULES)
 USE_MDFILE_AS_MAINPAGE = README.md
 FILE_PATTERNS          = *.h *.c *.md *.dox
 RECURSIVE              = YES
-EXAMPLE_PATH           = tests notes/str-examples main.c examples/project
+EXAMPLE_PATH           = tests notes/str-examples main.c examples
 LAYOUT_FILE            = docs/DoxygenLayout.xml
 HTML_EXTRA_FILES       = notes/str-and-strview.html
 

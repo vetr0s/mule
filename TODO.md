@@ -136,11 +136,11 @@ way and the Makefile is gone.
       generates `dist/mule.h`, so compiling from it would run a stale copy
       of the library. MULE bootstraps with `cc -Isrc -o build build.c`, and
       the self-rebuild adds `-Isrc` itself. Other projects keep `mule.h`.
-- [ ] `build.c` at the repo root covers every Makefile target: debug,
+- [x] `build.c` at the repo root covers every Makefile target: debug,
       release with the benchmarks, test with the sanitizer and build
       directory options, dist, docs, version, format, the bench and corpus
       targets, `compile_commands.json` and clean.
-- [ ] Port `tools/amalgamate.sh` to C inside `build.c`.
+- [x] Port `tools/amalgamate.sh` to C inside `build.c`.
 - [ ] CI and the Release workflow bootstrap with
       `cc -Isrc -o build build.c`.
 - [ ] Delete the Makefile and `tools/amalgamate.sh`. Update the commands

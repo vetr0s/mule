@@ -229,7 +229,7 @@ VERSION := $(shell sed -n 's/^\#define MULE_VERSION "\(.*\)"/\1/p' src/base/base
 # doxygen). The test harness is not in MODULES, so it is added last.
 docs:
 	@mkdir -p $(BUILD)/docs # doxygen before 1.10 does not create parents
-	MULE_DOC_MODULES="$(MODULES:%=src/%) src/test" MULE_DOC_VERSION=$(VERSION) \
+	MULE_DOC_MODULES="$(MODULES:%=src/%) src/test" MULE_DOC_VERSION=$(VERSION) MULE_DOC_OUT=$(BUILD)/docs \
 	    doxygen Doxyfile
 	@echo "open $(BUILD)/docs/html/index.html"
 

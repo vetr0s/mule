@@ -15,7 +15,7 @@ emit() {
 cat <<'EOF'
 /* MULE: Multi-Use Library Essentials, as one header.
  *
- * Generated from src/ by `make dist`. Edit src/ and regenerate.
+ * Generated from src/ by `./build dist`. Edit src/ and regenerate.
  *
  * Include it anywhere for the declarations. In exactly one .c file, define
  * MULE_IMPLEMENTATION first to compile the library into that file:

@@ -1,6 +1,6 @@
 /* MULE: Multi-Use Library Essentials, as one header.
  *
- * Generated from src/ by `make dist`. Edit src/ and regenerate.
+ * Generated from src/ by `./build dist`. Edit src/ and regenerate.
  *
  * Include it anywhere for the declarations. In exactly one .c file, define
  * MULE_IMPLEMENTATION first to compile the library into that file:
@@ -1525,7 +1525,7 @@ MULE_NODISCARD bool cmd_append_(Cmd *c, const char *const *args, size_t n);
  * `build.c` or anything it includes has changed, and runs the new one in
  * its place. Output goes in `.build/` beside the program.
  *
- * @snippet{trimleft} build.c build
+ * @snippet{trimleft} project/build.c build
  *
  *   - Staleness compares modification times to the nanosecond, so an edit
  *     made in the same second as the last build still counts.

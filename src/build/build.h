@@ -12,7 +12,7 @@
  * `build.c` or anything it includes has changed, and runs the new one in
  * its place. Output goes in `.build/` beside the program.
  *
- * @snippet{trimleft} build.c build
+ * @snippet{trimleft} project/build.c build
  *
  *   - Staleness compares modification times to the nanosecond, so an edit
  *     made in the same second as the last build still counts.
