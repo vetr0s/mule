@@ -1728,6 +1728,9 @@ void build_compdb_free(CompDb *db);
  *   - Pass test names as arguments to run only those tests.
  *   - Results are coloured when stdout supports it, as log_color_enabled()
  *     decides. The harness needs the log module, and log needs mem and str.
+ *   - When GITHUB_ACTIONS is `true`, each failed check and each leak also
+ *     prints a `::error` annotation, so it shows on the pull request diff at
+ *     its file and line.
  *
  * Every test in tests/ is written this way, so they are the best place to
  * see the harness and the library in use.
@@ -1753,7 +1756,8 @@ static int test_cur_failed_ = 0;
 static int test_argc_ = 0;
 static char **test_argv_ = NULL;
 static const char *test_running_ = "";
-static bool test_color_ = false; /* set once by test_init */
+static bool test_color_ = false;  /* set once by test_init */
+static bool test_github_ = false; /* likewise, from GITHUB_ACTIONS */
 
 /* --- Allocator ----------------------------------------------------------- */
 
@@ -1790,12 +1794,51 @@ static const Allocator test_heap_ = { .fn = test_heap_fn_ };
 
 /* --- Checks -------------------------------------------------------------- */
 
-static void test_fail_at_(const char *file, int line) {
+/* Print `s` as a GitHub workflow command needs it. A property value, such
+ * as file= or title=, also escapes ':' and ','. */
+static void test_github_put_(const char *s, bool property) {
+    for (; *s != '\0'; s++) {
+        if (*s == '%')
+            fputs("%25", stdout);
+        else if (*s == '\r')
+            fputs("%0D", stdout);
+        else if (*s == '\n')
+            fputs("%0A", stdout);
+        else if (property && *s == ':')
+            fputs("%3A", stdout);
+        else if (property && *s == ',')
+            fputs("%2C", stdout);
+        else
+            putchar(*s);
+    }
+}
+
+/* Mark the failing test and print where it failed and `what` failed. On
+ * GitHub Actions an annotation comes first, which shows on the diff. */
+static void test_fail_at_(const char *file, int line, const char *what) {
     test_cur_failed_ = 1;
+    if (test_github_) {
+        fputs("::error file=", stdout);
+        test_github_put_(file, true);
+        printf(",line=%d,title=", line);
+        test_github_put_(test_running_, true);
+        fputs("::", stdout);
+        test_github_put_(what, false);
+        putchar('\n');
+    }
     if (test_color_)
-        printf("  " LOG_RED "%s:%d:" LOG_RESET " ", file, line);
+        printf("  " LOG_RED "%s:%d:" LOG_RESET " %s", file, line, what);
     else
-        printf("  %s:%d: ", file, line);
+        printf("  %s:%d: %s", file, line, what);
+}
+
+/* `what` for test_fail_at_: "CHECK(a) failed", or "a == b failed". */
+static const char *test_what_(char buf[256], const char *a, const char *b) {
+    if (b == NULL)
+        snprintf(buf, 256, "CHECK(%s) failed", a);
+    else
+        snprintf(buf, 256, "%s == %s failed", a, b);
+    return buf;
 }
 
 /* Print bytes as a C string literal, escaping anything unprintable. */
@@ -1819,8 +1862,9 @@ MULE_UNUSED static bool test_check_(bool ok, const char *file, int line,
                                     const char *expr) {
     test_checks_++;
     if (!ok) {
-        test_fail_at_(file, line);
-        printf("CHECK(%s) failed\n", expr);
+        char what[256];
+        test_fail_at_(file, line, test_what_(what, expr, NULL));
+        putchar('\n');
     }
     return ok;
 }
@@ -1829,8 +1873,9 @@ MULE_UNUSED static bool test_eq_int_(long long a, long long b, const char *file,
                                      int line, const char *ea, const char *eb) {
     test_checks_++;
     if (a != b) {
-        test_fail_at_(file, line);
-        printf("%s == %s failed (%lld vs %lld)\n", ea, eb, a, b);
+        char what[256];
+        test_fail_at_(file, line, test_what_(what, ea, eb));
+        printf(" (%lld vs %lld)\n", a, b);
     }
     return a == b;
 }
@@ -1841,8 +1886,9 @@ MULE_UNUSED static bool test_eq_str_(const char *a, const char *b,
     bool ok = (a == NULL || b == NULL) ? a == b : strcmp(a, b) == 0;
     test_checks_++;
     if (!ok) {
-        test_fail_at_(file, line);
-        printf("%s == %s failed (", ea, eb);
+        char what[256];
+        test_fail_at_(file, line, test_what_(what, ea, eb));
+        printf(" (");
         test_print_bytes_(a, a ? strlen(a) : 0);
         printf(" vs ");
         test_print_bytes_(b, b ? strlen(b) : 0);
@@ -1857,8 +1903,9 @@ MULE_UNUSED static bool test_eq_mem_(const char *a, size_t alen, const char *b,
     bool ok = alen == blen && (alen == 0 || memcmp(a, b, alen) == 0);
     test_checks_++;
     if (!ok) {
-        test_fail_at_(file, line);
-        printf("%s == %s failed (", ea, eb);
+        char what[256];
+        test_fail_at_(file, line, test_what_(what, ea, eb));
+        printf(" (");
         test_print_bytes_(a, alen);
         printf(" vs ");
         test_print_bytes_(b, blen);
@@ -1931,6 +1978,8 @@ MULE_UNUSED static void test_init(int argc, char **argv) {
     test_argc_ = argc;
     test_argv_ = argv;
     test_color_ = log_color_enabled(stdout);
+    const char *ci = getenv("GITHUB_ACTIONS");
+    test_github_ = ci != NULL && strcmp(ci, "true") == 0;
     mem_set_heap(&test_heap_);
     signal(SIGALRM, test_timeout_);
 }
@@ -1950,6 +1999,14 @@ MULE_UNUSED static int test_report_(const char *file) {
     printf("%s%s: %d check(s), %d failing test(s)%s\n", on, file, test_checks_,
            test_failures_, test_color_ ? LOG_RESET : "");
     return test_failures_ != 0;
+}
+
+/* Fail the running test, which `n` allocations outlived, at its RUN. */
+static void test_leaked_(const char *file, int line, long n) {
+    char what[64];
+    snprintf(what, sizeof what, "%ld allocation(s) leaked", n);
+    test_fail_at_(file, line, what);
+    putchar('\n');
 }
 
 static bool test_selected_(const char *name) {
@@ -1974,11 +2031,9 @@ static bool test_selected_(const char *name) {
         name();                                                                \
         alarm(0);                                                              \
         test_alloc_budget_ = -1;                                               \
-        if (test_live_allocs_ != live_before_) {                               \
-            test_cur_failed_ = 1;                                              \
-            printf("  %ld allocation(s) leaked\n",                             \
-                   test_live_allocs_ - live_before_);                          \
-        }                                                                      \
+        if (test_live_allocs_ != live_before_)                                 \
+            test_leaked_(__FILE__, __LINE__,                                   \
+                         test_live_allocs_ - live_before_);                    \
         if (test_cur_failed_) test_failures_++;                                \
         test_print_result_(#name);                                             \
         fflush(stdout); /* keep finished results if a later test hangs */      \

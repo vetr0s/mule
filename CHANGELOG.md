@@ -22,6 +22,9 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Before
 - `./build consumer` builds `dist/mule.h` into a two-file program, one
   file with `MULE_IMPLEMENTATION`, under C11, C17 and C23 and with
   `LOG_LEVEL_MIN` raised. `./build ci` runs it.
+- Under GitHub Actions the test harness prints a `::error` annotation for
+  each failed check and each leak, so it shows on the pull request diff.
+  A leak's message now names the file and line of its `RUN`.
 
 ### Changed
 
