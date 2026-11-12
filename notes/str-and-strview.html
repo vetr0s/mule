@@ -320,8 +320,8 @@ dd { margin: 0; }
 
 <p>Run these from the repository root. The examples read <span class="path">data/pg2554.txt</span>, which is the Project Gutenberg text of <em>Crime and Punishment</em>. Each file defines <code>MULE_IMPLEMENTATION</code> and includes <span class="path">dist/mule.h</span>, the same way a project uses the library, so a single compiler call builds it.</p>
 
-<pre><code>cc -std=c11 -Idist -fsanitize=address,undefined -g \
-   notes/str-examples/01_build.c -o build/ex &amp;&amp; ./build/ex</code></pre>
+<pre><code>mkdir -p .build &amp;&amp; cc -std=c11 -Idist -fsanitize=address,undefined -g \
+   notes/str-examples/01_build.c -o .build/ex &amp;&amp; .build/ex</code></pre>
 
 <p>Keep the sanitizer flag on while you learn. It turns most memory mistakes into a report, and <code>-g</code> makes that report name the line. The <a href="#mistakes">mistakes section</a> shows two of those reports.</p>
 
@@ -519,7 +519,7 @@ int main(int argc, char **argv) {
     return EXIT_SUCCESS;
 }</code></pre>
 
-<pre><code>$ ./build/ex --verbose
+<pre><code>$ .build/ex --verbose
 [Title: Crime and Punishment]
 key [Title] value [Crime and Punishment]
 %s on key prints [Title: Crime and Punishment
@@ -936,7 +936,7 @@ freed by thread T0 here:
   <li data-state="todo">Write <code>StrView path_basename(StrView path)</code> that returns everything after the last <code>/</code>. It returns a view, so it cannot fail. Test it on <code>""</code>, <code>"a"</code>, <code>"a/"</code> and <code>"/usr/lib/libc.so"</code>.</li>
 </ul>
 
-<p class="footer">Built from <span class="path">dist/mule.h</span> and the eleven files in <span class="path">notes/str-examples/</span>. Each example was compiled with Apple clang 21 using <code>-std=c11 -Idist -fsanitize=address,undefined -g -Wall -Wextra -Wconversion</code> and run on 2026-11-08. Sanitizer reports are trimmed to the frames that name a source line.</p>
+<p class="footer">Built from <span class="path">dist/mule.h</span> and the eleven files in <span class="path">notes/str-examples/</span>. Each example was compiled with Apple clang 21 using <code>-std=c11 -Idist -fsanitize=address,undefined -g -Wall -Wextra -Wconversion</code> and run on 2026-11-11. Sanitizer reports are trimmed to the frames that name a source line.</p>
 
 </main>
 </body>

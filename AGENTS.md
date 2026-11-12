@@ -79,8 +79,12 @@ The folder, include and naming rules live in the file comment of
   all of a function's parameters or none, because `./build docs` fails on a
   partial set.
 - `docs/concepts.md` holds the rules that span modules. A program in
-  `notes/str-examples/` joins `docs/examples.dox`, so its calls link to the
-  reference.
+  `examples/` or `notes/str-examples/` joins `docs/examples.dox`, so its
+  calls link to the reference. Name an `examples/` program for what it
+  does, because Doxygen matches `@example` by basename and `fs.c` would
+  collide with a module source.
+- `at()` in `tests/scratch.h` returns its buffer. Give each path in one
+  call its own buffer, or the call depends on argument evaluation order.
 - Watch a new test fail once against a broken implementation before you
   trust it.
 
@@ -119,8 +123,10 @@ does not happen on every commit.
   and update the links at the bottom. Delete the shipped items from
   `TODO.md`, because the changelog now records them. Set the version
   macros, run `./build dist`, and check that `./build test`,
-  `./build release` and `./build docs` pass. Commit as `Release vX.Y.Z`, tag it with
-  `git tag -a vX.Y.Z -m "MULE vX.Y.Z"`, and push the commit, then the tag.
+  `./build release` and `./build docs` pass. Commit as `Release vX.Y.Z`
+  and push it. Once CI passes on it, tag that commit with
+  `git tag -a vX.Y.Z -m "MULE vX.Y.Z"` and push the tag. A fix that CI
+  needs lands as a new commit, and the tag goes on that one.
 - The tag starts `.github/workflows/release.yml`. It checks the tag against
   `MULE_VERSION`, runs the tests, and publishes `dist/mule.h` with the
   version's changelog section as the notes.
@@ -158,6 +164,9 @@ does not happen on every commit.
   `--out=.build/nosan`.
 - A `build/` directory left by the old Makefile blocks
   `cc -Isrc -o build build.c`. Remove it once.
+- CI's Linux runners are x86_64. Docker on an Apple silicon Mac runs arm64
+  Linux, so a local gcc pass there can still fail in CI. Code that
+  depends on argument evaluation order did exactly that in v0.3.0.
 - AddressSanitizer on macOS does not detect leaks, and Apple clang ships no
   libFuzzer. The harness `Allocator` in `test/test.h` covers leaks. Fuzzing
   needs Linux.
