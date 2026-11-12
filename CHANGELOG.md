@@ -17,6 +17,8 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Before
 - Arenas under AddressSanitizer poison what they have not handed out and
   put a redzone after each allocation, so an overflow is reported.
 - `MULE_ASAN`, which is 1 when AddressSanitizer is on.
+- `./build format --check` reports unformatted files without changing
+  them, and CI runs it. `notes/str-examples/` is formatted too.
 
 ### Changed
 

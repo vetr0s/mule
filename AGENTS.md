@@ -185,6 +185,9 @@ does not happen on every commit.
 - Each output keeps the command that built it in `<out>.cmd`, so a
   changed flag rebuilds it. A new set of flags belongs in `profiles` in
   `build.c`, which gives it its own folder, so switching never rebuilds.
+- CI checks formatting with clang-format 23.1.5, pinned in `ci.yml`.
+  Another major version formats differently, so format with the same one:
+  `pipx install clang-format==23.1.5`.
 - A `build/` directory left by the old Makefile blocks
   `cc -Isrc -o build build.c`. Remove it once.
 - CI's Linux runners are x86_64. Docker on an Apple silicon Mac runs arm64
