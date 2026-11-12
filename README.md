@@ -8,7 +8,7 @@ Multi-Use Library Essentials. A small standard library for C11, written in
 the style of C99 and the spirit of stb. It is written to be read as well as
 used.
 
-It is early. Fourteen modules exist. `TODO.md` holds the roadmap, and the
+It is early. Fourteen modules exist. `dev/TODO.md` holds the roadmap, and the
 work is tracked in [issues](https://github.com/vetr0s/mule/issues) under
 one milestone per release.
 
@@ -125,14 +125,14 @@ one for `debug`, `run`, `test` and `examples`:
 | Command | What it does |
 | --- | --- |
 | `./build` | Debug build with AddressSanitizer and UBSan, when the toolchain has them, and `compile_commands.json`. |
-| `./build run [file]` | Runs the example word counter in `main.c` on `data/pg2554.txt`, or on `file`. |
-| `./build data` | Downloads `data/pg2554.txt`, the book that `main.c` and the str guide read. `run` does it when the file is missing. |
+| `./build run [file]` | Runs the example word counter in `dev/main.c` on `data/pg2554.txt`, or on `file`. |
+| `./build data` | Downloads `data/pg2554.txt`, the book that `dev/main.c` and the str guide read. `run` does it when the file is missing. |
 | `./build test [names]` | Builds and runs every `tests/test_*.c`. Names run only those tests. |
 | `./build ci` | Every check CI runs on a push except the docs: a stale `dist/mule.h`, the tests under each profile, the release build, the examples and the example project. |
 | `./build release` | Optimised build with `-Werror` and hardening flags, and the benchmarks. |
 | `./build dist` | Regenerates `dist/mule.h` from `src/`. Builds of `main` and the tests do it too. |
 | `./build docs` | API reference in `.build/docs/html/`. |
-| `./build examples` | Compile-checks `notes/str-examples/` against `dist/mule.h`. |
+| `./build examples` | Builds and runs `docs/examples/`, and compile-checks `docs/guide/str-examples/` against `dist/mule.h`. |
 | `./build bench` | Micro-benchmarks for `str`. `bench-corpus` and `bench-scale` run on real data. |
 
 Test output is coloured on a colour terminal. Set `NO_COLOR=1` to turn it
@@ -143,13 +143,18 @@ off.
 ```
 src/<module>/   one folder per module, holding <module>.h and usually <module>.c
 dist/mule.h     the single-header library, generated from src/ and committed
-tools/          the generator for the notes guide
 build.c         the build, which also generates dist/mule.h
 tests/          one test file per module, and test_dist.c for dist/mule.h
-bench/          benchmarks against string.h
-notes/          guides for learning the library, with runnable examples
-examples/       one small program per module, and a project built by build.c
-main.c          a word counter that uses dist/mule.h
+docs/           what a reader reads: the Doxygen inputs and these two
+  examples/     one small program per module, and a project built by build.c
+  guide/        guides for learning the library, with runnable examples
+dev/            what a maintainer uses
+  bench/        benchmarks against string.h
+  tools/        the generator for the guide
+  specs/        designs, one per release
+  reviews/      code reviews against those designs
+  main.c        a word counter that uses dist/mule.h
+  TODO.md       decisions and the goal of each release
 ```
 
 ## Documentation
@@ -159,7 +164,7 @@ main.c          a word counter that uses dist/mule.h
   per module, a page on the rules every module shares (`docs/concepts.md`),
   and the example programs with every library call linked. Every snippet in
   it is a region of a test file, so the examples compile.
-- `notes/str-and-strview.html` teaches `Str` and `StrView` with programs
+- `docs/guide/str-and-strview.html` teaches `Str` and `StrView` with programs
   you can run.
 - `AGENTS.md` holds the conventions for anyone changing the code, people
   included.

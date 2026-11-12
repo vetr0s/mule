@@ -1,10 +1,10 @@
-# Build notes/str-and-strview.html from notes/str-and-strview.tmpl.html, the
-# standard-html house style and notes/str-examples/. Run from anywhere.
+# Build docs/guide/str-and-strview.html from its .tmpl.html, the standard-html
+# house style and docs/guide/str-examples/. Run from anywhere.
 import html, re, pathlib
-repo = pathlib.Path(__file__).resolve().parent.parent
-ex = repo / 'notes/str-examples'
+repo = pathlib.Path(__file__).resolve().parents[2]
+ex = repo / 'docs/guide/str-examples'
 style = (pathlib.Path.home() / '.claude/skills/standard-html/assets/style.css').read_text().rstrip()
-t = (repo / 'notes/str-and-strview.tmpl.html').read_text()
+t = (repo / 'docs/guide/str-and-strview.tmpl.html').read_text()
 
 text = 'Crime and Punishment'
 pre = 'Str text     data ──► '
@@ -24,6 +24,6 @@ diagram = '<pre><code>' + html.escape('\n'.join(lines), quote=False) + '</code><
 t = re.sub(r'<pre><code>Str text.*?</code></pre>', lambda m: '{{diagram}}', t, flags=re.S)
 
 t = t.replace('{{style}}', style).replace('{{diagram}}', diagram)
-t = re.sub(r'\{\{code:(\S+?)\}\}', lambda m: '<p class="muted"><span class="path">notes/str-examples/' + m[1] + '</span></p>\n<pre><code>' + html.escape((ex / m[1]).read_text().rstrip(), quote=False) + '</code></pre>', t)
+t = re.sub(r'\{\{code:(\S+?)\}\}', lambda m: '<p class="muted"><span class="path">docs/guide/str-examples/' + m[1] + '</span></p>\n<pre><code>' + html.escape((ex / m[1]).read_text().rstrip(), quote=False) + '</code></pre>', t)
 assert '{{' not in t
-(repo / 'notes/str-and-strview.html').write_text('<!doctype html>\n<html lang="en">\n<head>\n<meta charset="utf-8">\n<meta name="viewport" content="width=device-width, initial-scale=1">\n' + t.replace('<main>', '</head>\n<body>\n<main>', 1) + '</body>\n</html>\n')
+(repo / 'docs/guide/str-and-strview.html').write_text('<!doctype html>\n<html lang="en">\n<head>\n<meta charset="utf-8">\n<meta name="viewport" content="width=device-width, initial-scale=1">\n' + t.replace('<main>', '</head>\n<body>\n<main>', 1) + '</body>\n</html>\n')

@@ -396,7 +396,7 @@ static const char *release_main(void) {
 
 static void cmd_debug(const Profile *p) {
     dist();
-    compile("main.c", out_of(p, "main"), flags_of(p), NULL);
+    compile("dev/main.c", out_of(p, "main"), flags_of(p), NULL);
     wait_all();
 }
 
@@ -405,9 +405,9 @@ static void cmd_debug(const Profile *p) {
 static void cmd_compile_commands(void) {
     const Profile *p = profile("debug");
     Cmd files = cmd_new();
-    add(&files, "main.c");
+    add(&files, "dev/main.c");
     glob(&files, "tests", 1, ".c");
-    glob(&files, "bench", 1, ".c");
+    glob(&files, "dev/bench", 1, ".c");
     CompDb db = { .json = { .alloc = mem_ } };
     for (size_t i = 0; i < files.len; i++) {
         StrView dir = fs_dirname(sv_from_cstr(files.data[i]));
@@ -424,7 +424,7 @@ static void cmd_compile_commands(void) {
 static void benchmarks(void) {
     const Profile *p = profile("release");
     Cmd srcs = cmd_new();
-    glob(&srcs, "bench", 1, ".c");
+    glob(&srcs, "dev/bench", 1, ".c");
     for (size_t i = 0; i < srcs.len; i++) {
         const char *name = stem(srcs.data[i]);
         const char *bin = out_of(p, fmt("bench/%s", name));
@@ -435,7 +435,7 @@ static void benchmarks(void) {
 
 static void cmd_release(void) {
     dist();
-    compile("main.c", release_main(), flags_of(profile("release")), NULL);
+    compile("dev/main.c", release_main(), flags_of(profile("release")), NULL);
     benchmarks();
     wait_all();
 }
@@ -480,24 +480,24 @@ static void cmd_docs(void) {
         log_fatal("setenv failed");
     must(fs_mkdir_p(out, &err_));
     Cmd c = cmd_new();
-    add(&c, "doxygen", "Doxyfile");
+    add(&c, "doxygen", "docs/Doxyfile");
     run(&c);
     printf("open %s/html/index.html\n", out);
 }
 
-/* Build and run each program in examples/. The guide's examples only
+/* Build and run each program in docs/examples/. The guide's examples only
  * compile, because 10_dangling.c and 11_double_free.c are bugs on purpose. */
 static void cmd_examples(const Profile *p) {
     dist();
     Cmd c = cmd_new();
     add(&c, opt.cc, "-std=c11", "-Idist", "-fsyntax-only");
-    glob(&c, "notes/str-examples", 1, ".c");
+    glob(&c, "docs/guide/str-examples", 1, ".c");
     run(&c);
 
     Cmd flags = cmd_new(), srcs = cmd_new(), bins = cmd_new();
     add_list(&flags, flags_of(p)->data, flags_of(p)->len);
     if (!p->release) add(&flags, "-Werror");
-    glob(&srcs, "examples", 1, ".c");
+    glob(&srcs, "docs/examples", 1, ".c");
     for (size_t i = 0; i < srcs.len; i++) {
         const char *bin = out_of(p, fmt("examples/%s", stem(srcs.data[i])));
         compile(srcs.data[i], bin, &flags, NULL);
@@ -520,15 +520,15 @@ static void cmd_format(void) {
         add(&c, "--dry-run", "--Werror");
     else
         add(&c, "-i");
-    add(&c, "main.c", "build.c");
+    add(&c, "dev/main.c", "build.c");
     glob(&c, "src", 2, ".c");
     glob(&c, "src", 2, ".h");
     glob(&c, "tests", 1, ".c");
     glob(&c, "tests", 1, ".h");
-    glob(&c, "bench", 1, ".c");
-    glob(&c, "bench", 1, ".h");
-    glob(&c, "examples", 2, ".c");
-    glob(&c, "notes/str-examples", 1, ".c");
+    glob(&c, "dev/bench", 1, ".c");
+    glob(&c, "dev/bench", 1, ".h");
+    glob(&c, "docs/examples", 2, ".c");
+    glob(&c, "docs/guide/str-examples", 1, ".c");
     run(&c);
 }
 
@@ -658,7 +658,7 @@ static void bench_on(const char *name, const char *flag,
 static void cmd_bench(const char *which) {
     dist();
     if (strcmp(which, "bench") != 0) cmd_corpus();
-    compile("main.c", release_main(), flags_of(profile("release")), NULL);
+    compile("dev/main.c", release_main(), flags_of(profile("release")), NULL);
     benchmarks();
     wait_all();
 
@@ -727,15 +727,16 @@ static int cmd_ci(void) {
     run(&c);
 
     ci_step("examples/project");
-    if (chdir("examples/project") != 0)
-        log_fatal("chdir examples/project: %s", strerror(errno));
+    if (chdir("docs/examples/project") != 0)
+        log_fatal("chdir docs/examples/project: %s", strerror(errno));
     c = cmd_new();
     add(&c, opt.cc, "build.c");
     run(&c);
     c = cmd_new();
     add(&c, "./a.out", "run");
     run(&c);
-    if (chdir("../..") != 0) log_fatal("chdir ../..: %s", strerror(errno));
+    if (chdir("../../..") != 0)
+        log_fatal("chdir ../../..: %s", strerror(errno));
     return 0;
 }
 
@@ -748,7 +749,7 @@ static const ArgCmd commands[] = {
     { "dist", "regenerate dist/mule.h, the single-header library" },
     { "docs", "Doxygen reference in <out>/docs/html/" },
     { "examples",
-      "build and run examples/, compile-check notes/str-examples/" },
+      "build and run docs/examples/, compile-check docs/guide/str-examples/" },
     { "version", "print the version in src/base/base.h" },
     { "bench", "micro-benchmarks of str_append and friends" },
     { "bench-corpus", "benchmarks on the corpus, against string.h" },

@@ -34,7 +34,7 @@ follows that rule.
       Makefile goes away.
 - [x] Testing: every kind of check is a `./build` profile or command, so
       CI is a list of `./build` calls that reproduce locally. Checks run
-      per push, nightly and at release. `specs/v0.4.0.md` has the design.
+      per push, nightly and at release. `dev/specs/v0.4.0.md` has the design.
 - [x] Tracking: bugs, features and action items are GitHub issues, filed
       under the milestone of the release that ships them. This file keeps
       the decisions and the goal of each release.
@@ -44,7 +44,7 @@ follows that rule.
 | Release | Goal |
 | --- | --- |
 | [0.3.1](https://github.com/vetr0s/mule/milestone/1) | Wall-clock timestamps in `time`, and in `log` lines on top of them. |
-| [0.4.0](https://github.com/vetr0s/mule/milestone/2) | Testing. Every check is a `./build` command, run per push, nightly and at release. The API does not change. `specs/v0.4.0.md` holds the design. |
+| [0.4.0](https://github.com/vetr0s/mule/milestone/2) | Testing. Every check is a `./build` command, run per push, nightly and at release. The API does not change. `dev/specs/v0.4.0.md` holds the design. |
 | [0.5.0](https://github.com/vetr0s/mule/milestone/3) | Text: UTF-8, in-place edits on `Str`, and a parser built on views. |
 | [0.6.0](https://github.com/vetr0s/mule/milestone/4) | Threads: a thin wrapper, a job queue, and TSan. |
 | [0.7.0](https://github.com/vetr0s/mule/milestone/5) | Windows, with MSVC and clang. |

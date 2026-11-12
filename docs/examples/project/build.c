@@ -7,7 +7,7 @@
  * lives in MULE's repository, so it reaches into dist/ instead.
  */
 #define MULE_IMPLEMENTATION
-#include "../../dist/mule.h"
+#include "../../../dist/mule.h"
 
 #include <string.h>
 
