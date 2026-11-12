@@ -24,6 +24,12 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Before
   pasteable shell line. `cmd_run` and `cmd_capture` wait, `proc_start` does
   not, and a `ProcPool` caps how many run at once. A missing program, an
   exit code and a signal each come back as their own `ErrKind`.
+- `build`: a project's build as a C program. `MULE_REBUILD_SELF` rebuilds
+  the build program when its source or any header it includes changes,
+  then runs the new one with the same arguments and exit code. Staleness
+  compares nanosecond times and reads `-MMD` depfiles. Commands are logged
+  quoted before they run, and `CompDb` writes `compile_commands.json`.
+  `examples/project/` is a complete example.
 
 ## [0.2.0] - 2026-11-08
 

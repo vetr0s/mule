@@ -109,21 +109,21 @@ way and the Makefile is gone.
 
 ### `build`: the nob part
 
-- [ ] `build_needs_rebuild(out, inputs, n)` on nanosecond mtimes. A missing
+- [x] `build_needs_rebuild(out, inputs, n)` on nanosecond mtimes. A missing
       output means rebuild, and a missing input is an error.
-- [ ] Read a `-MMD` depfile, so a header edit rebuilds every object that
+- [x] Read a `-MMD` depfile, so a header edit rebuilds every object that
       includes it. nob has no header tracking.
-- [ ] `MULE_REBUILD_SELF(argc, argv)`. The binary is stale when `build.c`
+- [x] `MULE_REBUILD_SELF(argc, argv)`. The binary is stale when `build.c`
       or any file its depfile lists is newer: `mule.h` in a project, the
       `src/` files in MULE. It renames the old
       binary to `.old`, recompiles with `$CC` or `cc` and warnings on, and
       puts the old one back if the compile fails. Then it `execv`s the new
       binary with the same arguments, so the exit code passes through. nob
       runs a child and exits 0 or 1 instead.
-- [ ] Log each command through `log`, quoted, before it runs.
-- [ ] Write `compile_commands.json` from the compile commands a build ran.
+- [x] Log each command through `log`, quoted, before it runs.
+- [x] Write `compile_commands.json` from the compile commands a build ran.
       The Makefile writes one today and nob does not.
-- [ ] A minimal example project with its own `build.c`, compiled in CI.
+- [x] A minimal example project with its own `build.c`, compiled in CI.
 
 ### Docs
 

@@ -4,7 +4,7 @@ Multi-Use Library Essentials. A small standard library for C11, written in
 the style of C99 and the spirit of stb. It is written to be read as well as
 used.
 
-It is early. Thirteen modules exist, and `TODO.md` holds the roadmap.
+It is early. Fourteen modules exist, and `TODO.md` holds the roadmap.
 
 | Module | What it gives you |
 | --- | --- |
@@ -20,6 +20,7 @@ It is early. Thirteen modules exist, and `TODO.md` holds the roadmap.
 | `fs` | Files, directories and paths: read and write whole files, atomic writes, walk a tree, cut a path into pieces. |
 | `args` | Command lines: long and short options, subcommands and positionals from one table, which also writes `--help`. |
 | `proc` | Run programs: wait for one, capture its output, redirect its streams to files, or run many at once in a pool. |
+| `build` | Write a project's build in C: a build program that rebuilds itself, nanosecond staleness with header tracking from depfiles, and `compile_commands.json`. |
 | `test` | A unit-test harness that fails tests on leaks and hangs, and makes allocation fail on demand. |
 
 ## A taste

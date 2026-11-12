@@ -48,6 +48,7 @@ other in this order, so a module only uses the ones above it.
 | @ref mod_fs | Files, directories and paths | err, str, arr |
 | @ref mod_args | Options, positionals and subcommands | err, str, arr |
 | @ref mod_proc | Cmd, Proc, ProcPool | err, str, arr |
+| @ref mod_build | MULE_REBUILD_SELF(), staleness, CompDb | fs, proc, log |
 | @ref mod_test | TEST, CHECK, RUN | log |
 
 ## Failure is a bool {#errors}

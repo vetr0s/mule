@@ -12,7 +12,7 @@ INPUT                  = README.md docs $(MULE_DOC_MODULES)
 USE_MDFILE_AS_MAINPAGE = README.md
 FILE_PATTERNS          = *.h *.c *.md *.dox
 RECURSIVE              = YES
-EXAMPLE_PATH           = tests notes/str-examples main.c
+EXAMPLE_PATH           = tests notes/str-examples main.c examples/project
 LAYOUT_FILE            = docs/DoxygenLayout.xml
 HTML_EXTRA_FILES       = notes/str-and-strview.html
 

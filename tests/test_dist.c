@@ -44,6 +44,10 @@ TEST(every_module_works) {
     CHECK(cmd_append(&cmd, "true") && cmd_run(&cmd, &err));
     arr_free(&cmd);
 
+    bool needed = false;
+    CHECK(build_needs_rebuild_deps("no-such-out", "no-such.d", &needed, NULL));
+    CHECK(needed);
+
     Rand r = { 1 };
     CHECK(rand_below(&r, 6) < 6);
     CHECK(time_now_ns() > 0);

@@ -1,5 +1,7 @@
-build/
+/build/
 /main
 compile_commands.json
 .cache/
 data/corpus/
+.build/
+a.out
