@@ -152,9 +152,10 @@ does not happen on every commit.
   above `<memberdecl>` again.
 - Doxygen wants a comment on each member. A `@name` group comment does not
   count, so give each macro a trailing `/**< ... */`.
-- A binary is stale only when a file in its depfile is newer. Changing a
-  flag rebuilds nothing, so a build with other flags needs its own `--out`,
-  as `--no-sanitize --out=.build/nosan` has.
+- Each output keeps the command that built it in `<out>.cmd`, so a
+  changed flag rebuilds it. Switching `--no-sanitize` on and off in one
+  `--out` rebuilds everything each time. Give it its own, as
+  `--out=.build/nosan`.
 - A `build/` directory left by the old Makefile blocks
   `cc -Isrc -o build build.c`. Remove it once.
 - AddressSanitizer on macOS does not detect leaks, and Apple clang ships no

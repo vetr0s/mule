@@ -122,6 +122,42 @@ bool build_needs_rebuild_deps(const char *out, const char *depfile,
     return true;
 }
 
+bool build_prepare(const char *out, const char *depfile, const Cmd *c,
+                   bool *needed, Err *err) {
+    Str stamp = { 0 }, line = { 0 }, old = { 0 };
+    if (!str_append_cstr(&stamp, out) ||
+        !str_append_cstr(&stamp, ".cmd") ||
+        !cmd_render(&line, c) ||
+        !str_push(&line, '\n')) {
+        err_set(err, ERR_NO_MEMORY, 0, "prepare %s: out of memory", out);
+        str_free(&stamp);
+        str_free(&line);
+        return false;
+    }
+    Err e = { 0 };
+    bool same = fs_read(&old, str_cstr(&stamp), &e) &&
+                str_eq(str_view(&old), str_view(&line));
+    bool ok = e.kind == ERR_NONE || e.kind == ERR_NOT_FOUND;
+    if (!ok && err != NULL) *err = e;
+
+    bool stale = !same;
+    if (ok && same) ok = build_needs_rebuild_deps(out, depfile, &stale, err);
+    if (ok && stale) {
+        e = (Err){ 0 };
+        if (!fs_remove(out, &e) && e.kind != ERR_NOT_FOUND) {
+            if (err != NULL) *err = e;
+            ok = false;
+        } else {
+            ok = fs_write_atomic(str_cstr(&stamp), str_view(&line), err);
+        }
+    }
+    if (ok) *needed = stale;
+    str_free(&stamp);
+    str_free(&line);
+    str_free(&old);
+    return ok;
+}
+
 bool build_run(const Cmd *c, Err *err) {
     Str line = { 0 };
     if (cmd_render(&line, c)) log_info("%s", str_cstr(&line));

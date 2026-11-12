@@ -18,14 +18,13 @@ int main(int argc, char **argv) {
     Err err = { 0 };
     Cmd cc = { 0 };
     bool needed = false;
-    bool ok = fs_mkdir_p(".build", &err) &&
-              build_needs_rebuild_deps(".build/hello", ".build/hello.d",
-                                       &needed, &err);
-    if (ok && needed)
-        ok = cmd_append(&cc, "cc", "-std=c11", "-Wall", "-Wextra", "-MMD",
-                        "-MF", ".build/hello.d", "-o", ".build/hello",
-                        "hello.c") &&
-             build_run(&cc, &err);
+    bool ok = cmd_append(&cc, "cc", "-std=c11", "-Wall", "-Wextra", "-MMD",
+                         "-MF", ".build/hello.d", "-o", ".build/hello",
+                         "hello.c") &&
+              fs_mkdir_p(".build", &err) &&
+              build_prepare(".build/hello", ".build/hello.d", &cc, &needed,
+                            &err);
+    if (ok && needed) ok = build_run(&cc, &err);
     /* [build] */
 
     if (ok && argc > 1 && strcmp(argv[1], "run") == 0) {

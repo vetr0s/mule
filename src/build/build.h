@@ -16,8 +16,9 @@
  *
  *   - Staleness compares modification times to the nanosecond, so an edit
  *     made in the same second as the last build still counts.
- *   - build_needs_rebuild_deps() reads the depfile a compiler writes with
- *     `-MMD -MF`, so a header edit rebuilds everything that includes it.
+ *   - build_prepare() reads the depfile a compiler writes with `-MMD -MF`,
+ *     so a header edit rebuilds everything that includes it. It also keeps
+ *     each output's command beside it, so a changed flag rebuilds too.
  *   - build_run() and build_start() log each command, quoted so it can be
  *     pasted into a shell, before running it.
  *   - A CompDb collects compile commands into `compile_commands.json`, for
@@ -72,6 +73,13 @@ void build_deps_free(Deps *d);
 MULE_NODISCARD bool build_needs_rebuild_deps(const char *out,
                                              const char *depfile, bool *needed,
                                              Err *err);
+/** Set `*needed` as build_needs_rebuild_deps() does, and also when @p c
+ *  differs from the command that last built @p out, which is kept in
+ *  `<out>.cmd`. When it is needed, remove @p out and record @p c, so a
+ *  run of @p c that fails is retried next time.
+ *  @return False when a file cannot be read, written or removed. */
+MULE_NODISCARD bool build_prepare(const char *out, const char *depfile,
+                                  const Cmd *c, bool *needed, Err *err);
 
 /** @} */
 

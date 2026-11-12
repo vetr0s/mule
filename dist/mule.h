@@ -1535,8 +1535,9 @@ MULE_NODISCARD bool cmd_append_(Cmd *c, const char *const *args, size_t n);
  *
  *   - Staleness compares modification times to the nanosecond, so an edit
  *     made in the same second as the last build still counts.
- *   - build_needs_rebuild_deps() reads the depfile a compiler writes with
- *     `-MMD -MF`, so a header edit rebuilds everything that includes it.
+ *   - build_prepare() reads the depfile a compiler writes with `-MMD -MF`,
+ *     so a header edit rebuilds everything that includes it. It also keeps
+ *     each output's command beside it, so a changed flag rebuilds too.
  *   - build_run() and build_start() log each command, quoted so it can be
  *     pasted into a shell, before running it.
  *   - A CompDb collects compile commands into `compile_commands.json`, for
@@ -1586,6 +1587,13 @@ void build_deps_free(Deps *d);
 MULE_NODISCARD bool build_needs_rebuild_deps(const char *out,
                                              const char *depfile, bool *needed,
                                              Err *err);
+/** Set `*needed` as build_needs_rebuild_deps() does, and also when @p c
+ *  differs from the command that last built @p out, which is kept in
+ *  `<out>.cmd`. When it is needed, remove @p out and record @p c, so a
+ *  run of @p c that fails is retried next time.
+ *  @return False when a file cannot be read, written or removed. */
+MULE_NODISCARD bool build_prepare(const char *out, const char *depfile,
+                                  const Cmd *c, bool *needed, Err *err);
 
 /** @} */
 
@@ -4046,6 +4054,42 @@ bool build_needs_rebuild_deps(const char *out, const char *depfile,
     }
     *needed = stale;
     return true;
+}
+
+bool build_prepare(const char *out, const char *depfile, const Cmd *c,
+                   bool *needed, Err *err) {
+    Str stamp = { 0 }, line = { 0 }, old = { 0 };
+    if (!str_append_cstr(&stamp, out) ||
+        !str_append_cstr(&stamp, ".cmd") ||
+        !cmd_render(&line, c) ||
+        !str_push(&line, '\n')) {
+        err_set(err, ERR_NO_MEMORY, 0, "prepare %s: out of memory", out);
+        str_free(&stamp);
+        str_free(&line);
+        return false;
+    }
+    Err e = { 0 };
+    bool same = fs_read(&old, str_cstr(&stamp), &e) &&
+                str_eq(str_view(&old), str_view(&line));
+    bool ok = e.kind == ERR_NONE || e.kind == ERR_NOT_FOUND;
+    if (!ok && err != NULL) *err = e;
+
+    bool stale = !same;
+    if (ok && same) ok = build_needs_rebuild_deps(out, depfile, &stale, err);
+    if (ok && stale) {
+        e = (Err){ 0 };
+        if (!fs_remove(out, &e) && e.kind != ERR_NOT_FOUND) {
+            if (err != NULL) *err = e;
+            ok = false;
+        } else {
+            ok = fs_write_atomic(str_cstr(&stamp), str_view(&line), err);
+        }
+    }
+    if (ok) *needed = stale;
+    str_free(&stamp);
+    str_free(&line);
+    str_free(&old);
+    return ok;
 }
 
 bool build_run(const Cmd *c, Err *err) {

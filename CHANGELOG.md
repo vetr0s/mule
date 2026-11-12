@@ -28,7 +28,8 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Before
 - `build`: a project's build as a C program. `MULE_REBUILD_SELF` rebuilds
   the build program when its source or any header it includes changes,
   then runs the new one with the same arguments and exit code. Staleness
-  compares nanosecond times and reads `-MMD` depfiles. Commands are logged
+  compares nanosecond times and reads `-MMD` depfiles, and `build_prepare`
+  also rebuilds when an output's command changes. Commands are logged
   quoted before they run, and `CompDb` writes `compile_commands.json`.
   `examples/project/` is a complete example.
 - `examples/`: a small program for each module, listed in the reference

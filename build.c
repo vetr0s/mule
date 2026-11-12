@@ -261,7 +261,7 @@ static void compile(const char *src, const char *out, const Cmd *flags,
     bool needed = false;
     must(fs_mkdir_p(fmt("%.*s", STR_FMT(fs_dirname(sv_from_cstr(out)))),
                     &err_) &&
-         build_needs_rebuild_deps(out, fmt("%s.d", out), &needed, &err_));
+         build_prepare(out, fmt("%s.d", out), &c, &needed, &err_));
     if (needed) must(build_start(&pool_, &c, &err_));
 }
 

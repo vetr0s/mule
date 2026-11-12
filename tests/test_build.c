@@ -126,6 +126,40 @@ TEST(needs_rebuild_from_a_depfile) {
     CHECK(needed); /* a deleted header means rebuild, not fail */
 }
 
+TEST(prepare_rebuilds_when_the_command_changes) {
+    fresh();
+    char out[512], dep[512], src[512], text[1100];
+    Cmd a = { 0 }, b = { 0 };
+    REQUIRE(cmd_append(&a, "cc", "-O0") && cmd_append(&b, "cc", "-O2"));
+    REQUIRE(put("src.c", "x"));
+    at(out, "out");
+    at(dep, "out.d");
+    snprintf(text, sizeof text, "%s: %s\n", out, at(src, "src.c"));
+    Err err = { 0 };
+    REQUIRE(fs_write(dep, sv_from_cstr(text), &err));
+
+    bool needed = false;
+    CHECK(build_prepare(out, dep, &a, &needed, &err));
+    CHECK(needed); /* never built */
+
+    /* The compile ran: out exists and is newer than its source. */
+    REQUIRE(put("out", "x") &&
+            set_mtime(src, 1700000000, 5) &&
+            set_mtime(out, 1700000000, 10));
+    CHECK(build_prepare(out, dep, &a, &needed, &err));
+    CHECK(!needed);
+
+    CHECK(build_prepare(out, dep, &b, &needed, &err));
+    CHECK(needed);          /* -O0 became -O2 */
+    CHECK(!fs_exists(out)); /* so a failed compile is retried */
+
+    REQUIRE(put("out", "x") && set_mtime(out, 1700000000, 10));
+    CHECK(build_prepare(out, dep, &b, &needed, &err));
+    CHECK(!needed);
+    arr_free(&a);
+    arr_free(&b);
+}
+
 TEST(run_logs_the_quoted_command) {
     fresh();
     char p[512];
@@ -288,6 +322,7 @@ int main(int argc, char **argv) {
     RUN(needs_rebuild_to_the_nanosecond);
     RUN(reads_a_depfile);
     RUN(needs_rebuild_from_a_depfile);
+    RUN(prepare_rebuilds_when_the_command_changes);
     RUN(run_logs_the_quoted_command);
     RUN(compdb_writes_json_once);
     RUN(self_rebuild);
