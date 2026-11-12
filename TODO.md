@@ -127,7 +127,7 @@ way and the Makefile is gone.
 
 ### Docs
 
-- [ ] Revamp the examples section of the docs. It shows wider use cases and
+- [x] Revamp the examples section of the docs. It shows wider use cases and
       covers every topic in the library.
 
 ### MULE builds itself

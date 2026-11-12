@@ -466,14 +466,31 @@ static void cmd_docs(void) {
     printf("open %s/html/index.html\n", out);
 }
 
-/* Compiling is enough: 10_dangling.c and 11_double_free.c are bugs on
- * purpose. */
+/* Build and run each program in examples/. The guide's examples only
+ * compile, because 10_dangling.c and 11_double_free.c are bugs on purpose. */
 static void cmd_examples(void) {
     dist();
+    flags_init();
     Cmd c = cmd_new();
     add(&c, opt.cc, "-std=c11", "-Idist", "-fsyntax-only");
     glob(&c, "notes/str-examples", 1, ".c");
     run(&c);
+
+    Cmd flags = cmd_new(), srcs = cmd_new(), bins = cmd_new();
+    add_list(&flags, debug_flags_.data, debug_flags_.len);
+    add(&flags, "-Werror");
+    glob(&srcs, "examples", 1, ".c");
+    for (size_t i = 0; i < srcs.len; i++) {
+        const char *bin = fmt("%s/examples/%s", opt.out, stem(srcs.data[i]));
+        compile(srcs.data[i], bin, &flags, NULL);
+        add(&bins, bin);
+    }
+    wait_all();
+    for (size_t i = 0; i < bins.len; i++) {
+        c = cmd_new();
+        add(&c, bins.data[i]);
+        run(&c);
+    }
 }
 
 static void cmd_format(void) {
@@ -485,6 +502,7 @@ static void cmd_format(void) {
     glob(&c, "tests", 1, ".h");
     glob(&c, "bench", 1, ".c");
     glob(&c, "bench", 1, ".h");
+    glob(&c, "examples", 2, ".c");
     run(&c);
 }
 
@@ -650,7 +668,8 @@ static const ArgCmd commands[] = {
     { "test", "build and run every tests/test_*.c, or only the named tests" },
     { "dist", "regenerate dist/mule.h, the single-header library" },
     { "docs", "Doxygen reference in <out>/docs/html/" },
-    { "examples", "compile-check notes/str-examples/ against dist/mule.h" },
+    { "examples",
+      "build and run examples/, compile-check notes/str-examples/" },
     { "version", "print the version in src/base/base.h" },
     { "bench", "micro-benchmarks of str_append and friends" },
     { "bench-corpus", "benchmarks on the corpus, against string.h" },

@@ -44,6 +44,7 @@ jobs:
       # heap_growth_returns_memory needs the real libmalloc, not ASan's.
       - run: ./build test --no-sanitize --out=.build/nosan
       - run: ./build release
+      - run: ./build examples
       - run: .build/release/main data/pg2554.txt
 
   docs:

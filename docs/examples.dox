@@ -3,6 +3,55 @@
 @details A word counter built on the single header, dist/mule.h. The file
 lives in a Str inside an Arena, and every line and word is a StrView into it.
 
+@example checked_math.c
+@details base: size arithmetic with ckd_mul() and ckd_add(), so an overflow
+is caught before it reaches malloc.
+
+@example arena_scratch.c
+@details mem: one Arena per request, rewound with a mark, so a batch of
+strings frees in one call.
+
+@example todo_list.c
+@details arr: a growable array of structs, with push, insert, remove and pop.
+
+@example inventory.c
+@details map: tally items by name, list them in first-seen order, and remove
+one.
+
+@example why_it_failed.c
+@details err: fill an Err in your own function, and branch on its kind rather
+than its text.
+
+@example dice.c
+@details rand: two dice rolled from a fixed seed, so every run prints the same
+histogram.
+
+@example stopwatch.c
+@details time: time a loop with time_now_ns().
+
+@example logging.c
+@details log: levelled messages that carry their file and line, filtered at
+run time.
+
+@example unit_tests.c
+@details test: unit tests for code of your own, with leak checks and an
+allocation that fails on purpose.
+
+@example line_count.c
+@details fs: walk a tree in sorted order and read each file to count its
+lines.
+
+@example run_commands.c
+@details proc: capture a command's output, see how a failure is reported, and
+run jobs in a ProcPool.
+
+@example cli_options.c
+@details args: options, positionals and a generated `--help` from one table.
+
+@example project/build.c
+@details build: a project's build as a C program that rebuilds itself and
+recompiles only what changed.
+
 @example 01_build.c
 @details Build a Str with appends that chain with `&&`, print it two ways,
 free it.

@@ -206,15 +206,16 @@ static bool write_prog(const char *version) {
     char src[512], cwd[PATH_MAX];
     if (getcwd(cwd, sizeof cwd) == NULL) return false;
     Str text = { 0 };
-    bool ok = str_appendf(&text,
-                          "#define MULE_IMPLEMENTATION\n"
-                          "#include \"%s/dist/mule.h\"\n"
-                          "int main(int argc, char **argv) {\n"
-                          "    MULE_REBUILD_SELF(argc, argv);\n"
-                          "    printf(\"%s %%s\\n\", argc > 1 ? argv[1] : \"\");\n"
-                          "    return 7;\n"
-                          "}\n",
-                          cwd, version) &&
+    bool ok = str_appendf(
+                  &text,
+                  "#define MULE_IMPLEMENTATION\n"
+                  "#include \"%s/dist/mule.h\"\n"
+                  "int main(int argc, char **argv) {\n"
+                  "    MULE_REBUILD_SELF(argc, argv);\n"
+                  "    printf(\"%s %%s\\n\", argc > 1 ? argv[1] : \"\");\n"
+                  "    return 7;\n"
+                  "}\n",
+                  cwd, version) &&
               fs_write(at(src, "prog.c"), str_view(&text), NULL);
     str_free(&text);
     return ok;

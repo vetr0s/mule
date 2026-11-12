@@ -129,6 +129,7 @@ build.c         the build, which also generates dist/mule.h
 tests/          one test file per module, and test_dist.c for dist/mule.h
 bench/          benchmarks against string.h
 notes/          guides for learning the library, with runnable examples
+examples/       one small program per module, and a project built by build.c
 main.c          a word counter that uses dist/mule.h
 ```
 

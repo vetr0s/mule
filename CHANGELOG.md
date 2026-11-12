@@ -30,6 +30,9 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Before
   compares nanosecond times and reads `-MMD` depfiles. Commands are logged
   quoted before they run, and `CompDb` writes `compile_commands.json`.
   `examples/project/` is a complete example.
+- `examples/`: a small program for each module, listed in the reference
+  beside the `str` guide's examples. `./build examples` builds and runs
+  them all.
 
 ### Changed
 
