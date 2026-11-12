@@ -1,5 +1,9 @@
 # MULE
 
+[![CI](https://github.com/vetr0s/mule/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/vetr0s/mule/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/vetr0s/mule)](https://github.com/vetr0s/mule/releases/latest)
+[![Reference](https://img.shields.io/badge/reference-mule.vetr0s.dev-blue)](https://mule.vetr0s.dev)
+
 Multi-Use Library Essentials. A small standard library for C11, written in
 the style of C99 and the spirit of stb. It is written to be read as well as
 used.
