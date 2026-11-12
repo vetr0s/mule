@@ -38,6 +38,10 @@
  *     undefined, as a freed pointer is.
  *   - Taking a mark stops the previous allocation from growing in place, so
  *     a buffer never straddles the mark.
+ *   - Under AddressSanitizer, an arena poisons the bytes it has not handed
+ *     out and leaves 16 poisoned bytes after each allocation. Reading or
+ *     writing past an allocation is then reported, as it is for malloc.
+ *     Allocations also start on 8-byte boundaries.
  *
  * @snippet{trimleft} test_mem.c arena
  *

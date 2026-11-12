@@ -90,6 +90,9 @@ The folder, include and naming rules live in the file comment of
   trust it.
 - The tests also run under the `release` profile, with `-DNDEBUG`. A check
   that must hold there uses `CHECK` or `log_assert`, not `assert`.
+- Under ASan each arena allocation is followed by `MEM_REDZONE_` bytes,
+  so a test that checks an arena's `used` adds it. Check poisoning with
+  `__asan_region_is_poisoned`, as `test_mem.c` does.
 - clang -O2 removes a `malloc` whose result is only compared with null,
   and folds the check to false. A test that expects an allocation to fail
   stores the result through `volatile`, as `libc_oom_leaves_block` does.

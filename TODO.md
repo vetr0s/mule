@@ -49,7 +49,7 @@ the acceptance criteria.
 - [x] Profiles in `build.c`, each building into `.build/<name>/`, and
       `./build ci` for the push tier. They replace `--no-sanitize`.
 - [ ] `./build ci --tier=nightly`, with the first nightly check.
-- [ ] ASan poisoning for arenas, so an overflow between two arena
+- [x] ASan poisoning for arenas, so an overflow between two arena
       allocations is reported.
 - [ ] Consumer builds: `mule.h` in two linked files, under c11, c17 and
       c23, with `-DLOG_LEVEL_MIN`, and `-Wall -Werror` on gcc and clang.

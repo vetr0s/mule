@@ -11,16 +11,16 @@
 
 #include <stdint.h>
 
-#ifndef __has_feature
-#define __has_feature(x) 0
-#endif
-
 /* ASan replaces libmalloc, so footprint tests need a build without it. */
-#if defined(__APPLE__) && !__has_feature(address_sanitizer)
+#if defined(__APPLE__) && !MULE_ASAN
 #define MEM_FOOTPRINT_TESTS 1
 #include <mach/mach.h>
 #else
 #define MEM_FOOTPRINT_TESTS 0
+#endif
+
+#if MULE_ASAN
+#include <sanitizer/asan_interface.h>
 #endif
 
 /* --- Heap ---------------------------------------------------------------- */
@@ -446,6 +446,73 @@ TEST(heap_hook_routes_null_allocator) {
     CHECK(mem_set_heap(prev) == NULL);
 }
 
+#if MULE_ASAN
+static bool addressable(const void *p, size_t n) {
+    return __asan_region_is_poisoned((void *)(uintptr_t)p, n) == NULL;
+}
+
+TEST(arena_poisons_around_allocations) {
+    Arena a = { 0 };
+    /* p fills whole granules, so only the redzone keeps q off its end. */
+    char *p = arena_alloc(&a, 8, 1);
+    char *q = arena_alloc(&a, 5, 1);
+    REQUIRE(p != NULL && q != NULL);
+    CHECK(addressable(p, 8) && addressable(q, 5));
+    CHECK(!addressable(p + 8, 1)); /* one byte past p */
+    CHECK(!addressable(q - 1, 1)); /* one byte before q */
+    CHECK(!addressable(q + 5, 1));
+
+    ArenaMark m = arena_mark(&a);
+    char *r = arena_alloc(&a, 5, 1);
+    REQUIRE(r != NULL);
+    arena_restore(&a, m);
+    CHECK(!addressable(r, 1));
+    arena_reset(&a);
+    CHECK(!addressable(p, 1));
+    arena_free(&a);
+}
+
+TEST(arena_allocator_poisons_what_it_takes_back) {
+    Arena a = { 0 };
+    const Allocator *al = arena_allocator(&a);
+    char *p = mem_realloc(al, NULL, 0, 8);
+    REQUIRE(p != NULL);
+    CHECK(addressable(p, 8) && !addressable(p + 8, 1));
+    REQUIRE(mem_realloc(al, p, 8, 100) == p); /* grows in place */
+    CHECK(addressable(p, 100) && !addressable(p + 100, 1));
+    REQUIRE(mem_realloc(al, p, 100, 10) == p); /* shrinks in place */
+    CHECK(addressable(p, 10) && !addressable(p + 10, 1));
+    p = mem_realloc(al, p, 10, 0);
+    CHECK(!addressable(a.head->data, 1));
+    arena_free(&a);
+}
+
+/* A heap that records whether each block came back fully addressable. */
+typedef struct CleanHeap {
+    const Allocator *next;
+    bool clean;
+} CleanHeap;
+
+static void *clean_heap_fn(void *ctx, void *old, size_t old_size,
+                           size_t new_size) {
+    CleanHeap *h = ctx;
+    if (new_size == 0 && old != NULL && !addressable(old, old_size))
+        h->clean = false;
+    return mem_realloc(h->next, old, old_size, new_size);
+}
+
+TEST(arena_returns_blocks_unpoisoned) {
+    CleanHeap h = { .clean = true };
+    Allocator heap = { .fn = clean_heap_fn, .ctx = &h };
+    Arena a = { 0 };
+    REQUIRE(arena_alloc(&a, 5, 1) != NULL);
+    h.next = mem_set_heap(&heap);
+    arena_free(&a);
+    mem_set_heap(h.next);
+    CHECK(h.clean);
+}
+#endif
+
 int main(int argc, char **argv) {
     test_init(argc, argv);
     RUN(heap_realloc_and_free);
@@ -473,5 +540,10 @@ int main(int argc, char **argv) {
     RUN(mark_after_reset_restores);
     RUN(restore_drops_scoped_str);
     RUN(heap_hook_routes_null_allocator);
+#if MULE_ASAN
+    RUN(arena_poisons_around_allocations);
+    RUN(arena_allocator_poisons_what_it_takes_back);
+    RUN(arena_returns_blocks_unpoisoned);
+#endif
     return TEST_REPORT();
 }

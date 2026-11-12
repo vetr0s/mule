@@ -36,6 +36,7 @@
  *   - The `MULE_NODISCARD`, `MULE_UNUSED`, `MULE_NORETURN` and
  *     `MULE_PRINTF` attribute macros. They are left out of the signatures
  *     in this reference.
+ *   - `MULE_ASAN`, which is 1 when AddressSanitizer is on and 0 otherwise.
  *
  * ## Layout rules
  *
@@ -78,6 +79,18 @@
 #define MULE_UNUSED
 #define MULE_NORETURN _Noreturn
 #define MULE_PRINTF(fmt, args)
+#endif
+
+/* gcc says so with __SANITIZE_ADDRESS__, and clang with __has_feature. */
+#if defined(__SANITIZE_ADDRESS__)
+#define MULE_ASAN 1
+#elif defined(__has_feature)
+#if __has_feature(address_sanitizer)
+#define MULE_ASAN 1
+#endif
+#endif
+#ifndef MULE_ASAN
+#define MULE_ASAN 0
 #endif
 
 #if __has_include(<stdckdint.h>)
@@ -147,6 +160,10 @@
  *     undefined, as a freed pointer is.
  *   - Taking a mark stops the previous allocation from growing in place, so
  *     a buffer never straddles the mark.
+ *   - Under AddressSanitizer, an arena poisons the bytes it has not handed
+ *     out and leaves 16 poisoned bytes after each allocation. Reading or
+ *     writing past an allocation is then reported, as it is for malloc.
+ *     Allocations also start on 8-byte boundaries.
  *
  * @snippet{trimleft} test_mem.c arena
  *
@@ -1983,6 +2000,33 @@ static bool test_selected_(const char *name) {
 #include <stdlib.h>
 #include <string.h>
 
+#if MULE_ASAN
+#include <sanitizer/asan_interface.h>
+#endif
+
+/* Under ASan an arena keeps what it has not handed out poisoned, and leaves
+ * poisoned bytes after each allocation, so an overflow into the next one is
+ * reported. Allocations start on ASan's 8-byte granules. */
+enum { MEM_REDZONE_ = MULE_ASAN ? 16 : 0, MEM_GRANULE_ = MULE_ASAN ? 8 : 1 };
+
+static void mem_poison_(const void *p, size_t n) {
+#if MULE_ASAN
+    __asan_poison_memory_region(p, n);
+#else
+    (void)p;
+    (void)n;
+#endif
+}
+
+static void mem_unpoison_(const void *p, size_t n) {
+#if MULE_ASAN
+    __asan_unpoison_memory_region(p, n);
+#else
+    (void)p;
+    (void)n;
+#endif
+}
+
 struct ArenaBlock {
     ArenaBlock *prev;                 /**< Older block, or null. */
     size_t used;                      /**< Bytes of `data` handed out. */
@@ -2035,20 +2079,25 @@ static void *mem_bump_(ArenaBlock *b, size_t size, size_t align) {
 
 void *arena_alloc(Arena *a, size_t size, size_t align) {
     assert(align != 0 && (align & (align - 1)) == 0);
-    void *p = a->head != NULL ? mem_bump_(a->head, size, align) : NULL;
+    if (align < MEM_GRANULE_) align = MEM_GRANULE_;
+    size_t padded;
+    if (ckd_add(&padded, size, (size_t)MEM_REDZONE_)) return NULL;
+    void *p = a->head != NULL ? mem_bump_(a->head, padded, align) : NULL;
     if (p == NULL) {
         /* Room for the worst-case padding too, so the bump cannot fail. */
         size_t cap, bytes;
-        if (ckd_add(&cap, size, align - 1)) return NULL;
+        if (ckd_add(&cap, padded, align - 1)) return NULL;
         if (cap < MEM_ARENA_BLOCK) cap = MEM_ARENA_BLOCK;
         if (ckd_add(&bytes, cap, sizeof(ArenaBlock))) return NULL;
 
         ArenaBlock *b = mem_realloc(NULL, NULL, 0, bytes);
         if (b == NULL) return NULL;
         *b = (ArenaBlock){ .prev = a->head, .cap = cap };
+        mem_poison_(b->data, cap);
         a->head = b;
-        p = mem_bump_(b, size, align);
+        p = mem_bump_(b, padded, align);
     }
+    mem_unpoison_(p, size);
     a->last = p;
     return p;
 }
@@ -2063,11 +2112,16 @@ static void *mem_arena_fn_(void *ctx, void *old, size_t old_size,
         size_t start = (size_t)((char *)old - b->data);
         size_t end;
         if (new_size == 0) {
+            mem_poison_(old, b->used - start);
             b->used = start;
             a->last = NULL;
             return NULL;
         }
-        if (!ckd_add(&end, start, new_size) && end <= b->cap) {
+        if (!ckd_add(&end, start, new_size) &&
+            !ckd_add(&end, end, (size_t)MEM_REDZONE_) &&
+            end <= b->cap) {
+            mem_poison_(old, b->used - start);
+            mem_unpoison_(old, new_size);
             b->used = end;
             return old;
         }
@@ -2089,6 +2143,7 @@ const Allocator *arena_allocator(Arena *a) {
 static void mem_free_blocks_(ArenaBlock *b, const ArenaBlock *stop) {
     while (b != stop) {
         ArenaBlock *prev = b->prev;
+        mem_unpoison_(b->data, b->cap);
         b = mem_realloc(NULL, b, sizeof(ArenaBlock) + b->cap, 0);
         b = prev;
     }
@@ -2099,6 +2154,7 @@ void arena_reset(Arena *a) {
     mem_free_blocks_(a->head->prev, NULL);
     a->head->prev = NULL;
     a->head->used = 0;
+    mem_poison_(a->head->data, a->head->cap);
     a->last = NULL;
 }
 
@@ -2112,7 +2168,10 @@ ArenaMark arena_mark(Arena *a) {
 void arena_restore(Arena *a, ArenaMark mark) {
     mem_free_blocks_(a->head, mark.head);
     a->head = mark.head;
-    if (a->head != NULL) a->head->used = mark.used;
+    if (a->head != NULL) {
+        a->head->used = mark.used;
+        mem_poison_(a->head->data + mark.used, a->head->cap - mark.used);
+    }
     a->last = NULL;
 }
 

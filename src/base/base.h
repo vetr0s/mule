@@ -15,6 +15,7 @@
  *   - The `MULE_NODISCARD`, `MULE_UNUSED`, `MULE_NORETURN` and
  *     `MULE_PRINTF` attribute macros. They are left out of the signatures
  *     in this reference.
+ *   - `MULE_ASAN`, which is 1 when AddressSanitizer is on and 0 otherwise.
  *
  * ## Layout rules
  *
@@ -57,6 +58,18 @@
 #define MULE_UNUSED
 #define MULE_NORETURN _Noreturn
 #define MULE_PRINTF(fmt, args)
+#endif
+
+/* gcc says so with __SANITIZE_ADDRESS__, and clang with __has_feature. */
+#if defined(__SANITIZE_ADDRESS__)
+#define MULE_ASAN 1
+#elif defined(__has_feature)
+#if __has_feature(address_sanitizer)
+#define MULE_ASAN 1
+#endif
+#endif
+#ifndef MULE_ASAN
+#define MULE_ASAN 0
 #endif
 
 #if __has_include(<stdckdint.h>)

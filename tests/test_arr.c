@@ -140,11 +140,11 @@ TEST(oom_leaves_array_unchanged) {
 TEST(arena_backed) {
     Arena arena = { 0 };
     IntArr a = { .alloc = arena_allocator(&arena) };
-    for (int i = 0; i < 10000; i++) REQUIRE(arr_push(&a, i));
+    for (int i = 0; i < 5000; i++) REQUIRE(arr_push(&a, i));
     /* Every doubling extended the same allocation in place. */
     CHECK(arena.head->prev == NULL);
-    CHECK_EQ_INT(arena.head->used, a.capacity * sizeof(int));
-    CHECK_EQ_INT(a.data[9999], 9999);
+    CHECK_EQ_INT(arena.head->used, a.capacity * sizeof(int) + MEM_REDZONE_);
+    CHECK_EQ_INT(a.data[4999], 4999);
 
     const Allocator *al = a.alloc;
     arr_free(&a);

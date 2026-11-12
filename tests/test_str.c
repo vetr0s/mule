@@ -258,7 +258,7 @@ TEST(arena_str_grows_in_place) {
     /* Every doubling extended the same allocation, so nothing was left behind.
      */
     CHECK(a.head->prev == NULL);
-    CHECK_EQ_INT(a.head->used, s.capacity + 1);
+    CHECK_EQ_INT(a.head->used, s.capacity + 1 + MEM_REDZONE_);
     arena_free(&a);
 }
 
