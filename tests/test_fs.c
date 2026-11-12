@@ -236,12 +236,12 @@ static FsWalkAct record(void *ctx, const char *path, FsType type) {
 
 TEST(walk_is_sorted_and_can_skip_or_stop) {
     fresh();
-    char p[512];
+    char p[512], d[512];
     Err err = { 0 };
     REQUIRE(fs_mkdir_p(at(p, "a"), &err));
     REQUIRE(
         put("c", "x") && put("b", "x") && put("a/z", "x") && put("a/y", "x"));
-    REQUIRE(symlink(at(p, "a"), at(p, "d")) == 0);
+    REQUIRE(symlink(at(p, "a"), at(d, "d")) == 0);
 
     Visits v = { 0 };
     CHECK(fs_walk(root_, record, &v, &err));
