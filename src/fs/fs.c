@@ -224,7 +224,9 @@ static bool fs_list_(const char *dir, Str *buf, FsNames_ *names, Err *err) {
     }
     for (size_t i = 0; ok && i < offs.len; i++)
         names->data[names->len++] = buf->data + offs.data[i];
-    if (ok) qsort(names->data, names->len, sizeof *names->data, fs_name_cmp_);
+    /* An empty directory leaves data null, which glibc's qsort rejects. */
+    if (ok && names->len > 1)
+        qsort(names->data, names->len, sizeof *names->data, fs_name_cmp_);
     arr_free(&offs);
     return ok;
 }
