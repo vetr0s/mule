@@ -15,7 +15,7 @@ jobs:
     env:
       CC: ${{ matrix.cc }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Install gcc 14
         if: matrix.cc == 'gcc-14'
         run: sudo apt-get update && sudo apt-get install -y gcc-14
@@ -29,7 +29,7 @@ jobs:
   macos:
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - run: cc --version
       - run: cc -Isrc -o build build.c
       - run: ./build ci
@@ -39,7 +39,7 @@ jobs:
   format:
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - run: pipx install clang-format==23.1.5
       - run: clang-format --version
       - run: cc -Isrc -o build build.c
@@ -48,7 +48,7 @@ jobs:
   docs:
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       # docs/DoxygenLayout.xml comes from 1.18, and Ubuntu's 1.9.8 rejects it.
       - name: Install doxygen 1.18.0
         run: |
