@@ -26,6 +26,9 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Before
   `.build/tests/` to `.build/<profile>/tests/`.
 - `data/pg2554.txt` is no longer in the repository. `./build data`
   downloads it, and `./build run` does too when it is missing.
+- The examples and the str guide moved under `docs/`, as
+  `docs/examples/` and `docs/guide/`. `main.c`, the benchmarks, the
+  roadmap and the design notes moved under `dev/`.
 
 ### Fixed
 

@@ -1,0 +1,943 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Str and StrView in practice</title>
+<style>
+/* ============================================================
+   Standard HTML house style for plans, audits, and design docs.
+   Deliberately project-agnostic: this never adopts a project's theme.
+   Plain document on a plain background. Legibility over decoration.
+   ============================================================ */
+
+:root {
+  --bg:        #fbfbf9;
+  --fg:        #1a1a1a;
+  --fg-muted:  #5c5c5c;
+  --rule:      #d4d4cf;
+  --surface:   #f0f0ec;
+  --link:      #0b4fa8;
+  --visited:   #6b3fa0;
+  --accent:    #8a5a00;
+  --good:      #1c6b2e;
+  --bad:       #a11b1b;
+  --measure:   72em;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg:       #101010;
+    --fg:       #e6e6e3;
+    --fg-muted: #9a9a95;
+    --rule:     #3a3a3a;
+    --surface:  #1c1c1c;
+    --link:     #89a6ff;
+    --visited:  #d98cff;
+    --accent:   #e0a33a;
+    --good:     #52c96a;
+    --bad:      #ff6b52;
+  }
+}
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-size: 17px;
+  line-height: 1.55;
+  color: var(--fg);
+  background: var(--bg);
+  margin: 0;
+  padding: 2.5rem 1.25rem 6rem;
+}
+
+/* Left-justified, not centered: the document hugs the left gutter and simply
+   stops at the measure. */
+main, .doc {
+  max-width: var(--measure);
+  margin: 0;
+}
+
+/* --- headings ------------------------------------------------ */
+
+h1, h2, h3, h4 {
+  line-height: 1.25;
+  font-weight: 600;
+  margin: 2.2em 0 0.6em;
+}
+h1 {
+  font-size: 1.9rem;
+  margin-top: 0;
+  padding-bottom: 0.3em;
+  border-bottom: 1px solid var(--rule);
+}
+h2 { font-size: 1.35rem; }
+h3 { font-size: 1.1rem; }
+h4 { font-size: 1rem; color: var(--fg-muted); }
+
+/* Byline directly under the h1: date, repo, commit, author. */
+.meta {
+  color: var(--fg-muted);
+  font-size: 0.875rem;
+  margin: -0.2em 0 2.5em;
+}
+.meta > * + *::before { content: " · "; }
+
+/* --- prose --------------------------------------------------- */
+
+p, ul, ol, dl, table, pre, blockquote { margin: 0 0 1.1em; }
+
+a          { color: var(--link); }
+a:visited  { color: var(--visited); }
+
+strong { font-weight: 600; }
+
+small, .muted { color: var(--fg-muted); font-size: 0.875rem; }
+
+hr {
+  border: 0;
+  border-top: 1px solid var(--rule);
+  margin: 2.5em 0;
+}
+
+blockquote {
+  margin-left: 0;
+  padding: 0.1em 0 0.1em 1em;
+  border-left: 3px solid var(--rule);
+  color: var(--fg-muted);
+}
+
+ul, ol { padding-left: 1.4em; }
+li { margin: 0.25em 0; }
+li > ul, li > ol { margin: 0.25em 0; }
+
+/* --- code ---------------------------------------------------- */
+
+code, kbd, samp, .path {
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 0.875em;
+}
+
+code {
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+  padding: 0.1em 0.3em;
+}
+
+/* File paths and identifiers: mono, but no box. */
+.path { color: var(--fg-muted); }
+
+pre {
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  padding: 0.75em 0.9em;
+  overflow-x: auto;
+  line-height: 1.45;
+}
+pre code {
+  background: none;
+  border: 0;
+  padding: 0;
+  font-size: 0.8125rem;
+}
+
+/* --- tables -------------------------------------------------- */
+
+table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 0.9375rem;
+}
+th, td {
+  border: 1px solid var(--rule);
+  padding: 0.45em 0.7em;
+  text-align: left;
+  vertical-align: top;
+}
+th {
+  background: var(--surface);
+  font-weight: 600;
+}
+
+/* Wide tables scroll inside their own box; the page never scrolls sideways. */
+.scroll { overflow-x: auto; margin: 0 0 1.1em; }
+.scroll table { margin: 0; }
+
+/* --- callouts ------------------------------------------------ */
+
+.note, .warn, .ok {
+  border: 1px solid var(--rule);
+  border-left: 4px solid var(--fg-muted);
+  background: var(--surface);
+  padding: 0.7em 0.9em;
+  margin: 0 0 1.1em;
+}
+.note > :last-child, .warn > :last-child, .ok > :last-child { margin-bottom: 0; }
+.warn { border-left-color: var(--accent); }
+.ok   { border-left-color: var(--good); }
+
+.note-label {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--fg-muted);
+  margin-bottom: 0.3em;
+}
+
+/* --- status tags --------------------------------------------- */
+
+.tag {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.75rem;
+  border: 1px solid currentColor;
+  border-radius: 3px;
+  padding: 0.05em 0.4em;
+  white-space: nowrap;
+  color: var(--fg-muted);
+}
+.tag-good { color: var(--good); }
+.tag-warn { color: var(--accent); }
+.tag-bad  { color: var(--bad); }
+
+/* --- task lists ---------------------------------------------- */
+
+/* <ul class="tasks"> with <li data-state="done|wip|todo"> */
+ul.tasks { list-style: none; padding-left: 0; }
+ul.tasks li {
+  padding-left: 1.9em;
+  position: relative;
+  margin: 0.4em 0;
+}
+ul.tasks li::before {
+  position: absolute;
+  left: 0;
+  font-family: ui-monospace, Menlo, monospace;
+  color: var(--fg-muted);
+  content: "[ ]";
+}
+ul.tasks li[data-state="done"]::before { content: "[x]"; color: var(--good); }
+ul.tasks li[data-state="wip"]::before  { content: "[~]"; color: var(--accent); }
+ul.tasks li[data-state="done"] { color: var(--fg-muted); }
+
+/* --- definition list (decisions, key/value facts) ------------- */
+
+dl { display: grid; grid-template-columns: minmax(8rem, max-content) 1fr; gap: 0.4em 1.2em; }
+dt { font-weight: 600; }
+dd { margin: 0; }
+
+/* --- table of contents --------------------------------------- */
+
+/* <nav class="toc"> wrapping a nested <ol> or <ul> of in-page links. */
+.toc {
+  border: 1px solid var(--rule);
+  background: var(--surface);
+  padding: 0.9em 1.1em;
+  margin: 0 0 2.2em;
+}
+.toc ol, .toc ul { list-style: none; padding-left: 0; margin: 0; }
+.toc li { margin: 0.15em 0; }
+.toc ol ol, .toc ul ul { padding-left: 1.1em; }
+.toc ol ol li, .toc ul ul li { font-size: 0.9375rem; }
+.toc a { text-decoration: none; }
+.toc a:hover { text-decoration: underline; }
+
+/* A long flat contents list reads better in columns once there is room. */
+@media (min-width: 52rem) {
+  .toc > ol, .toc > ul { columns: 2; column-gap: 2.5em; }
+  .toc > ol > li, .toc > ul > li { break-inside: avoid; }
+}
+
+/* Back-to-contents link at the foot of a section. */
+.backtotoc { font-size: 0.8125rem; color: var(--fg-muted); }
+
+/* --- footnotes / source trail -------------------------------- */
+
+.footer {
+  margin-top: 4rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--rule);
+  color: var(--fg-muted);
+  font-size: 0.8125rem;
+}
+
+@media (max-width: 34rem) {
+  body { font-size: 16px; padding: 1.5rem 1rem 4rem; }
+  dl { grid-template-columns: 1fr; gap: 0.15em; }
+  dd { margin-bottom: 0.6em; }
+}
+
+@media print {
+  :root { --bg: #fff; --fg: #000; }
+  body { font-size: 11pt; }
+  a { color: #000; }
+}
+</style>
+</head>
+<body>
+<main>
+
+<h1>Str and StrView in practice</h1>
+<p class="meta"><span>2026-11-07</span><span>mule</span><span>Guide</span></p>
+
+<p><code>Str</code> owns its bytes and can grow. <code>StrView</code> borrows bytes that something else owns and never allocates. The working pattern is to put text into a <code>Str</code> once, then pass <code>StrView</code>s around to read it, search it and cut it. Copy a view into a new <code>Str</code> only when the bytes must outlive the owner. Every example below is a file in <span class="path">docs/guide/str-examples/</span>. Each output block is the real output of running that file.</p>
+
+<nav class="toc">
+  <ol>
+    <li><a href="#run">Running the examples</a></li>
+    <li><a href="#types">The two types</a></li>
+    <li><a href="#str">Str on its own</a>
+      <ol>
+        <li><a href="#str-build">Build, read, free</a></li>
+        <li><a href="#str-reuse">Reuse one buffer</a></li>
+        <li><a href="#str-file">Read a whole file</a></li>
+      </ol>
+    </li>
+    <li><a href="#view">StrView on its own</a>
+      <ol>
+        <li><a href="#view-slice">Inspect and slice</a></li>
+        <li><a href="#view-split">Split and tokenize</a></li>
+        <li><a href="#view-sort">Sort</a></li>
+      </ol>
+    </li>
+    <li><a href="#together">Using them together</a>
+      <ol>
+        <li><a href="#together-lines">One owner, many views</a></li>
+        <li><a href="#together-keep">Copy when it must outlive the source</a></li>
+        <li><a href="#together-api">Writing your own functions</a></li>
+      </ol>
+    </li>
+    <li><a href="#mistakes">Mistakes and what they look like</a></li>
+    <li><a href="#cheat">Which function for which job</a></li>
+    <li><a href="#practice">Exercises</a></li>
+  </ol>
+</nav>
+
+<h2 id="run">Running the examples</h2>
+
+<p>Run these from the repository root. The examples read <span class="path">data/pg2554.txt</span>, which is the Project Gutenberg text of <em>Crime and Punishment</em>. Run <code>./build data</code> once to download it. Each file defines <code>MULE_IMPLEMENTATION</code> and includes <span class="path">dist/mule.h</span>, the same way a project uses the library, so a single compiler call builds it.</p>
+
+<pre><code>mkdir -p .build &amp;&amp; cc -std=c11 -Idist -fsanitize=address,undefined -g \
+   docs/guide/str-examples/01_build.c -o .build/ex &amp;&amp; .build/ex</code></pre>
+
+<p>Keep the sanitizer flag on while you learn. It turns most memory mistakes into a report, and <code>-g</code> makes that report name the line. The <a href="#mistakes">mistakes section</a> shows two of those reports.</p>
+
+<h2 id="types">The two types</h2>
+
+<p>Both types hold a pointer and a length. The difference is ownership. A <code>Str</code> is responsible for its heap buffer, so it must be freed. A <code>StrView</code> points at bytes that belong to someone else, so it is never freed. It is only valid while the owner is alive and has not moved its buffer.</p>
+
+<pre><code>Str text     data ──► C r i m e   a n d   P u n i s h m e n t \0 · · · · · · · · · ·
+             len 20, capacity 30                                   spare capacity ─┘
+                      ▲                   ▲
+StrView word     data ┘ len 5             │   word = "Crime"
+StrView tail                         data ┘ len 10   tail = "Punishment"</code></pre>
+
+<p>The views above cost nothing to make. They are two machine words each. Slicing <code>text</code> a thousand times allocates nothing.</p>
+
+<div class="scroll">
+<table>
+  <thead>
+    <tr><th></th><th><code>Str</code></th><th><code>StrView</code></th></tr>
+  </thead>
+  <tbody>
+    <tr><td>Fields</td><td><code>data</code>, <code>len</code>, <code>capacity</code>, <code>alloc</code></td><td><code>data</code>, <code>len</code></td></tr>
+    <tr><td>Owns memory</td><td>Yes. Call <code>str_free</code> when done. A <code>Str</code> in an arena is also freed by <code>arena_free</code>.</td><td>No. Never free it.</td></tr>
+    <tr><td>Can change</td><td>Yes, through <code>str_*</code> calls.</td><td>No. The bytes are <code>const</code>.</td></tr>
+    <tr><td>Calls can fail</td><td>Calls that may allocate return <code>bool</code>.</td><td>Never. No call allocates.</td></tr>
+    <tr><td>NUL-terminated</td><td>Yes. <code>str_cstr</code> is safe to pass to C APIs.</td><td>Not in general. A slice ends mid-string.</td></tr>
+    <tr><td>Start as</td><td><code>Str s = { 0 };</code></td><td><code>SV("lit")</code>, <code>sv_from_cstr(p)</code>, <code>str_view(&amp;s)</code>, <code>sv_slice(v, a, b)</code></td></tr>
+    <tr><td>Pass to functions as</td><td><code>Str *</code>. Never by value.</td><td><code>StrView</code> by value. It is small.</td></tr>
+    <tr><td>Valid until</td><td><code>str_free</code></td><td>The owner is freed or grows</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h2 id="str">Str on its own</h2>
+
+<h3 id="str-build">Build, read, free</h3>
+
+<p>A zeroed <code>Str</code> is a valid empty string that owns nothing. The first append allocates. Every call that might allocate returns <code>bool</code>, and a failed call leaves the string as it was. That makes it safe to chain calls with <code>&amp;&amp;</code>: the chain stops at the first failure and nothing after it runs.</p>
+
+<p class="muted"><span class="path">docs/guide/str-examples/01_build.c</span></p>
+<pre><code>/* Str on its own: build a string, read it, free it. */
+#define MULE_IMPLEMENTATION
+#include "mule.h"
+
+#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+
+int main(void) {
+    Str s = { 0 };
+
+    /* A failed call leaves `s` unchanged, so &amp;&amp; stops at the first failure. */
+    bool ok = str_append_cstr(&amp;s, "Rodion") &amp;&amp;
+              str_push(&amp;s, ' ') &amp;&amp;
+              str_append(&amp;s, SV("Raskolnikov")) &amp;&amp;
+              str_appendf(&amp;s, ", former student, age %d", 23);
+    if (!ok) {
+        str_free(&amp;s);
+        return EXIT_FAILURE;
+    }
+
+    printf("%.*s\n", STR_FMT(s));
+    printf("len %zu, capacity %zu\n", s.len, s.capacity);
+    puts(str_cstr(&amp;s));
+
+    str_free(&amp;s);
+    return EXIT_SUCCESS;
+}</code></pre>
+
+<pre><code>Rodion Raskolnikov, former student, age 23
+len 42, capacity 60
+Rodion Raskolnikov, former student, age 23</code></pre>
+
+<p>Two ways to print are shown. <code>STR_FMT</code> passes the length and the pointer to <code>%.*s</code>, so <code>printf</code> prints exactly <code>len</code> bytes. It works on a <code>Str</code> and on a <code>StrView</code>. <code>str_cstr</code> returns a NUL-terminated pointer for APIs like <code>puts</code> and <code>fopen</code>. It never returns null, even for an empty string.</p>
+
+<p>The capacity is 60 because the buffer starts at 15 bytes and doubles when full: 15, 30, 60. Doubling means appending one byte at a time still costs a constant amount per byte on average.</p>
+
+<h3 id="str-reuse">Reuse one buffer</h3>
+
+<p><code>str_clear</code> sets the length to zero and keeps the allocation. In a loop that builds a string per item, clear and refill one <code>Str</code> instead of creating and freeing one per pass.</p>
+
+<p class="muted"><span class="path">docs/guide/str-examples/02_reuse.c</span></p>
+<pre><code>/* Str on its own: clear and refill one buffer instead of allocating per line.
+ */
+#define MULE_IMPLEMENTATION
+#include "mule.h"
+
+#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+
+int main(void) {
+    Str line = { 0 };
+    for (int part = 1; part &lt;= 3; part++) {
+        str_clear(&amp;line);
+        if (!str_appendf(&amp;line, "PART %d", part)) {
+            str_free(&amp;line);
+            return EXIT_FAILURE;
+        }
+        printf("%-8s capacity %zu, data %p\n", str_cstr(&amp;line), line.capacity,
+               (void *)line.data);
+    }
+    str_free(&amp;line);
+    return EXIT_SUCCESS;
+}</code></pre>
+
+<pre><code>PART 1   capacity 15, data 0x6020000000f0
+PART 2   capacity 15, data 0x6020000000f0
+PART 3   capacity 15, data 0x6020000000f0</code></pre>
+
+<p>The address is the same on every pass. One allocation served all three strings.</p>
+
+<h3 id="str-file">Read a whole file</h3>
+
+<p><code>str_append_file</code> reads until end of file. If <code>s</code> is empty it takes the read buffer over instead of copying it. On failure it leaves <code>s</code> unchanged, and <code>ferror</code> tells you whether the read failed or memory ran out. Check <code>ferror</code> before <code>fclose</code>, because the stream is gone after.</p>
+
+<p class="muted"><span class="path">docs/guide/str-examples/03_file.c</span></p>
+<pre><code>/* Str on its own: read a whole file into memory. */
+#define MULE_IMPLEMENTATION
+#include "mule.h"
+
+#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+
+int main(int argc, char **argv) {
+    const char *path = argc &gt; 1 ? argv[1] : "data/pg2554.txt";
+    FILE *f = fopen(path, "rb");
+    if (f == NULL) {
+        perror(path);
+        return EXIT_FAILURE;
+    }
+
+    Str text = { 0 };
+    bool ok = str_append_file(&amp;text, f);
+    bool read_error = ferror(f);
+    fclose(f);
+    if (!ok) {
+        fprintf(stderr, "%s: %s\n", path,
+                read_error ? "read error" : "out of memory");
+        return EXIT_FAILURE;
+    }
+
+    printf("%s: %zu bytes\n", path, text.len);
+    str_free(&amp;text);
+    return EXIT_SUCCESS;
+}</code></pre>
+
+<pre><code>data/pg2554.txt: 1202773 bytes</code></pre>
+
+<h2 id="view">StrView on its own</h2>
+
+<p>A view needs bytes that already exist. There are four ways to get one:</p>
+
+<dl>
+  <dt><code>SV("text")</code></dt><dd>A string literal. The length is computed at compile time. Use it only on a literal, never on a pointer.</dd>
+  <dt><code>sv_from_cstr(p)</code></dt><dd>A NUL-terminated <code>char *</code> from a C API, such as <code>argv[i]</code> or <code>getenv</code>. It measures with <code>strlen</code>. Null gives an empty view.</dd>
+  <dt><code>str_view(&amp;s)</code></dt><dd>The whole contents of a <code>Str</code>.</dd>
+  <dt><code>sv_slice(v, from, to)</code></dt><dd>Bytes <code>from</code> up to but not including <code>to</code> of another view. It asserts the range is inside <code>v</code>.</dd>
+</dl>
+
+<h3 id="view-slice">Inspect and slice</h3>
+
+<p>This parses a header line in the format Gutenberg uses. Trimming, finding and slicing all return new views into the same literal. Nothing is copied.</p>
+
+<p class="muted"><span class="path">docs/guide/str-examples/04_views.c</span></p>
+<pre><code>/* StrView on its own: inspect and slice text without allocating. */
+#define MULE_IMPLEMENTATION
+#include "mule.h"
+
+#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+
+int main(int argc, char **argv) {
+    StrView header = SV("  Title: Crime and Punishment\r\n");
+    StrView line = sv_trim(header);
+    printf("[%.*s]\n", STR_FMT(line));
+
+    if (sv_starts_with(line, SV("Title:"))) {
+        size_t colon = sv_find_byte(line, ':');
+        StrView key = sv_slice(line, 0, colon);
+        StrView value = sv_trim(sv_slice(line, colon + 1, line.len));
+        printf("key [%.*s] value [%.*s]\n", STR_FMT(key), STR_FMT(value));
+
+        /* Wrong: %s runs on to the next NUL, past the end of the view. */
+        printf("%%s on key prints [%s]\n", key.data);
+    }
+
+    size_t at = sv_find(line, SV("Punishment"));
+    if (at != SV_NPOS) printf("Punishment starts at byte %zu\n", at);
+    printf("ends with \"ment\": %d\n", sv_ends_with(line, SV("ment")));
+
+    /* argv strings already exist, so a view just borrows them. */
+    for (int i = 1; i &lt; argc; i++) {
+        StrView arg = sv_from_cstr(argv[i]);
+        if (str_eq(arg, SV("--verbose"))) puts("verbose on");
+    }
+    return EXIT_SUCCESS;
+}</code></pre>
+
+<pre><code>$ .build/ex --verbose
+[Title: Crime and Punishment]
+key [Title] value [Crime and Punishment]
+%s on key prints [Title: Crime and Punishment
+]
+Punishment starts at byte 17
+ends with "ment": 1
+verbose on</code></pre>
+
+<p>The third line shows the bug on purpose. <code>key</code> is five bytes long, but <code>%s</code> ignores the length and prints until it finds a NUL. Here that printed the rest of the line, including the <code>\r\n</code>. On a view with no NUL after it, the same mistake reads past the buffer. Always print a view with <code>%.*s</code> and <code>STR_FMT</code>.</p>
+
+<p>The find functions return <code>SV_NPOS</code> when there is no match. Always compare against it before you use the index.</p>
+
+<h3 id="view-split">Split and tokenize</h3>
+
+<p>Both functions follow the same loop shape. You pass a view of the remaining text by pointer. Each call cuts one piece off the front, stores it in the output view, and returns <code>false</code> when nothing is left.</p>
+
+<p class="muted"><span class="path">docs/guide/str-examples/05_split.c</span></p>
+<pre><code>/* StrView on its own: split fields and tokens. */
+#define MULE_IMPLEMENTATION
+#include "mule.h"
+
+#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+
+int main(void) {
+    /* Split keeps empty fields: the right tool for CSV-like data. */
+    StrView rest = SV("Raskolnikov,Sonya,,Dunya,");
+    StrView field;
+    while (sv_split_next(&amp;rest, SV(","), &amp;field)) {
+        printf("field [%.*s]\n", STR_FMT(field));
+    }
+
+    /* Token skips runs of delimiters: the right tool for words. */
+    rest = SV("  Pale,  feverish   and  restless. ");
+    StrView word;
+    while (sv_token_next(&amp;rest, SV(" ,."), &amp;word)) {
+        printf("word  [%.*s]\n", STR_FMT(word));
+    }
+    return EXIT_SUCCESS;
+}</code></pre>
+
+<pre><code>field [Raskolnikov]
+field [Sonya]
+field []
+field [Dunya]
+word  [Pale]
+word  [feverish]
+word  [and]
+word  [restless]</code></pre>
+
+<div class="scroll">
+<table>
+  <thead>
+    <tr><th></th><th><code>sv_split_next</code></th><th><code>sv_token_next</code></th></tr>
+  </thead>
+  <tbody>
+    <tr><td>Separator</td><td>One multi-byte string, such as <code>","</code> or <code>"\r\n"</code></td><td>A set of single bytes, any of which separates</td></tr>
+    <tr><td>Empty pieces</td><td>Kept. <code>a,,b</code> gives <code>a</code>, empty, <code>b</code>.</td><td>Skipped. Runs of delimiters count as one.</td></tr>
+    <tr><td>Trailing separator</td><td>No empty piece after the last one</td><td>Ignored</td></tr>
+    <tr><td>Use for</td><td>CSV fields, lines, <code>key=value</code></td><td>Words, whitespace-separated input</td></tr>
+  </tbody>
+</table>
+</div>
+
+<p><code>sv_token_next</code> is <code>strtok</code> without its problems. It does not write NULs into your text. It keeps no hidden state, so two loops can run at once.</p>
+
+<h3 id="view-sort">Sort</h3>
+
+<p>A view is a plain struct, so an array of them sorts with <code>qsort</code>. <code>sv_cmp</code> orders bytes like <code>memcmp</code>, and a prefix sorts before the longer string.</p>
+
+<p class="muted"><span class="path">docs/guide/str-examples/06_sort.c</span></p>
+<pre><code>/* StrView on its own: sort an array of views with qsort. */
+#define MULE_IMPLEMENTATION
+#include "mule.h"
+
+#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+
+static int cmp_views(const void *a, const void *b) {
+    return sv_cmp(*(const StrView *)a, *(const StrView *)b);
+}
+
+int main(void) {
+    StrView names[] = { SV("Sonya"), SV("Dunya"), SV("Razumikhin"),
+                        SV("Raskolnikov"), SV("Porfiry") };
+    size_t n = sizeof names / sizeof names[0];
+
+    qsort(names, n, sizeof names[0], cmp_views);
+    for (size_t i = 0; i &lt; n; i++) printf("%.*s\n", STR_FMT(names[i]));
+    return EXIT_SUCCESS;
+}</code></pre>
+
+<pre><code>Dunya
+Porfiry
+Raskolnikov
+Razumikhin
+Sonya</code></pre>
+
+<h2 id="together">Using them together</h2>
+
+<h3 id="together-lines">One owner, many views</h3>
+
+<p>This is the shape most text processing takes. One <code>Str</code> holds the whole file. Every line, word and match is a view into it. The program makes one allocation for the file and none for the 22,750 lines.</p>
+
+<p class="muted"><span class="path">docs/guide/str-examples/07_lines.c</span></p>
+<pre><code>/* Together: one Str owns the file, views walk its lines. */
+#define MULE_IMPLEMENTATION
+#include "mule.h"
+
+#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+
+int main(void) {
+    FILE *f = fopen("data/pg2554.txt", "rb");
+    if (f == NULL) {
+        perror("data/pg2554.txt");
+        return EXIT_FAILURE;
+    }
+    Str text = { 0 };
+    bool ok = str_append_file(&amp;text, f);
+    fclose(f);
+    if (!ok) return EXIT_FAILURE;
+
+    size_t lines = 0, chapters = 0, mentions = 0;
+    StrView rest = str_view(&amp;text);
+    StrView line;
+    while (sv_split_next(&amp;rest, SV("\n"), &amp;line)) {
+        line = sv_trim(line); /* the file uses \r\n; trim drops the \r */
+        lines++;
+        if (sv_starts_with(line, SV("Author:"))) {
+            printf("%.*s\n", STR_FMT(line));
+        }
+        if (sv_starts_with(line, SV("CHAPTER "))) chapters++;
+
+        /* Count every occurrence in the line by sliding past each match. */
+        StrView scan = line;
+        size_t at;
+        while ((at = sv_find(scan, SV("Raskolnikov"))) != SV_NPOS) {
+            mentions++;
+            scan = sv_slice(scan, at + 1, scan.len);
+        }
+    }
+    printf("%zu lines, %zu chapters, %zu mentions of Raskolnikov\n", lines,
+           chapters, mentions);
+
+    str_free(&amp;text); /* every view into it dies here */
+    return EXIT_SUCCESS;
+}</code></pre>
+
+<pre><code>Author: Fyodor Dostoyevsky
+22750 lines, 78 chapters, 784 mentions of Raskolnikov</code></pre>
+
+<p>Two details matter. The file has Windows line endings, so each line split on <code>"\n"</code> still ends in <code>\r</code>. <code>sv_trim</code> removes it along with any other surrounding whitespace. Second, nothing writes to <code>text</code> while the loop runs. That is what keeps every view valid. The count of 784 agrees with <code>grep -o Raskolnikov data/pg2554.txt | wc -l</code>.</p>
+
+<h3 id="together-keep">Copy when it must outlive the source</h3>
+
+<p>A view dies with its owner. When you need a piece of text after the owner is freed, copy it into a <code>Str</code> of its own. Here a struct keeps the title and author while the 1.2 MB file buffer is released.</p>
+
+<p class="muted"><span class="path">docs/guide/str-examples/08_keep.c</span></p>
+<pre><code>/* Together: copy a view into its own Str when it must outlive its source. */
+#define MULE_IMPLEMENTATION
+#include "mule.h"
+
+#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+
+typedef struct Book {
+    Str title;
+    Str author;
+} Book;
+
+static void book_free(Book *b) {
+    str_free(&amp;b-&gt;title);
+    str_free(&amp;b-&gt;author);
+}
+
+/* Fill `b` from a Gutenberg header. Views in, owned copies out. */
+static bool book_parse(Book *b, StrView text) {
+    StrView line;
+    while (sv_split_next(&amp;text, SV("\n"), &amp;line)) {
+        line = sv_trim(line);
+        if (sv_starts_with(line, SV("Title: "))) {
+            str_clear(&amp;b-&gt;title);
+            if (!str_append(&amp;b-&gt;title, sv_slice(line, 7, line.len)))
+                return false;
+        } else if (sv_starts_with(line, SV("Author: "))) {
+            str_clear(&amp;b-&gt;author);
+            if (!str_append(&amp;b-&gt;author, sv_slice(line, 8, line.len)))
+                return false;
+        }
+    }
+    return true;
+}
+
+int main(void) {
+    FILE *f = fopen("data/pg2554.txt", "rb");
+    if (f == NULL) return EXIT_FAILURE;
+    Str text = { 0 };
+    bool ok = str_append_file(&amp;text, f);
+    fclose(f);
+    if (!ok) return EXIT_FAILURE;
+
+    Book book = { 0 };
+    ok = book_parse(&amp;book, str_view(&amp;text));
+    str_free(&amp;text); /* the 1.2 MB buffer goes; the book keeps its copies */
+    if (!ok) {
+        book_free(&amp;book);
+        return EXIT_FAILURE;
+    }
+
+    printf("%s by %s\n", str_cstr(&amp;book.title), str_cstr(&amp;book.author));
+    book_free(&amp;book);
+    return EXIT_SUCCESS;
+}</code></pre>
+
+<pre><code>Crime and Punishment by Fyodor Dostoyevsky</code></pre>
+
+<p>A struct that holds <code>Str</code> fields owns them. Give it a matching <code>_free</code> function that frees each field, like <code>book_free</code>. Zero-initialise the struct with <code>= { 0 }</code> so the free function is safe to call even if parsing stopped part way.</p>
+
+<h3 id="together-api">Writing your own functions</h3>
+
+<p>The library's own signatures are the pattern to copy. A function that only reads text takes a <code>StrView</code>. A function that produces text takes a <code>Str *</code> to append to and returns <code>bool</code>. The caller then decides where the output goes and whether to clear it first.</p>
+
+<p class="muted"><span class="path">docs/guide/str-examples/09_replace.c</span></p>
+<pre><code>/* Together: write your own function with views in and a Str out. */
+#define MULE_IMPLEMENTATION
+#include "mule.h"
+
+#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+
+/* Append `text` to `out` with every `from` replaced by `to`. */
+static bool replace_all(Str *out, StrView text, StrView from, StrView to) {
+    size_t at;
+    while ((at = sv_find(text, from)) != SV_NPOS) {
+        if (!str_append(out, sv_slice(text, 0, at)) || !str_append(out, to)) {
+            return false;
+        }
+        text = sv_slice(text, at + from.len, text.len);
+    }
+    return str_append(out, text);
+}
+
+int main(void) {
+    Str out = { 0 };
+    if (!replace_all(&amp;out, SV("Rodya went out. Rodya came back."), SV("Rodya"),
+                     SV("Raskolnikov"))) {
+        str_free(&amp;out);
+        return EXIT_FAILURE;
+    }
+    printf("%.*s\n", STR_FMT(out));
+
+    /* Appending a Str to itself is safe: str_append handles the overlap. */
+    if (!str_append(&amp;out, str_view(&amp;out))) {
+        str_free(&amp;out);
+        return EXIT_FAILURE;
+    }
+    printf("%zu bytes after doubling\n", out.len);
+    str_free(&amp;out);
+    return EXIT_SUCCESS;
+}</code></pre>
+
+<pre><code>Raskolnikov went out. Raskolnikov came back.
+88 bytes after doubling</code></pre>
+
+<div class="scroll">
+<table>
+  <thead>
+    <tr><th>Your function needs to</th><th>Signature shape</th><th>Example</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>Read text</td><td>Take <code>StrView</code></td><td><code>bool is_heading(StrView line)</code></td></tr>
+    <tr><td>Return part of its input</td><td>Return <code>StrView</code>. No <code>bool</code>, it cannot fail.</td><td><code>StrView first_word(StrView line)</code></td></tr>
+    <tr><td>Produce new text</td><td>Take <code>Str *out</code>, append, return <code>bool</code></td><td><code>bool replace_all(Str *out, StrView text, ...)</code></td></tr>
+    <tr><td>Keep text in a struct</td><td><code>Str</code> field and a <code>_free</code> function</td><td><code>Book</code> and <code>book_free</code></td></tr>
+  </tbody>
+</table>
+</div>
+
+<p>Taking a <code>StrView</code> makes a function accept every kind of string. A caller with a literal passes <code>SV("...")</code>. A caller with a <code>Str</code> passes <code>str_view(&amp;s)</code>. A caller with a <code>char *</code> passes <code>sv_from_cstr(p)</code>. One function serves all three.</p>
+
+<p>The last call in the example appends a string to itself. That is safe. <code>str_append</code> notices that the view points into its own buffer and recomputes the address after growing.</p>
+
+<h2 id="mistakes">Mistakes and what they look like</h2>
+
+<h3>A view kept across a reallocation</h3>
+
+<p>This is the mistake to understand first. Any call that may grow a <code>Str</code> can move its buffer, and every view into the old buffer then points at freed memory.</p>
+
+<p class="muted"><span class="path">docs/guide/str-examples/10_dangling.c</span></p>
+<pre><code>/* Bug on purpose: a view kept across a call that reallocates. */
+#define MULE_IMPLEMENTATION
+#include "mule.h"
+
+#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+
+int main(void) {
+    Str s = { 0 };
+    if (!str_append_cstr(&amp;s, "Sonya")) return EXIT_FAILURE;
+    StrView name = str_view(&amp;s);
+
+    /* 15 bytes fit; this append needs more, so the buffer moves. */
+    if (!str_append_cstr(&amp;s, " Semyonovna Marmeladova")) return EXIT_FAILURE;
+
+    printf("%.*s\n", STR_FMT(name)); /* reads freed memory */
+    str_free(&amp;s);
+    return EXIT_SUCCESS;
+}</code></pre>
+
+<pre><code>ERROR: AddressSanitizer: heap-use-after-free on address 0x6020000000f0
+READ of size 1 at 0x6020000000f0 thread T0
+    #5 in main 10_dangling.c:16
+freed by thread T0 here:
+    #0 in free
+    #1 in mem_realloc mule.h:1992
+    #2 in str_grow_ mule.h:2127
+    #5 in str_append_cstr mule.h:2226
+    #6 in main 10_dangling.c:14
+previously allocated by thread T0 here:
+    #0 in realloc
+    #1 in mem_realloc mule.h:1996
+    #6 in main 10_dangling.c:10</code></pre>
+
+<p>The report is trimmed to the useful frames. Read it bottom up. Line 10 allocated the buffer. Line 14 grew it, and <code>mem_realloc</code> freed the old one. Line 16 read through the stale view. There are two fixes. Take the view after the last call that grows the string. Or call <code>str_reserve</code> for the full size first, so the appends fit and the buffer never moves.</p>
+
+<h3>Copying a Str struct</h3>
+
+<p><code>Str b = a;</code> copies the pointer, not the bytes. Now two structs think they own one buffer, and freeing both is a double free.</p>
+
+<p class="muted"><span class="path">docs/guide/str-examples/11_double_free.c</span></p>
+<pre><code>/* Bug on purpose: copying a Str struct makes two owners of one buffer. */
+#define MULE_IMPLEMENTATION
+#include "mule.h"
+
+#include &lt;stdlib.h&gt;
+
+int main(void) {
+    Str a = { 0 };
+    if (!str_append_cstr(&amp;a, "Dunya")) return EXIT_FAILURE;
+    Str b = a; /* copies the pointer, not the bytes */
+    str_free(&amp;a);
+    str_free(&amp;b); /* frees the same buffer again */
+    return EXIT_SUCCESS;
+}</code></pre>
+
+<pre><code>ERROR: AddressSanitizer: attempting double-free on 0x6020000000f0 in thread T0:
+    #1 in mem_realloc mule.h:1982
+    #2 in str_free mule.h:2152
+    #3 in main 11_double_free.c:12
+freed by thread T0 here:
+    #1 in mem_realloc mule.h:1982
+    #2 in str_free mule.h:2152
+    #3 in main 11_double_free.c:11</code></pre>
+
+<p>To duplicate a string, make a real copy with <code>str_from(&amp;b, str_view(&amp;a))</code>. To hand ownership over, write <code>Str b = str_take(&amp;a);</code>. It moves the buffer to <code>b</code> and leaves <code>a</code> empty, so only one owner remains. Pass a <code>Str</code> to functions as <code>Str *</code> so this never happens by accident.</p>
+
+<h3>Smaller traps</h3>
+
+<div class="scroll">
+<table>
+  <thead>
+    <tr><th>Mistake</th><th>What happens</th><th>Do this instead</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>printf("%s", v.data)</code> on a view</td><td>Prints past the end of the view, as shown in <a href="#view-slice">Inspect and slice</a></td><td><code>printf("%.*s", STR_FMT(v))</code></td></tr>
+    <tr><td><code>SV(p)</code> where <code>p</code> is a <code>char *</code></td><td>A compile error, <code>expected '}'</code>, because <code>SV</code> only takes a literal. Before 0.0.1 it compiled and silently used <code>sizeof(char *) - 1</code> as the length.</td><td><code>sv_from_cstr(p)</code></td></tr>
+    <tr><td>Ignoring the <code>bool</code></td><td><code>warning: ignoring return value of function declared with 'warn_unused_result' attribute</code></td><td>Check it, or chain the calls with <code>&amp;&amp;</code></td></tr>
+    <tr><td>Passing <code>s.data</code> to a C API</td><td>Null for an empty <code>Str</code>, which many APIs crash on</td><td><code>str_cstr(&amp;s)</code>, which never returns null</td></tr>
+    <tr><td>Forgetting <code>str_free</code></td><td>A leak. AddressSanitizer on macOS does not report leaks, so nothing warns you.</td><td>Write the <code>str_free</code> as soon as you write the <code>Str s = { 0 };</code></td></tr>
+  </tbody>
+</table>
+</div>
+
+<h2 id="cheat">Which function for which job</h2>
+
+<div class="scroll">
+<table>
+  <thead>
+    <tr><th>I want to</th><th>Use</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>Build text piece by piece</td><td><code>str_append</code>, <code>str_append_cstr</code>, <code>str_push</code>, <code>str_appendf</code></td></tr>
+    <tr><td>Start with a copy of some text</td><td><code>str_from</code>, <code>str_from_cstr</code></td></tr>
+    <tr><td>Read a whole file</td><td><code>str_append_file</code></td></tr>
+    <tr><td>Avoid repeated growth when I know the size</td><td><code>str_with_capacity</code>, <code>str_reserve</code></td></tr>
+    <tr><td>Empty a string but keep its memory</td><td><code>str_clear</code></td></tr>
+    <tr><td>Give back unused capacity</td><td><code>str_shrink_to_fit</code></td></tr>
+    <tr><td>Release the memory</td><td><code>str_free</code></td></tr>
+    <tr><td>Pass a literal where a view is wanted</td><td><code>SV("...")</code></td></tr>
+    <tr><td>Wrap a <code>char *</code> from a C API</td><td><code>sv_from_cstr</code></td></tr>
+    <tr><td>Hand my <code>Str</code> to code that only reads</td><td><code>str_view(&amp;s)</code></td></tr>
+    <tr><td>Hand my <code>Str</code> to a C API</td><td><code>str_cstr(&amp;s)</code></td></tr>
+    <tr><td>Print either type</td><td><code>printf("%.*s", STR_FMT(x))</code></td></tr>
+    <tr><td>Compare</td><td><code>str_eq</code> for equality, <code>sv_cmp</code> for order</td></tr>
+    <tr><td>Search</td><td><code>sv_find_byte</code>, <code>sv_find</code>, <code>sv_starts_with</code>, <code>sv_ends_with</code></td></tr>
+    <tr><td>Cut out a piece</td><td><code>sv_slice</code>, <code>sv_trim</code></td></tr>
+    <tr><td>Walk fields or lines</td><td><code>sv_split_next</code></td></tr>
+    <tr><td>Walk words</td><td><code>sv_token_next</code></td></tr>
+    <tr><td>Keep a piece after its source is freed</td><td><code>str_from(&amp;copy, view)</code></td></tr>
+  </tbody>
+</table>
+</div>
+
+<h2 id="practice">Exercises</h2>
+
+<p>Each one starts from an example file. Keep the sanitizer on and check the output against what you expect.</p>
+
+<ul class="tasks">
+  <li data-state="todo">Fix <span class="path">10_dangling.c</span> both ways: once by moving <code>str_view</code> below the append, once with <code>str_reserve</code>. Confirm the sanitizer stays quiet.</li>
+  <li data-state="todo">Extend <span class="path">08_keep.c</span> so <code>Book</code> also keeps the <code>Release date:</code> line. Remember the new field in <code>book_free</code>.</li>
+  <li data-state="todo">Count every word in the novel with <code>sv_token_next</code> in <span class="path">07_lines.c</span>. Decide which bytes count as delimiters.</li>
+  <li data-state="todo">Write <code>bool join(Str *out, const StrView *parts, size_t n, StrView sep)</code> and use it to print the sorted names from <span class="path">06_sort.c</span> as one comma-separated line.</li>
+  <li data-state="todo">Write <code>StrView path_basename(StrView path)</code> that returns everything after the last <code>/</code>. It returns a view, so it cannot fail. Test it on <code>""</code>, <code>"a"</code>, <code>"a/"</code> and <code>"/usr/lib/libc.so"</code>.</li>
+</ul>
+
+<p class="footer">Built from <span class="path">dist/mule.h</span> and the eleven files in <span class="path">docs/guide/str-examples/</span>. Each example was compiled with Apple clang 21 using <code>-std=c11 -Idist -fsanitize=address,undefined -g -Wall -Wextra -Wconversion</code> and run on 2026-11-11. Sanitizer reports are trimmed to the frames that name a source line.</p>
+
+</main>
+</body>
+</html>

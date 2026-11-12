@@ -1,5 +1,6 @@
-# Doxygen config for `./build docs`. Only non-default settings are listed;
-# run `doxygen -x Doxyfile` to see what differs, `doxygen -g` for the rest.
+# Doxygen config for `./build docs`, which runs it from the repository root,
+# so the paths below start there. Only non-default settings are listed; run
+# `doxygen -x docs/Doxyfile` to see what differs, `doxygen -g` for the rest.
 
 PROJECT_NAME           = MULE
 PROJECT_BRIEF          = "Multi-Use Library Essentials"
@@ -12,9 +13,11 @@ INPUT                  = README.md docs $(MULE_DOC_MODULES)
 USE_MDFILE_AS_MAINPAGE = README.md
 FILE_PATTERNS          = *.h *.c *.md *.dox
 RECURSIVE              = YES
-EXAMPLE_PATH           = tests notes/str-examples main.c examples
+# Example programs are not reference pages. EXAMPLE_PATH pulls them in.
+EXCLUDE                = docs/examples docs/guide
+EXAMPLE_PATH           = tests docs/guide/str-examples dev/main.c docs/examples
 LAYOUT_FILE            = docs/DoxygenLayout.xml
-HTML_EXTRA_FILES       = notes/str-and-strview.html
+HTML_EXTRA_FILES       = docs/guide/str-and-strview.html
 
 OPTIMIZE_OUTPUT_FOR_C  = YES
 JAVADOC_AUTOBRIEF      = YES
