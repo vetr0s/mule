@@ -1479,13 +1479,19 @@ MULE_NODISCARD bool cmd_capture(const Cmd *c, Str *out, Err *err);
  *  Run several commands at once.
  *  @{ */
 
-/** The processes a pool is running. */
-typedef Arr(Proc) ProcList;
+/** A job in a pool. */
+typedef struct ProcJob {
+    Proc proc;        /**< The running process. */
+    const char *name; /**< The program, borrowed from the Cmd, for messages. */
+} ProcJob;
+
+/** The jobs a pool is running. */
+typedef Arr(ProcJob) ProcJobs;
 
 /** Runs commands in parallel, at most `max` at a time. Zero-initialise it,
  *  and set `max` or leave it 0 for the number of CPUs. */
 typedef struct ProcPool {
-    ProcList running; /**< Started and not yet waited for, oldest first. */
+    ProcJobs running; /**< Started and not yet waited for, oldest first. */
     size_t max;       /**< How many may run at once. 0 means the CPU count. */
 } ProcPool;
 
@@ -3884,9 +3890,9 @@ static size_t proc_cpu_count_(void) {
 bool proc_pool_start(ProcPool *pool, const Cmd *c, Err *err) {
     size_t max = pool->max != 0 ? pool->max : proc_cpu_count_();
     while (pool->running.len >= max) {
-        Proc oldest = pool->running.data[0];
+        ProcJob oldest = pool->running.data[0];
         arr_remove(&pool->running, 0);
-        if (!proc_wait(&oldest, err)) return false;
+        if (!proc_wait_(&oldest.proc, oldest.name, err)) return false;
     }
     if (!arr_reserve(&pool->running, 1)) {
         err_set(err, ERR_NO_MEMORY, 0, "run %s: out of memory", c->data[0]);
@@ -3894,7 +3900,7 @@ bool proc_pool_start(ProcPool *pool, const Cmd *c, Err *err) {
     }
     Proc p = { 0 };
     if (!proc_start(&p, c, NULL, err)) return false;
-    pool->running.data[pool->running.len++] = p;
+    pool->running.data[pool->running.len++] = (ProcJob){ p, c->data[0] };
     return true;
 }
 
@@ -3902,7 +3908,8 @@ bool proc_pool_wait(ProcPool *pool, Err *err) {
     bool ok = true;
     for (size_t i = 0; i < pool->running.len; i++) {
         Err e = { 0 };
-        if (!proc_wait(&pool->running.data[i], &e) && ok) {
+        ProcJob *job = &pool->running.data[i];
+        if (!proc_wait_(&job->proc, job->name, &e) && ok) {
             ok = false;
             if (err != NULL) *err = e;
         }

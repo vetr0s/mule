@@ -94,13 +94,19 @@ MULE_NODISCARD bool cmd_capture(const Cmd *c, Str *out, Err *err);
  *  Run several commands at once.
  *  @{ */
 
-/** The processes a pool is running. */
-typedef Arr(Proc) ProcList;
+/** A job in a pool. */
+typedef struct ProcJob {
+    Proc proc;        /**< The running process. */
+    const char *name; /**< The program, borrowed from the Cmd, for messages. */
+} ProcJob;
+
+/** The jobs a pool is running. */
+typedef Arr(ProcJob) ProcJobs;
 
 /** Runs commands in parallel, at most `max` at a time. Zero-initialise it,
  *  and set `max` or leave it 0 for the number of CPUs. */
 typedef struct ProcPool {
-    ProcList running; /**< Started and not yet waited for, oldest first. */
+    ProcJobs running; /**< Started and not yet waited for, oldest first. */
     size_t max;       /**< How many may run at once. 0 means the CPU count. */
 } ProcPool;
 

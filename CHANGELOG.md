@@ -22,8 +22,9 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Before
   positionals and generated `--help`. A failed parse changes nothing.
 - `proc`: run programs. `Cmd` borrows its arguments and renders them as a
   pasteable shell line. `cmd_run` and `cmd_capture` wait, `proc_start` does
-  not, and a `ProcPool` caps how many run at once. A missing program, an
-  exit code and a signal each come back as their own `ErrKind`.
+  not, and a `ProcPool` caps how many run at once and names the program
+  in a failed job's message. A missing program, an exit code and a signal
+  each come back as their own `ErrKind`.
 - `build`: a project's build as a C program. `MULE_REBUILD_SELF` rebuilds
   the build program when its source or any header it includes changes,
   then runs the new one with the same arguments and exit code. Staleness

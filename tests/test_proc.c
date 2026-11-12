@@ -200,6 +200,7 @@ TEST(pool_caps_jobs_and_reports_failures) {
     err = (Err){ 0 };
     CHECK(!proc_pool_start(&pool, &ok, &err));
     CHECK(err.kind == ERR_EXIT);
+    CHECK_EQ_STR(err.msg, "false exited with code 1");
     CHECK_EQ_INT(pool.running.len, 0);
 
     CHECK(proc_pool_start(&pool, &ok, &err));
@@ -208,6 +209,7 @@ TEST(pool_caps_jobs_and_reports_failures) {
     err = (Err){ 0 };
     CHECK(!proc_pool_wait(&pool, &err));
     CHECK(err.kind == ERR_EXIT);
+    CHECK_EQ_STR(err.msg, "false exited with code 1");
 
     CHECK(proc_pool_start(&pool, &ok, &err));
     proc_pool_free(&pool); /* waits for it */
