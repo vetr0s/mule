@@ -22,6 +22,12 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Before
 - `data/pg2554.txt` is no longer in the repository. `./build data`
   downloads it, and `./build run` does too when it is missing.
 
+### Fixed
+
+- The test harness compiles with `-Werror` under glibc's
+  `_FORTIFY_SOURCE`. Its hang report ignored what `write` returned, which
+  glibc marks `warn_unused_result`.
+
 ## [0.3.0] - 2026-11-11
 
 ### Added

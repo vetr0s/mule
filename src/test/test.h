@@ -215,17 +215,28 @@ MULE_UNUSED static bool test_eq_mem_(const char *a, size_t alen, const char *b,
 /* --- Running ------------------------------------------------------------- */
 
 /** @cond */
+/* Write all of `s` to stdout with write, which is async-signal-safe. A
+ * failure is dropped, because the hang handler can do nothing about it. */
+static void test_write_(const char *s, size_t n) {
+    while (n > 0) {
+        ssize_t w = write(STDOUT_FILENO, s, n);
+        if (w <= 0) return;
+        s += w;
+        n -= (size_t)w;
+    }
+}
+
 /* SIGALRM handler, so only async-signal-safe calls: write and _exit. */
 static void test_timeout_(int sig) {
     (void)sig;
     static const char plain[] = "[HANG] ";
     static const char color[] = LOG_YELLOW "[HANG]" LOG_RESET " ";
     if (test_color_)
-        write(STDOUT_FILENO, color, sizeof color - 1);
+        test_write_(color, sizeof color - 1);
     else
-        write(STDOUT_FILENO, plain, sizeof plain - 1);
-    write(STDOUT_FILENO, test_running_, strlen(test_running_));
-    write(STDOUT_FILENO, "\n", 1);
+        test_write_(plain, sizeof plain - 1);
+    test_write_(test_running_, strlen(test_running_));
+    test_write_("\n", 1);
     _exit(EXIT_FAILURE);
 }
 
