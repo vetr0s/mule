@@ -19,6 +19,9 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Before
 - `MULE_ASAN`, which is 1 when AddressSanitizer is on.
 - `./build format --check` reports unformatted files without changing
   them, and CI runs it. `notes/str-examples/` is formatted too.
+- `./build consumer` builds `dist/mule.h` into a two-file program, one
+  file with `MULE_IMPLEMENTATION`, under C11, C17 and C23 and with
+  `LOG_LEVEL_MIN` raised. `./build ci` runs it.
 
 ### Changed
 
