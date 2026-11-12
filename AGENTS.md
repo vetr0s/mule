@@ -146,8 +146,12 @@ The folder, include and naming rules live in the file comment of
 
 - `./build format --check`, `./build ci` and `./build docs` pass, and
   CI is green on the pull request. `ci` runs the tests under every
-  profile, the `-Werror` release build and the examples. `./build docs`
-  fails on any undocumented member.
+  profile, the `-Werror` release build, the examples and the consumer
+  builds. `./build docs` fails on any undocumented member.
+- A definition in a header is `static`, `static inline` or a macro. The
+  consumer build in `tests/consumer/` links two files that include
+  `dist/mule.h`, so anything else fails with a duplicate or missing
+  symbol.
 - When a public API changes, `./build examples` still passes. It compiles
   every file in `docs/guide/str-examples/` with `cc -std=c11 -Idist`.
   `10_dangling.c` and `11_double_free.c` are bugs on purpose and only need
@@ -225,6 +229,9 @@ does not happen on every commit.
   `pipx install clang-format==23.1.5`.
 - A `build/` directory left by the old Makefile blocks
   `cc -Isrc -o build build.c`. Remove it once.
+- Apple clang defaults to `-fcommon`, which merges a variable defined in
+  two files instead of failing the link. The consumer build passes
+  `-fno-common`, as Linux compilers default to.
 - CI's Linux runners are x86_64. Docker on an Apple silicon Mac runs arm64
   Linux, so a local gcc pass there can still fail in CI. Code that
   depends on argument evaluation order did exactly that in v0.3.0.

@@ -128,10 +128,11 @@ one for `debug`, `run`, `test` and `examples`:
 | `./build run [file]` | Runs the example word counter in `dev/main.c` on `data/pg2554.txt`, or on `file`. |
 | `./build data` | Downloads `data/pg2554.txt`, the book that `dev/main.c` and the str guide read. `run` does it when the file is missing. |
 | `./build test [names]` | Builds and runs every `tests/test_*.c`. Names run only those tests. |
-| `./build ci` | Every check CI runs on a push except the docs: a stale `dist/mule.h`, the tests under each profile, the release build, the examples and the example project. |
+| `./build ci` | Every check CI runs on a push except the docs: a stale `dist/mule.h`, the tests under each profile, the release build, the examples, the consumer builds and the example project. |
 | `./build release` | Optimised build with `-Werror` and hardening flags, and the benchmarks. |
 | `./build dist` | Regenerates `dist/mule.h` from `src/`. Builds of `main` and the tests do it too. |
 | `./build docs` | API reference in `.build/docs/html/`. |
+| `./build consumer` | Builds `dist/mule.h` into the two-file program in `tests/consumer/` under C11, C17 and C23, and with `LOG_LEVEL_MIN` raised, then runs each. |
 | `./build examples` | Builds and runs `docs/examples/`, and compile-checks `docs/guide/str-examples/` against `dist/mule.h`. |
 | `./build bench` | Micro-benchmarks for `str`. `bench-corpus` and `bench-scale` run on real data. |
 

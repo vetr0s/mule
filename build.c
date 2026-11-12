@@ -511,6 +511,43 @@ static void cmd_examples(const Profile *p) {
     }
 }
 
+/* Build tests/consumer/ against dist/mule.h the way a project does, under
+ * each C standard and with LOG_LEVEL_MIN raised, and run each build. */
+static void cmd_consumer(void) {
+    dist();
+    /* gcc 13 and clang 17 spell C23 as c2x. */
+    const char *c23[] = { "-std=c23" };
+    bool has_c23 = false;
+    probe(c23, 1, true, &has_c23);
+    const char *const builds[][3] = {
+        { "c11", "-std=c11", NULL },
+        { "c17", "-std=c17", NULL },
+        { "c23", has_c23 ? "-std=c23" : "-std=c2x", NULL },
+        { "c11-log-warn", "-std=c11", "-DLOG_LEVEL_MIN=LOG_WARN" },
+    };
+    enum { BUILDS = sizeof builds / sizeof builds[0] };
+    must(fs_mkdir_p(fmt("%s/consumer", opt.out), &err_));
+    const char *bins[BUILDS];
+    for (size_t i = 0; i < BUILDS; i++) {
+        bins[i] = fmt("%s/consumer/%s", opt.out, builds[i][0]);
+        Cmd c = cmd_new();
+        /* Apple clang still defaults to -fcommon, which would merge a
+         * variable the header defines instead of failing the link. */
+        add(&c, opt.cc, "-Idist", builds[i][1], "-Wall", "-Wextra",
+            "-Wpedantic", "-Werror", "-fno-common");
+        if (builds[i][2] != NULL) add(&c, builds[i][2]);
+        add(&c, "tests/consumer/with_impl.c", "tests/consumer/header_only.c",
+            "-o", bins[i]);
+        must(build_start(&pool_, &c, &err_));
+    }
+    wait_all();
+    for (size_t i = 0; i < BUILDS; i++) {
+        Cmd c = cmd_new();
+        add(&c, bins[i]);
+        run(&c);
+    }
+}
+
 /* Format every source file in place, or with --check only report the ones
  * that differ. */
 static void cmd_format(void) {
@@ -525,6 +562,7 @@ static void cmd_format(void) {
     glob(&c, "src", 2, ".h");
     glob(&c, "tests", 1, ".c");
     glob(&c, "tests", 1, ".h");
+    glob(&c, "tests/consumer", 1, ".c");
     glob(&c, "dev/bench", 1, ".c");
     glob(&c, "dev/bench", 1, ".h");
     glob(&c, "docs/examples", 2, ".c");
@@ -721,6 +759,8 @@ static int cmd_ci(void) {
     cmd_release();
     ci_step("examples");
     cmd_examples(profile("debug"));
+    ci_step("consumer builds");
+    cmd_consumer();
     ci_step("main on the book");
     Cmd c = cmd_new();
     add(&c, release_main(), book("2554"));
@@ -748,6 +788,7 @@ static const ArgCmd commands[] = {
     { "ci", "every check CI runs on a push, except docs" },
     { "dist", "regenerate dist/mule.h, the single-header library" },
     { "docs", "Doxygen reference in <out>/docs/html/" },
+    { "consumer", "build and run tests/consumer/ under C11, C17 and C23" },
     { "examples",
       "build and run docs/examples/, compile-check docs/guide/str-examples/" },
     { "version", "print the version in src/base/base.h" },
@@ -820,6 +861,8 @@ int main(int argc, char **argv) {
         dist();
     } else if (strcmp(cmd, "docs") == 0) {
         cmd_docs();
+    } else if (strcmp(cmd, "consumer") == 0) {
+        cmd_consumer();
     } else if (strcmp(cmd, "examples") == 0) {
         cmd_examples(p);
     } else if (strcmp(cmd, "version") == 0) {
