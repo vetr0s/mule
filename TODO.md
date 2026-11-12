@@ -46,9 +46,9 @@ follows that rule.
 The library's API stays as it is. `specs/v0.4.0.md` holds the design and
 the acceptance criteria.
 
-- [ ] Profiles in `build.c`, each building into `.build/<name>/`, and
-      `./build ci` to run a tier. They replace `--no-sanitize` and `--out`
-      for configurations.
+- [x] Profiles in `build.c`, each building into `.build/<name>/`, and
+      `./build ci` for the push tier. They replace `--no-sanitize`.
+- [ ] `./build ci --tier=nightly`, with the first nightly check.
 - [ ] ASan poisoning for arenas, so an overflow between two arena
       allocations is reported.
 - [ ] Consumer builds: `mule.h` in two linked files, under c11, c17 and
@@ -59,11 +59,11 @@ the acceptance criteria.
       no libFuzzer, so they run on Linux.
 - [ ] A nightly workflow.
 - [ ] An MSan profile.
-- [ ] A Fil-C trial, then a nightly profile if it earns one. Adding its
-      toolchain to CI needs the user's yes.
+- [ ] A Fil-C trial, then a nightly profile if it earns one. Its
+      toolchain in CI is approved.
 - [ ] Allocation budgets in unit tests.
 - [ ] Instruction counts under cachegrind against a committed baseline.
-      Adding valgrind to CI needs the user's yes.
+      valgrind in CI is approved.
 - [ ] `./build bench-compare <ref>`, `./build mutate <file>` and a
       coverage profile.
 - [ ] A golden output for `main.c` on `data/pg2554.txt`.

@@ -106,12 +106,23 @@ After that it rebuilds itself whenever `build.c` or the library changes.
 Output goes to `.build/`, or to `--out=DIR`. The compiler is `$CC`, or
 `cc`. `./build --help` lists every command and option.
 
+A profile is a set of flags, and each one builds into its own folder, so
+switching profiles never rebuilds another one's output. `--profile` picks
+one for `debug`, `run`, `test` and `examples`:
+
+| Profile | Flags |
+| --- | --- |
+| `debug` | `-O0` with AddressSanitizer and UBSan, when the toolchain has them. The default. |
+| `nosan` | `-O0` without sanitizers, so the real allocator runs. |
+| `release` | `-O3`, LTO, hardening and `-Werror`. |
+
 | Command | What it does |
 | --- | --- |
 | `./build` | Debug build with AddressSanitizer and UBSan, when the toolchain has them, and `compile_commands.json`. |
 | `./build run [file]` | Runs the example word counter in `main.c` on `data/pg2554.txt`, or on `file`. |
 | `./build data` | Downloads `data/pg2554.txt`, the book that `main.c` and the str guide read. `run` does it when the file is missing. |
-| `./build test [names]` | Builds and runs every `tests/test_*.c`. Names run only those tests. `--no-sanitize` drops the sanitizers. |
+| `./build test [names]` | Builds and runs every `tests/test_*.c`. Names run only those tests. |
+| `./build ci` | Every check CI runs on a push except the docs: a stale `dist/mule.h`, the tests under each profile, the release build, the examples and the example project. |
 | `./build release` | Optimised build with `-Werror` and hardening flags, and the benchmarks. |
 | `./build dist` | Regenerates `dist/mule.h` from `src/`. Builds of `main` and the tests do it too. |
 | `./build docs` | API reference in `.build/docs/html/`. |

@@ -14,6 +14,7 @@ It rebuilds itself after that, and `./build --help` lists the rest.
 
 - test: `./build test`
 - lint: `./build release && ./build docs`
+- everything CI runs: `./build ci && ./build docs`
 - format: `./build format`
 - build: `./build`
 
@@ -87,12 +88,17 @@ The folder, include and naming rules live in the file comment of
   call its own buffer, or the call depends on argument evaluation order.
 - Watch a new test fail once against a broken implementation before you
   trust it.
+- The tests also run under the `release` profile, with `-DNDEBUG`. A check
+  that must hold there uses `CHECK` or `log_assert`, not `assert`.
+- clang -O2 removes a `malloc` whose result is only compared with null,
+  and folds the check to false. A test that expects an allocation to fail
+  stores the result through `volatile`, as `libc_oom_leaves_block` does.
 
 ## Done
 
-- `./build test`, `./build release` and `./build docs` all pass.
-  `./build release` builds with `-Werror`. `./build docs` fails on any
-  undocumented member.
+- `./build ci` and `./build docs` pass. `ci` runs the tests under every
+  profile, the `-Werror` release build and the examples. `./build docs`
+  fails on any undocumented member.
 - When a public API changes, `./build examples` still passes. It compiles every
   file in `notes/str-examples/` with `cc -std=c11 -Idist`. `10_dangling.c` and
   `11_double_free.c` are bugs on purpose and only need to compile.
@@ -122,8 +128,8 @@ does not happen on every commit.
   `## [X.Y.Z] - YYYY-MM-DD`, open a new empty Unreleased section above it,
   and update the links at the bottom. Delete the shipped items from
   `TODO.md`, because the changelog now records them. Set the version
-  macros, run `./build dist`, and check that `./build test`,
-  `./build release` and `./build docs` pass. Commit as `Release vX.Y.Z`
+  macros, run `./build dist`, and check that `./build ci` and
+  `./build docs` pass. Commit as `Release vX.Y.Z`
   and push it. Once CI passes on it, tag that commit with
   `git tag -a vX.Y.Z -m "MULE vX.Y.Z"` and push the tag. A fix that CI
   needs lands as a new commit, and the tag goes on that one.
@@ -159,9 +165,8 @@ does not happen on every commit.
 - Doxygen wants a comment on each member. A `@name` group comment does not
   count, so give each macro a trailing `/**< ... */`.
 - Each output keeps the command that built it in `<out>.cmd`, so a
-  changed flag rebuilds it. Switching `--no-sanitize` on and off in one
-  `--out` rebuilds everything each time. Give it its own, as
-  `--out=.build/nosan`.
+  changed flag rebuilds it. A new set of flags belongs in `profiles` in
+  `build.c`, which gives it its own folder, so switching never rebuilds.
 - A `build/` directory left by the old Makefile blocks
   `cc -Isrc -o build build.c`. Remove it once.
 - CI's Linux runners are x86_64. Docker on an Apple silicon Mac runs arm64
@@ -173,7 +178,7 @@ does not happen on every commit.
 - macOS 26 libmalloc keeps a large block grown by realloc dirty after free,
   and never reuses it. `mem_realloc` grows by malloc and copy on Apple for
   that reason. `heap_growth_returns_memory` only runs without ASan, because
-  ASan replaces libmalloc. Run `./build test --no-sanitize --out=.build/nosan`
+  ASan replaces libmalloc. Run `./build test --profile=nosan`
   after touching it.
 
 ## Benchmarks

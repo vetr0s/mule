@@ -8,11 +8,11 @@
  * generates dist/mule.h: built from that file, it would run a stale copy of
  * the library after every edit to src/. The self-rebuild adds -Isrc itself.
  *
- * Output goes to .build/ unless --out says otherwise: debug/main,
- * release/main, tests/, bench/, docs/ and scale/. Each compile writes a
- * depfile beside its output, so an edit to any header rebuilds what includes
- * it. All strings and commands live in one arena that lives as long as the
- * program, so nothing here frees memory.
+ * Output goes to .build/ unless --out says otherwise. Each profile builds
+ * into its own folder, as debug/main, debug/tests/ and release/bench/, beside
+ * docs/ and scale/. Each compile writes a depfile beside its output, so an
+ * edit to any header rebuilds what includes it. All strings and commands live
+ * in one arena that lives as long as the program, so nothing here frees memory.
  */
 #include "base/base.h"
 
@@ -31,6 +31,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 /* In dependency order: dist/mule.h joins them in this order, and the
  * reference shows a topic per module in this order. */
@@ -96,9 +97,9 @@ static struct {
     const char *out;
     const char *cc;
     const char *scale;
-    bool no_sanitize;
+    const char *profile;
     uint64_t jobs;
-} opt = { .out = ".build", .scale = "10,100,1000" };
+} opt = { .out = ".build", .scale = "10,100,1000", .profile = "debug" };
 
 /* Stop the build with the last error. */
 static void must(bool ok) {
@@ -168,9 +169,28 @@ static const char *stem(const char *path) {
     return fmt("%.*s", STR_FMT(base));
 }
 
-/* --- Flags --------------------------------------------------------------- */
+/* --- Profiles ----------------------------------------------------------- */
 
-static Cmd debug_flags_, release_flags_;
+/* A set of flags to build with. Each builds into <out>/<name>/, so switching
+ * profiles never rebuilds another profile's outputs. */
+typedef struct Profile {
+    const char *name;
+    bool release;  /* the optimised flags rather than the debug ones */
+    bool sanitize; /* ASan and UBSan, when the compiler has them */
+} Profile;
+
+static const Profile profiles[] = {
+    { "debug", false, true },
+    { "nosan", false, false },
+    { "release", true, false },
+};
+enum { PROFILE_COUNT = sizeof profiles / sizeof profiles[0] };
+
+static const Profile *profile(const char *name) {
+    for (size_t i = 0; i < PROFILE_COUNT; i++)
+        if (strcmp(profiles[i].name, name) == 0) return &profiles[i];
+    log_fatal("no profile '%s': debug, nosan or release", name);
+}
 
 /* Compile an empty program once per flag, all at once, and report which
  * flags the compiler took: with no output at all when `quiet`, else with
@@ -198,46 +218,49 @@ static void probe(const char *const *flags, size_t n, bool quiet, bool *keep) {
     }
 }
 
-/* Work out the debug and release flags once, on first use. */
-static void flags_init(void) {
-    static bool done = false;
-    if (done) return;
-    done = true;
-
+/* The flags `p` builds with, worked out on first use. The probes run once. */
+static const Cmd *flags_of(const Profile *p) {
     enum {
         GCC = sizeof gcc_warn_flags / sizeof gcc_warn_flags[0],
         ELF = sizeof elf_harden_flags / sizeof elf_harden_flags[0]
     };
-    const char *flags[GCC + ELF + 1];
-    bool keep[GCC + ELF + 1];
-    memcpy(flags, gcc_warn_flags, sizeof gcc_warn_flags);
-    memcpy(flags + GCC, elf_harden_flags, sizeof elf_harden_flags);
-    flags[GCC + ELF] = sanitize_flag;
-    probe(flags, GCC + ELF, true, keep);
-    probe(flags + GCC + ELF, 1, false, keep + GCC + ELF);
-
-    Cmd warn = cmd_new();
-    add_list(&warn, warn_flags, sizeof warn_flags / sizeof warn_flags[0]);
-    for (size_t i = 0; i < GCC; i++)
-        if (keep[i]) add(&warn, gcc_warn_flags[i]);
-
-    debug_flags_ = cmd_new();
-    add(&debug_flags_, "-std=c11");
-    add_list(&debug_flags_, warn.data, warn.len);
-    add(&debug_flags_, "-O0", "-g3", "-fno-omit-frame-pointer",
-        "-fstack-protector-strong");
-    if (!opt.no_sanitize && keep[GCC + ELF]) {
-        add(&debug_flags_, sanitize_flag, "-fno-sanitize-recover=all");
+    static bool probed = false;
+    static bool keep[GCC + ELF + 1];
+    static Cmd done[PROFILE_COUNT];
+    Cmd *f = &done[p - profiles];
+    if (f->len > 0) return f;
+    if (!probed) {
+        probed = true;
+        const char *flags[GCC + ELF + 1];
+        memcpy(flags, gcc_warn_flags, sizeof gcc_warn_flags);
+        memcpy(flags + GCC, elf_harden_flags, sizeof elf_harden_flags);
+        flags[GCC + ELF] = sanitize_flag;
+        probe(flags, GCC + ELF, true, keep);
+        probe(flags + GCC + ELF, 1, false, keep + GCC + ELF);
     }
-    add(&debug_flags_, "-DDEBUG");
 
-    release_flags_ = cmd_new();
-    add(&release_flags_, "-std=c11");
-    add_list(&release_flags_, warn.data, warn.len);
-    add(&release_flags_, "-Werror", "-O3", "-march=native", "-flto=auto",
-        "-fstack-protector-strong", "-D_FORTIFY_SOURCE=3", "-DNDEBUG");
-    for (size_t i = 0; i < ELF; i++)
-        if (keep[GCC + i]) add(&release_flags_, elf_harden_flags[i]);
+    *f = cmd_new();
+    add(f, "-std=c11");
+    add_list(f, warn_flags, sizeof warn_flags / sizeof warn_flags[0]);
+    for (size_t i = 0; i < GCC; i++)
+        if (keep[i]) add(f, gcc_warn_flags[i]);
+    if (p->release) {
+        add(f, "-Werror", "-O3", "-march=native", "-flto=auto",
+            "-fstack-protector-strong", "-D_FORTIFY_SOURCE=3", "-DNDEBUG");
+        for (size_t i = 0; i < ELF; i++)
+            if (keep[GCC + i]) add(f, elf_harden_flags[i]);
+        return f;
+    }
+    add(f, "-O0", "-g3", "-fno-omit-frame-pointer", "-fstack-protector-strong");
+    if (p->sanitize && keep[GCC + ELF])
+        add(f, sanitize_flag, "-fno-sanitize-recover=all");
+    add(f, "-DDEBUG");
+    return f;
+}
+
+/* Where `p` puts its output: <out>/<name>/`sub`. */
+static const char *out_of(const Profile *p, const char *sub) {
+    return fmt("%s/%s/%s", opt.out, p->name, sub);
 }
 
 /* --- Compiling ----------------------------------------------------------- */
@@ -308,8 +331,8 @@ static void emit(Str *out, const char *path) {
 }
 
 /* Regenerate dist/mule.h, writing it only when its text changes, so what
- * includes it is not rebuilt for nothing. */
-static void dist(void) {
+ * includes it is not rebuilt for nothing. True when it wrote. */
+static bool dist(void) {
     Str out = { .alloc = mem_ }, old = { .alloc = mem_ };
     oom(str_append_cstr(&out, dist_preamble));
     for (size_t i = 0; i < MODULE_COUNT; i++)
@@ -334,10 +357,11 @@ static void dist(void) {
     Err ignored = { 0 };
     if (fs_read(&old, "dist/mule.h", &ignored) &&
         str_eq(str_view(&old), str_view(&out)))
-        return;
+        return false;
     must(fs_mkdir_p("dist", &err_) &&
          fs_write_atomic("dist/mule.h", str_view(&out), &err_));
     log_info("wrote dist/mule.h");
+    return true;
 }
 
 /* The version in src/base/base.h. */
@@ -365,71 +389,65 @@ static void run(Cmd *c) {
     must(build_run(c, &err_));
 }
 
-static const char *debug_main(void) {
-    return fmt("%s/debug/main", opt.out);
-}
-
 static const char *release_main(void) {
-    return fmt("%s/release/main", opt.out);
+    return out_of(profile("release"), "main");
 }
 
-static void cmd_debug(void) {
+static void cmd_debug(const Profile *p) {
     dist();
-    flags_init();
-    compile("main.c", debug_main(), &debug_flags_, NULL);
+    compile("main.c", out_of(p, "main"), flags_of(p), NULL);
     wait_all();
 }
 
 /* compile_commands.json, for clangd: main.c, the tests and the benchmarks,
  * all with the debug flags, as the unity files that pull in src/. */
 static void cmd_compile_commands(void) {
-    flags_init();
+    const Profile *p = profile("debug");
     Cmd files = cmd_new();
     add(&files, "main.c");
     glob(&files, "tests", 1, ".c");
     glob(&files, "bench", 1, ".c");
     CompDb db = { .json = { .alloc = mem_ } };
     for (size_t i = 0; i < files.len; i++) {
-        /* Name the output where the file really builds: main.c in debug/. */
         StrView dir = fs_dirname(sv_from_cstr(files.data[i]));
-        if (str_eq(dir, SV("."))) dir = SV("debug");
-        const char *out = fmt("%s/%.*s/%s", opt.out, STR_FMT(dir),
-                              stem(files.data[i]));
-        Cmd c = compile_cmd(files.data[i], out, &debug_flags_, NULL);
+        const char *out = str_eq(dir, SV("."))
+                              ? out_of(p, stem(files.data[i]))
+                              : out_of(p, fmt("%.*s/%s", STR_FMT(dir),
+                                              stem(files.data[i])));
+        Cmd c = compile_cmd(files.data[i], out, flags_of(p), NULL);
         oom(build_compdb_add(&db, files.data[i], &c));
     }
     must(build_compdb_write(&db, "compile_commands.json", &err_));
 }
 
 static void benchmarks(void) {
+    const Profile *p = profile("release");
     Cmd srcs = cmd_new();
     glob(&srcs, "bench", 1, ".c");
     for (size_t i = 0; i < srcs.len; i++) {
         const char *name = stem(srcs.data[i]);
-        const char *bin = fmt("%s/bench/%s", opt.out, name);
-        compile(srcs.data[i], bin, &release_flags_,
+        const char *bin = out_of(p, fmt("bench/%s", name));
+        compile(srcs.data[i], bin, flags_of(p),
                 strcmp(name, "bench_corpus") == 0 ? "-lm" : NULL);
     }
 }
 
 static void cmd_release(void) {
     dist();
-    flags_init();
-    compile("main.c", release_main(), &release_flags_, NULL);
+    compile("main.c", release_main(), flags_of(profile("release")), NULL);
     benchmarks();
     wait_all();
 }
 
-static int cmd_test(const ArgList *names) {
+static int cmd_test(const Profile *p, const ArgList *names) {
     dist();
-    flags_init();
     Cmd srcs = cmd_new(), bins = cmd_new();
     glob(&srcs, "tests", 1, ".c");
     for (size_t i = 0; i < srcs.len; i++) {
         const char *name = stem(srcs.data[i]);
         if (strncmp(name, "test_", 5) != 0) continue;
-        const char *bin = fmt("%s/tests/%s", opt.out, name);
-        compile(srcs.data[i], bin, &debug_flags_, NULL);
+        const char *bin = out_of(p, fmt("tests/%s", name));
+        compile(srcs.data[i], bin, flags_of(p), NULL);
         add(&bins, bin);
     }
     wait_all();
@@ -468,20 +486,19 @@ static void cmd_docs(void) {
 
 /* Build and run each program in examples/. The guide's examples only
  * compile, because 10_dangling.c and 11_double_free.c are bugs on purpose. */
-static void cmd_examples(void) {
+static void cmd_examples(const Profile *p) {
     dist();
-    flags_init();
     Cmd c = cmd_new();
     add(&c, opt.cc, "-std=c11", "-Idist", "-fsyntax-only");
     glob(&c, "notes/str-examples", 1, ".c");
     run(&c);
 
     Cmd flags = cmd_new(), srcs = cmd_new(), bins = cmd_new();
-    add_list(&flags, debug_flags_.data, debug_flags_.len);
-    add(&flags, "-Werror");
+    add_list(&flags, flags_of(p)->data, flags_of(p)->len);
+    if (!p->release) add(&flags, "-Werror");
     glob(&srcs, "examples", 1, ".c");
     for (size_t i = 0; i < srcs.len; i++) {
-        const char *bin = fmt("%s/examples/%s", opt.out, stem(srcs.data[i]));
+        const char *bin = out_of(p, fmt("examples/%s", stem(srcs.data[i])));
         compile(srcs.data[i], bin, &flags, NULL);
         add(&bins, bin);
     }
@@ -623,7 +640,7 @@ static void scale_files(Cmd *text, Cmd *seq, Str *mibs) {
 static void bench_on(const char *name, const char *flag,
                      const char *const *files, size_t n) {
     Cmd c = cmd_new();
-    add(&c, fmt("%s/bench/%s", opt.out, name));
+    add(&c, out_of(profile("release"), fmt("bench/%s", name)));
     if (flag != NULL) add(&c, flag);
     add_list(&c, files, n);
     run(&c);
@@ -631,9 +648,8 @@ static void bench_on(const char *name, const char *flag,
 
 static void cmd_bench(const char *which) {
     dist();
-    flags_init();
     if (strcmp(which, "bench") != 0) cmd_corpus();
-    compile("main.c", release_main(), &release_flags_, NULL);
+    compile("main.c", release_main(), flags_of(profile("release")), NULL);
     benchmarks();
     wait_all();
 
@@ -658,10 +674,10 @@ static void cmd_bench(const char *which) {
     }
 }
 
-static void cmd_run_main(const ArgList *rest) {
-    cmd_debug();
+static void cmd_run_main(const Profile *p, const ArgList *rest) {
+    cmd_debug(p);
     Cmd c = cmd_new();
-    add(&c, debug_main());
+    add(&c, out_of(p, "main"));
     if (rest->len == 0)
         add(&c, book("2554"));
     else
@@ -669,11 +685,57 @@ static void cmd_run_main(const ArgList *rest) {
     run(&c);
 }
 
+static void ci_step(const char *name) {
+    printf("== ci: %s ==\n", name);
+    fflush(stdout);
+}
+
+/* Every check CI runs on a push, except the docs, which need doxygen 1.18.
+ * It stops at the first that fails. */
+static int cmd_ci(void) {
+    ci_step("dist/mule.h matches src/");
+    if (dist()) {
+        log_error("dist/mule.h was stale; commit the regenerated one");
+        return 1;
+    }
+    ArgList all = { 0 };
+    ci_step("test, debug");
+    if (cmd_test(profile("debug"), &all) != 0) return 1;
+    /* glibc's realloc can grow in place, which ASan's never does, and
+     * heap_growth_returns_memory needs the real libmalloc on macOS. */
+    ci_step("test, nosan");
+    if (cmd_test(profile("nosan"), &all) != 0) return 1;
+    /* -O3 and LTO see through the tests, and -DNDEBUG drops their asserts. */
+    ci_step("test, release");
+    if (cmd_test(profile("release"), &all) != 0) return 1;
+    ci_step("release");
+    cmd_release();
+    ci_step("examples");
+    cmd_examples(profile("debug"));
+    ci_step("main on the book");
+    Cmd c = cmd_new();
+    add(&c, release_main(), book("2554"));
+    run(&c);
+
+    ci_step("examples/project");
+    if (chdir("examples/project") != 0)
+        log_fatal("chdir examples/project: %s", strerror(errno));
+    c = cmd_new();
+    add(&c, opt.cc, "build.c");
+    run(&c);
+    c = cmd_new();
+    add(&c, "./a.out", "run");
+    run(&c);
+    if (chdir("../..") != 0) log_fatal("chdir ../..: %s", strerror(errno));
+    return 0;
+}
+
 static const ArgCmd commands[] = {
     { "debug", "debug build of main, and compile_commands.json (default)" },
     { "release", "release build of main with -Werror, and the benchmarks" },
     { "run", "debug build, then run main on a file (data/pg2554.txt)" },
     { "test", "build and run every tests/test_*.c, or only the named tests" },
+    { "ci", "every check CI runs on a push, except docs" },
     { "dist", "regenerate dist/mule.h, the single-header library" },
     { "docs", "Doxygen reference in <out>/docs/html/" },
     { "examples",
@@ -701,8 +763,8 @@ int main(int argc, char **argv) {
 
     const ArgOpt opts[] = {
         { "out", 'o', ARG_STR, &opt.out, "DIR", "where output goes (.build)" },
-        { "no-sanitize", 0, ARG_FLAG, &opt.no_sanitize, NULL,
-          "build debug and tests without ASan and UBSan" },
+        { "profile", 'p', ARG_STR, &opt.profile, "NAME",
+          "debug, nosan or release, for debug, run, test and examples" },
         { "jobs", 'j', ARG_U64, &opt.jobs, "N",
           "compile N at once (the CPU count)" },
         { "scale", 0, ARG_STR, &opt.scale, "MIBS",
@@ -729,22 +791,25 @@ int main(int argc, char **argv) {
     pool_.max = (size_t)opt.jobs;
 
     const char *cmd = a.cmd != NULL ? a.cmd : "debug";
+    const Profile *p = profile(opt.profile);
     int status = 0;
     if (strcmp(cmd, "debug") == 0) {
-        cmd_debug();
+        cmd_debug(p);
         cmd_compile_commands();
     } else if (strcmp(cmd, "release") == 0) {
         cmd_release();
     } else if (strcmp(cmd, "run") == 0) {
-        cmd_run_main(&a.rest);
+        cmd_run_main(p, &a.rest);
     } else if (strcmp(cmd, "test") == 0) {
-        status = cmd_test(&a.rest);
+        status = cmd_test(p, &a.rest);
+    } else if (strcmp(cmd, "ci") == 0) {
+        status = cmd_ci();
     } else if (strcmp(cmd, "dist") == 0) {
         dist();
     } else if (strcmp(cmd, "docs") == 0) {
         cmd_docs();
     } else if (strcmp(cmd, "examples") == 0) {
-        cmd_examples();
+        cmd_examples(p);
     } else if (strcmp(cmd, "version") == 0) {
         puts(version());
     } else if (strncmp(cmd, "bench", 5) == 0) {

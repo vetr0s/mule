@@ -7,8 +7,18 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Before
 
 ## [Unreleased]
 
+### Added
+
+- Build profiles. `--profile=debug`, `nosan` or `release` picks the flags
+  for `./build`, `run`, `test` and `examples`, and each builds into
+  `.build/<profile>/`.
+- `./build ci` runs every check CI runs on a push except the docs. Both
+  workflows now call it.
+
 ### Changed
 
+- `--profile=nosan` replaces `--no-sanitize`. Test binaries moved from
+  `.build/tests/` to `.build/<profile>/tests/`.
 - `data/pg2554.txt` is no longer in the repository. `./build data`
   downloads it, and `./build run` does too when it is missing.
 
