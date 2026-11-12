@@ -31,7 +31,6 @@ static bool load_config(Str *out, const char *path, Err *err) {
 /* [load_config] */
 
 TEST(zero_err_is_none) {
-    CHECK(1 + 1 == 3); /* planted to show the annotation on #45 */
     Err e = { 0 };
     CHECK(e.kind == ERR_NONE);
     CHECK_EQ_INT(e.code, 0);
