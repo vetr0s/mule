@@ -18,7 +18,7 @@
  *     them to files.
  *
  * A Proc is a handle to look at through these functions only. Its field
- * holds a process id today and will hold a Windows handle in 0.6.0.
+ * holds a process id today and will hold a Windows handle in 0.7.0.
  * @{
  */
 

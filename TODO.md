@@ -22,7 +22,7 @@ follows that rule.
       optional `Err *` last, filled on false. Never `errno`.
       `docs/concepts.md` has the rule.
 - [x] Naming: one prefix per module. Never name anything plain `log`.
-- [x] Platforms: Unix with clang 17+ or gcc 13+. Windows comes in 0.6.0, so
+- [x] Platforms: Unix with clang 17+ or gcc 13+. Windows comes in 0.7.0, so
       new platform code keeps its POSIX calls behind one function per call
       site.
 - [x] Language: a C11 floor, written in C99 style.
@@ -32,25 +32,58 @@ follows that rule.
 - [x] Builds: from 0.3.0, MULE builds itself with a `build.c` written
       against its own `build` module, in the style of tsoding's nob.h. The
       Makefile goes away.
+- [x] Testing: every kind of check is a `./build` profile or command, so
+      CI is a list of `./build` calls that reproduce locally. Checks run
+      per push, nightly and at release. `specs/v0.4.0.md` has the design.
 
 ## 0.3.x: patches on 0.3.0
 
 - [ ] Wall-clock ISO 8601 timestamps in `time`.
 - [ ] Timestamps in `log`, on top of them.
 
-## 0.4.0: text
+## 0.4.0: testing
+
+The library's API stays as it is. `specs/v0.4.0.md` holds the design and
+the acceptance criteria.
+
+- [ ] Profiles in `build.c`, each building into `.build/<name>/`, and
+      `./build ci` to run a tier. They replace `--no-sanitize` and `--out`
+      for configurations.
+- [ ] ASan poisoning for arenas, so an overflow between two arena
+      allocations is reported.
+- [ ] Consumer builds: `mule.h` in two linked files, under c11, c17 and
+      c23, with `-DLOG_LEVEL_MIN`, and `-Wall -Werror` on gcc and clang.
+- [ ] GitHub annotations for failed checks under `GITHUB_ACTIONS`.
+- [ ] libFuzzer targets for the parsers, the splitters, `args` and the
+      depfile reader, short per push and long nightly. Apple clang ships
+      no libFuzzer, so they run on Linux.
+- [ ] A nightly workflow.
+- [ ] An MSan profile.
+- [ ] A Fil-C trial, then a nightly profile if it earns one. Adding its
+      toolchain to CI needs the user's yes.
+- [ ] Allocation budgets in unit tests.
+- [ ] Instruction counts under cachegrind against a committed baseline.
+      Adding valgrind to CI needs the user's yes.
+- [ ] `./build bench-compare <ref>`, `./build mutate <file>` and a
+      coverage profile.
+- [ ] A golden output for `main.c` on `data/pg2554.txt`.
+- [ ] The Release workflow builds an example against the `mule.h` it
+      just published.
+
+## 0.5.0: text
 
 - [ ] `utf8`: validate a view, decode the next code point, count code
       points.
 - [ ] In-place edits on `Str`: insert, remove a range, replace.
 - [ ] An INI or JSON parser built on views.
 
-## 0.5.0: threads
+## 0.6.0: threads
 
 - [ ] A thin wrapper over `<threads.h>` or pthreads.
 - [ ] A job queue on top of it.
+- [ ] A TSan profile in the nightly tier.
 
-## 0.6.0: Windows
+## 0.7.0: Windows
 
 - [ ] MSVC: a `ckd_*` fallback without the gcc builtins.
 - [ ] Windows versions of the POSIX calls in `log`, `rand`, `time`, `fs`
@@ -63,8 +96,6 @@ follows that rule.
 
 - [ ] Every module has a real caller in this repo: `main.c`, `build.c`, a
       benchmark or an example.
-- [ ] libFuzzer fuzzes the splitters, the parsers, `args` and the depfile
-      reader in CI on Linux. Apple clang ships no libFuzzer.
 - [ ] No planned change would break a caller.
 
 ## When a caller needs it
