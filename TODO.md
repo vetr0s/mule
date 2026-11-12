@@ -88,17 +88,17 @@ way and the Makefile is gone.
 
 ### `proc`: run programs
 
-- [ ] `Cmd`, an `Arr` of argument strings with an append for several at
+- [x] `Cmd`, an `Arr` of argument strings with an append for several at
       once.
-- [ ] Render a `Cmd` into a `Str` with shell quoting, so a logged command
+- [x] Render a `Cmd` into a `Str` with shell quoting, so a logged command
       can be pasted back into a shell.
-- [ ] Run a `Cmd` and wait: `fork`, `execvp`, `waitpid`. False on a nonzero
+- [x] Run a `Cmd` and wait: `fork`, `execvp`, `waitpid`. False on a nonzero
       exit or a signal, with the exit code or signal number available.
-- [ ] Start a `Cmd` without waiting. A pool caps how many run at once, and
+- [x] Start a `Cmd` without waiting. A pool caps how many run at once, and
       defaults to the CPU count from `sysconf`.
-- [ ] Redirect stdin, stdout and stderr to files.
-- [ ] Capture a command's stdout into a `Str`.
-- [ ] A process handle the caller does not look inside, so a Windows
+- [x] Redirect stdin, stdout and stderr to files.
+- [x] Capture a command's stdout into a `Str`.
+- [x] A process handle the caller does not look inside, so a Windows
       backend fits in 0.6.0 without changing callers.
 
 ### `args`: command lines

@@ -39,6 +39,11 @@ TEST(every_module_works) {
     CHECK(args_parse(&args, 1, argv, NULL) && args.rest.len == 0);
     args_free(&args);
 
+    Cmd cmd = { 0 };
+    Err err = { 0 };
+    CHECK(cmd_append(&cmd, "true") && cmd_run(&cmd, &err));
+    arr_free(&cmd);
+
     Rand r = { 1 };
     CHECK(rand_below(&r, 6) < 6);
     CHECK(time_now_ns() > 0);

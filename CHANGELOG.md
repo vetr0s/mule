@@ -20,6 +20,10 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Before
   running program's path, and `StrView` path pieces.
 - `args`: command-line parsing from a table of options, with subcommands,
   positionals and generated `--help`. A failed parse changes nothing.
+- `proc`: run programs. `Cmd` borrows its arguments and renders them as a
+  pasteable shell line. `cmd_run` and `cmd_capture` wait, `proc_start` does
+  not, and a `ProcPool` caps how many run at once. A missing program, an
+  exit code and a signal each come back as their own `ErrKind`.
 
 ## [0.2.0] - 2026-11-08
 

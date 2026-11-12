@@ -3,7 +3,7 @@
  * Bracketed names in comment pairs mark regions that src/fs/fs.h pulls into
  * the Doxygen reference with @snippet. See tests/test_str.c for the rules.
  *
- * Each test works in a fresh directory under $TMPDIR, made by fresh().
+ * Each test works in a fresh directory from tests/scratch.h.
  */
 #include "test/test.h"
 
@@ -14,38 +14,14 @@
 #include "mem/mem.c"
 #include "str/str.c"
 
+#include "scratch.h"
+
 #include <errno.h>
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <unistd.h>
 
 #define CHECK_SV(v, lit) CHECK_EQ_MEM((v).data, (v).len, lit, sizeof(lit) - 1)
-
-static char root_[256];
-
-/* Empty the scratch directory and return its path. */
-static const char *fresh(void) {
-    const char *tmp = getenv("TMPDIR");
-    snprintf(root_, sizeof root_, "%s/mule-test-fs-%ld",
-             tmp != NULL && tmp[0] != '\0' ? tmp : "/tmp", (long)getpid());
-    Err err = { 0 };
-    if (!fs_remove_all(root_, &err) || !fs_mkdir_p(root_, &err)) {
-        printf("  scratch: %s\n", err.msg);
-        exit(EXIT_FAILURE);
-    }
-    return root_;
-}
-
-/* `name` under the scratch directory, in `buf`. */
-static const char *at(char buf[512], const char *name) {
-    snprintf(buf, 512, "%s/%s", root_, name);
-    return buf;
-}
-
-static bool put(const char *name, const char *text) {
-    char p[512];
-    return fs_write(at(p, name), sv_from_cstr(text), NULL);
-}
 
 TEST(write_read_and_atomic) {
     fresh();
@@ -366,6 +342,6 @@ int main(int argc, char **argv) {
     RUN(exe_path_names_this_program);
     RUN(path_pieces);
     RUN(join_adds_one_slash);
-    if (!fs_remove_all(root_, NULL)) printf("  could not remove %s\n", root_);
+    scratch_done();
     return TEST_REPORT();
 }
