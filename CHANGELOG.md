@@ -40,6 +40,9 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Before
   glibc marks `warn_unused_result`.
 - `proc_pool_start` builds with `-Werror` under gcc 13 with LTO, which
   reported a null dereference that could not happen.
+- The release build no longer uses `-march=native`. Clang 18 rejected the
+  features it detected on some CI runners, so `-Werror` failed on one
+  machine and passed on another.
 
 ## [0.3.0] - 2026-11-11
 

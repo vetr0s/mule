@@ -232,6 +232,8 @@ does not happen on every commit.
 - Apple clang defaults to `-fcommon`, which merges a variable defined in
   two files instead of failing the link. The consumer build passes
   `-fno-common`, as Linux compilers default to.
+- The release flags stay the same on every host. `-march=native` made
+  `-Werror` fail on CI runners whose CPU clang 18 mis-detects.
 - CI's Linux runners are x86_64. Docker on an Apple silicon Mac runs arm64
   Linux, so a local gcc pass there can still fail in CI. Code that
   depends on argument evaluation order did exactly that in v0.3.0.

@@ -246,8 +246,9 @@ static const Cmd *flags_of(const Profile *p) {
     for (size_t i = 0; i < GCC; i++)
         if (keep[i]) add(f, gcc_warn_flags[i]);
     if (p->release) {
-        add(f, "-Werror", "-O3", "-march=native", "-flto=auto",
-            "-fstack-protector-strong", "-D_FORTIFY_SOURCE=3", "-DNDEBUG");
+        /* No -march=native: it made -Werror depend on the runner's CPU. */
+        add(f, "-Werror", "-O3", "-flto=auto", "-fstack-protector-strong",
+            "-D_FORTIFY_SOURCE=3", "-DNDEBUG");
         for (size_t i = 0; i < ELF; i++)
             if (keep[GCC + i]) add(f, elf_harden_flags[i]);
         return f;
