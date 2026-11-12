@@ -7,12 +7,39 @@ GitHub issues, one milestone per release.
 
 `CLAUDE.md` is a symlink to this file. Edit `AGENTS.md`.
 
-## Tracking
+## Workflow
 
-- Start from the issue. `gh issue list --milestone 0.4.0` lists a
-  release's open work, and `gh issue view N` has its acceptance criteria.
-- A commit that finishes an issue ends its body with `Closes #N`. The
-  issue closes when the commit reaches `main`.
+Agents write the code. The user reviews and merges it, as a senior
+engineer reviews a team's pull requests. A ruleset on `main` takes
+changes only through a pull request whose CI passed.
+
+1. **Issue.** Start from one. `gh issue list --milestone 0.4.0` lists a
+   release's open work, and `gh issue view N` has its acceptance
+   criteria. Work without an issue gets one first. Done when you can
+   name the issue number.
+2. **Branch.** From a current `main`:
+   `git switch main && git pull --ff-only && git switch -c N-slug`, with
+   the issue number and two or three words.
+3. **Commit.** One concern per commit, tests first. Squash merging joins
+   the branch's commit messages into the commit on `main`, so each one
+   explains why. The last ends its body with `Closes #N`.
+4. **Check.** Run `./build format`, then `./build ci` and `./build docs`.
+   Done when all three passed after the last commit.
+5. **Open the pull request.** `git push -u origin N-slug`, then
+   `gh pr create`. The title is the change in the imperative, because it
+   becomes the subject of the commit on `main`. The body fills every
+   section of `.github/pull_request_template.md`.
+6. **Watch CI.** `gh pr checks --watch`. Fix a failure with a new commit
+   on the branch. Done when every check is green.
+7. **Hand over.** Report the pull request's URL and stop. Merging,
+   approving and pushing to `main` belong to the user.
+8. **Answer review.** `gh pr view N --comments` lists the comments.
+   Answer each with a commit on the branch, or with a reply that says
+   why not. Push, then watch CI again.
+
+Keep a pull request to one issue and a diff the user can read in one
+sitting. Split one that grows past that.
+
 - File what you find instead of fixing it on the side: a bug, a follow-up
   or a missing test. Give it the milestone of the release that will ship
   it, and one label: `bug`, `enhancement`, `testing`, `documentation` or
@@ -112,7 +139,8 @@ The folder, include and naming rules live in the file comment of
 
 ## Done
 
-- `./build ci` and `./build docs` pass. `ci` runs the tests under every
+- `./build format --check`, `./build ci` and `./build docs` pass, and
+  CI is green on the pull request. `ci` runs the tests under every
   profile, the `-Werror` release build and the examples. `./build docs`
   fails on any undocumented member.
 - When a public API changes, `./build examples` still passes. It compiles every
@@ -146,11 +174,12 @@ does not happen on every commit.
   `TODO.md`. Its milestone must have no open issues: move what is left to
   the next one. Set the version
   macros, run `./build dist`, and check that `./build ci` and
-  `./build docs` pass. Commit as `Release vX.Y.Z`
-  and push it. Once CI passes on it, tag that commit with
+  `./build docs` pass. Open it as a pull request titled
+  `Release vX.Y.Z`. Once the user merges it and CI passes on `main`, and
+  the user says to, tag that commit with
   `git tag -a vX.Y.Z -m "MULE vX.Y.Z"` and push the tag. A fix that CI
-  needs lands as a new commit, and the tag goes on that one. Close the
-  milestone once the release is published.
+  needs gets its own pull request, and the tag goes on its commit. Close
+  the milestone once the release is published.
 - The tag starts `.github/workflows/release.yml`. It checks the tag against
   `MULE_VERSION`, runs the tests, and publishes `dist/mule.h` with the
   version's changelog section as the notes.
