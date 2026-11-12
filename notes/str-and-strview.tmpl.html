@@ -251,13 +251,13 @@ READ of size 1 at 0x6020000000f0 thread T0
     #5 in main 10_dangling.c:16
 freed by thread T0 here:
     #0 in free
-    #1 in mem_realloc mule.h:1366
-    #2 in str_grow_ mule.h:1501
-    #5 in str_append_cstr mule.h:1600
+    #1 in mem_realloc mule.h:1992
+    #2 in str_grow_ mule.h:2127
+    #5 in str_append_cstr mule.h:2226
     #6 in main 10_dangling.c:14
 previously allocated by thread T0 here:
     #0 in realloc
-    #1 in mem_realloc mule.h:1370
+    #1 in mem_realloc mule.h:1996
     #6 in main 10_dangling.c:10</code></pre>
 
 <p>The report is trimmed to the useful frames. Read it bottom up. Line 10 allocated the buffer. Line 14 grew it, and <code>mem_realloc</code> freed the old one. Line 16 read through the stale view. There are two fixes. Take the view after the last call that grows the string. Or call <code>str_reserve</code> for the full size first, so the appends fit and the buffer never moves.</p>
@@ -269,12 +269,12 @@ previously allocated by thread T0 here:
 {{code:11_double_free.c}}
 
 <pre><code>ERROR: AddressSanitizer: attempting double-free on 0x6020000000f0 in thread T0:
-    #1 in mem_realloc mule.h:1356
-    #2 in str_free mule.h:1526
+    #1 in mem_realloc mule.h:1982
+    #2 in str_free mule.h:2152
     #3 in main 11_double_free.c:12
 freed by thread T0 here:
-    #1 in mem_realloc mule.h:1356
-    #2 in str_free mule.h:1526
+    #1 in mem_realloc mule.h:1982
+    #2 in str_free mule.h:2152
     #3 in main 11_double_free.c:11</code></pre>
 
 <p>To duplicate a string, make a real copy with <code>str_from(&amp;b, str_view(&amp;a))</code>. To hand ownership over, write <code>Str b = str_take(&amp;a);</code>. It moves the buffer to <code>b</code> and leaves <code>a</code> empty, so only one owner remains. Pass a <code>Str</code> to functions as <code>Str *</code> so this never happens by accident.</p>
