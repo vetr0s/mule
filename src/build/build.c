@@ -198,6 +198,7 @@ void build_rebuild_self(int argc, char **argv, const char *source,
         log_fatal("%s", err.msg);
 
     if (needed) {
+        log_info("%s or a header it includes changed, rebuilding", source);
         const char *compiler = getenv("CC");
         if (compiler == NULL || compiler[0] == '\0') compiler = "cc";
         ok = cmd_append(&cc, compiler, "-Wall", "-Wextra", "-MMD", "-MF",

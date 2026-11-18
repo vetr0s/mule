@@ -1653,7 +1653,8 @@ MULE_NODISCARD bool build_prepare(const char *out, const char *depfile,
  *  or @p source cannot be found from the current directory.
  *
  *  The program is stale when its depfile, `.build/<name>.d` beside it, is
- *  missing or lists a newer file. It compiles with `$CC`, or `cc`, and
+ *  missing or lists a newer file. It then logs that it is rebuilding before
+ *  the compile command. It compiles with `$CC`, or `cc`, and
  *  `-Wall -Wextra -MMD`. The old program waits in `.build/<name>.old`, and
  *  goes back in place when the compile fails, which exits with status 1.
  *  @param argc  main's argc. Unused, and kept so the call reads like main.
@@ -4288,6 +4289,7 @@ void build_rebuild_self(int argc, char **argv, const char *source,
         log_fatal("%s", err.msg);
 
     if (needed) {
+        log_info("%s or a header it includes changed, rebuilding", source);
         const char *compiler = getenv("CC");
         if (compiler == NULL || compiler[0] == '\0') compiler = "cc";
         ok = cmd_append(&cc, compiler, "-Wall", "-Wextra", "-MMD", "-MF",
