@@ -1,6 +1,7 @@
 #include "proc/proc.h"
 #include "mem/mem.h"
 
+#include <assert.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <stdio.h>
@@ -19,6 +20,12 @@ bool cmd_append_(Cmd *c, const char *const *args, size_t n) {
     memcpy(c->data + c->len, args, n * sizeof *args);
     c->len += n;
     return true;
+}
+
+bool cmd_extend(Cmd *c, const Cmd *more) {
+    assert(c != more);
+    /* An empty Cmd has null data, which memcpy may not read from. */
+    return more->len == 0 || cmd_append_(c, more->data, more->len);
 }
 
 /* True when the shell reads `a` as itself without quotes. */
