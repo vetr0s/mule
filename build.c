@@ -583,22 +583,32 @@ static void run_to(Cmd *c, const char *out) {
 }
 
 /* Download `url` to `dest` through a temporary, so a failed download leaves
- * nothing that fs_exists would take for the file. */
-static void fetch(const char *url, const char *dest) {
+ * nothing that fs_exists would take for the file. False when curl fails. */
+static bool try_fetch(const char *url, const char *dest) {
     const char *tmp = fmt("%s.tmp", dest);
     Cmd c = cmd_new();
     add(&c, "curl", "-fsSL", "-o", tmp, url);
-    run(&c);
+    if (!build_run(&c, &err_)) {
+        log_warn("%s", err_.msg);
+        return false;
+    }
     must(fs_rename(tmp, dest, &err_));
+    return true;
 }
 
-/* The Project Gutenberg book `id` as data/pg<id>.txt, downloaded if missing. */
+static void fetch(const char *url, const char *dest) {
+    if (!try_fetch(url, dest)) exit(EXIT_FAILURE);
+}
+
+/* The Project Gutenberg book `id` as data/pg<id>.txt, downloaded if missing.
+ * gutenberg.org goes down at times, and its pglaf mirror has the same files. */
 static const char *book(const char *id) {
     const char *path = fmt("data/pg%s.txt", id);
     must(fs_mkdir_p("data", &err_));
-    if (!fs_exists(path))
-        fetch(fmt("https://www.gutenberg.org/cache/epub/%s/pg%s.txt", id, id),
-              path);
+    const char *file = fmt("cache/epub/%s/pg%s.txt", id, id);
+    if (!fs_exists(path) &&
+        !try_fetch(fmt("https://www.gutenberg.org/%s", file), path))
+        fetch(fmt("https://gutenberg.pglaf.org/%s", file), path);
     return path;
 }
 
@@ -774,9 +784,19 @@ static int cmd_ci(void) {
     c = cmd_new();
     add(&c, opt.cc, "build.c");
     run(&c);
+    /* With no depfile, a.out must rebuild itself here and say so. */
+    must(fs_remove_all(".build", &err_) && fs_mkdir_p(".build", &err_));
     c = cmd_new();
     add(&c, "./a.out", "run");
-    run(&c);
+    log_info("./a.out run 2> .build/run.log");
+    CmdIo io = { .err = ".build/run.log" };
+    Proc p = { 0 };
+    must(proc_start(&p, &c, &io, &err_) && proc_wait(&p, &err_));
+    Str said = { .alloc = mem_ };
+    must(fs_read(&said, ".build/run.log", &err_));
+    fputs(str_cstr(&said), stderr);
+    if (sv_find(str_view(&said), SV("rebuilding")) == SV_NPOS)
+        log_fatal("examples/project: a.out did not say it was rebuilding");
     if (chdir("../../..") != 0)
         log_fatal("chdir ../../..: %s", strerror(errno));
     return 0;

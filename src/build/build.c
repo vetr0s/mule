@@ -198,12 +198,12 @@ void build_rebuild_self(int argc, char **argv, const char *source,
         log_fatal("%s", err.msg);
 
     if (needed) {
+        log_info("%s or a header it includes changed, rebuilding", source);
         const char *compiler = getenv("CC");
         if (compiler == NULL || compiler[0] == '\0') compiler = "cc";
         ok = cmd_append(&cc, compiler, "-Wall", "-Wextra", "-MMD", "-MF",
                         str_cstr(&dep), "-o", str_cstr(&exe));
-        for (size_t i = 0; ok && flags != NULL && i < flags->len; i++)
-            ok = cmd_append(&cc, flags->data[i]);
+        ok = ok && (flags == NULL || cmd_extend(&cc, flags));
         ok = ok && cmd_append(&cc, source);
         if (!ok) log_fatal("rebuild %s: out of memory", source);
 

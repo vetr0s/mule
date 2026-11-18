@@ -42,6 +42,17 @@ typedef Arr(const char *) Cmd;
                 sizeof((const char *const[]){ __VA_ARGS__ }) /                 \
                     sizeof(const char *))
 
+/** Append every argument of @p more to @p c, such as a list of flags that
+ *  several commands share.
+ *  @param c  The Cmd to grow.
+ *  @param more  The arguments to append, borrowed as @p c borrows them. It
+ *  may be empty.
+ *  @return False when out of memory. @p c is then unchanged.
+ *  @pre @p more is not @p c. An assert checks it.
+ *  @par Example
+ *  @snippet{trimleft} test_proc.c extend */
+MULE_NODISCARD bool cmd_extend(Cmd *c, const Cmd *more);
+
 /** Append @p c to @p out as a shell command line, quoting each argument
  *  that needs it, so it can be pasted into a shell.
  *  @return False when out of memory. @p out is then unchanged. */

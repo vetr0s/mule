@@ -30,6 +30,9 @@
  *   - `_POSIX_C_SOURCE` set to 200809L, unless the program set it first.
  *     It only takes effect before the first system header, so include MULE
  *     before any of them.
+ *   - `_DARWIN_C_SOURCE` on macOS and `_DEFAULT_SOURCE` on Linux, so the
+ *     platform's own types and calls stay visible to the headers that need
+ *     them, such as Cocoa's.
  *   - `<stdbool.h>`, `<stddef.h>` and `<stdint.h>`.
  *   - `ckd_add`, `ckd_sub` and `ckd_mul` for overflow-checked arithmetic.
  *     They come from C23's `<stdckdint.h>` when the compiler has it, and
@@ -63,6 +66,14 @@
 /* Feature macros only take effect before the first system header. */
 #ifndef _POSIX_C_SOURCE
 #define _POSIX_C_SOURCE 200809L
+#endif
+/* Alone, _POSIX_C_SOURCE hides the BSD types, such as u_char, that Cocoa and
+ * other system headers use. These keep the platform's extensions visible. */
+#if defined(__APPLE__) && !defined(_DARWIN_C_SOURCE)
+#define _DARWIN_C_SOURCE
+#endif
+#if defined(__linux__) && !defined(_DEFAULT_SOURCE)
+#define _DEFAULT_SOURCE
 #endif
 
 #include <stdbool.h>
@@ -1445,6 +1456,17 @@ typedef Arr(const char *) Cmd;
                 sizeof((const char *const[]){ __VA_ARGS__ }) /                 \
                     sizeof(const char *))
 
+/** Append every argument of @p more to @p c, such as a list of flags that
+ *  several commands share.
+ *  @param c  The Cmd to grow.
+ *  @param more  The arguments to append, borrowed as @p c borrows them. It
+ *  may be empty.
+ *  @return False when out of memory. @p c is then unchanged.
+ *  @pre @p more is not @p c. An assert checks it.
+ *  @par Example
+ *  @snippet{trimleft} test_proc.c extend */
+MULE_NODISCARD bool cmd_extend(Cmd *c, const Cmd *more);
+
 /** Append @p c to @p out as a shell command line, quoting each argument
  *  that needs it, so it can be pasted into a shell.
  *  @return False when out of memory. @p out is then unchanged. */
@@ -1631,7 +1653,8 @@ MULE_NODISCARD bool build_prepare(const char *out, const char *depfile,
  *  or @p source cannot be found from the current directory.
  *
  *  The program is stale when its depfile, `.build/<name>.d` beside it, is
- *  missing or lists a newer file. It compiles with `$CC`, or `cc`, and
+ *  missing or lists a newer file. It then logs that it is rebuilding before
+ *  the compile command. It compiles with `$CC`, or `cc`, and
  *  `-Wall -Wextra -MMD`. The old program waits in `.build/<name>.old`, and
  *  goes back in place when the compile fails, which exits with status 1.
  *  @param argc  main's argc. Unused, and kept so the call reads like main.
@@ -3774,6 +3797,7 @@ void args_free(Args *a) {
 /* --- src/proc/proc.c --- */
 
 
+#include <assert.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <stdio.h>
@@ -3792,6 +3816,12 @@ bool cmd_append_(Cmd *c, const char *const *args, size_t n) {
     memcpy(c->data + c->len, args, n * sizeof *args);
     c->len += n;
     return true;
+}
+
+bool cmd_extend(Cmd *c, const Cmd *more) {
+    assert(c != more);
+    /* An empty Cmd has null data, which memcpy may not read from. */
+    return more->len == 0 || cmd_append_(c, more->data, more->len);
 }
 
 /* True when the shell reads `a` as itself without quotes. */
@@ -4259,12 +4289,12 @@ void build_rebuild_self(int argc, char **argv, const char *source,
         log_fatal("%s", err.msg);
 
     if (needed) {
+        log_info("%s or a header it includes changed, rebuilding", source);
         const char *compiler = getenv("CC");
         if (compiler == NULL || compiler[0] == '\0') compiler = "cc";
         ok = cmd_append(&cc, compiler, "-Wall", "-Wextra", "-MMD", "-MF",
                         str_cstr(&dep), "-o", str_cstr(&exe));
-        for (size_t i = 0; ok && flags != NULL && i < flags->len; i++)
-            ok = cmd_append(&cc, flags->data[i]);
+        ok = ok && (flags == NULL || cmd_extend(&cc, flags));
         ok = ok && cmd_append(&cc, source);
         if (!ok) log_fatal("rebuild %s: out of memory", source);
 
