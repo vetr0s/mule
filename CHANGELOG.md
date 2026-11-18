@@ -28,6 +28,9 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Before
 
 ### Changed
 
+- `mule.h` defines `_DARWIN_C_SOURCE` on macOS and `_DEFAULT_SOURCE` on
+  Linux beside `_POSIX_C_SOURCE`. A program that includes Cocoa after
+  `mule.h` now compiles, where `u_char` was hidden before.
 - MULE is released into the public domain under the Unlicense. `LICENSE`
   holds the text, and the `dist/mule.h` preamble names it.
 - `--profile=nosan` replaces `--no-sanitize`. Test binaries moved from
