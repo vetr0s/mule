@@ -784,9 +784,19 @@ static int cmd_ci(void) {
     c = cmd_new();
     add(&c, opt.cc, "build.c");
     run(&c);
+    /* With no depfile, a.out must rebuild itself here and say so. */
+    must(fs_remove_all(".build", &err_) && fs_mkdir_p(".build", &err_));
     c = cmd_new();
     add(&c, "./a.out", "run");
-    run(&c);
+    log_info("./a.out run 2> .build/run.log");
+    CmdIo io = { .err = ".build/run.log" };
+    Proc p = { 0 };
+    must(proc_start(&p, &c, &io, &err_) && proc_wait(&p, &err_));
+    Str said = { .alloc = mem_ };
+    must(fs_read(&said, ".build/run.log", &err_));
+    fputs(str_cstr(&said), stderr);
+    if (sv_find(str_view(&said), SV("rebuilding")) == SV_NPOS)
+        log_fatal("examples/project: a.out did not say it was rebuilding");
     if (chdir("../../..") != 0)
         log_fatal("chdir ../../..: %s", strerror(errno));
     return 0;
