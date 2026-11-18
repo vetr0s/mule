@@ -9,6 +9,8 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Before
 
 ### Added
 
+- `cmd_extend` appends one `Cmd` to another, for flags that several
+  commands share. `build_rebuild_self` uses it for its `flags`.
 - Build profiles. `--profile=debug`, `nosan` or `release` picks the flags
   for `./build`, `run`, `test` and `examples`, and each builds into
   `.build/<profile>/`.

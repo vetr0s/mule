@@ -62,6 +62,34 @@ TEST(signals_missing_programs_and_empty_commands) {
     arr_free(&c);
 }
 
+TEST(extend_appends_another_cmd) {
+    /* [extend] */
+    Cmd flags = { 0 }, cc = { 0 };
+    bool ok = cmd_append(&flags, "-O2", "-g") &&
+              cmd_append(&cc, "cc") &&
+              cmd_extend(&cc, &flags) &&
+              cmd_append(&cc, "main.c");
+    /* [extend] */
+    REQUIRE(ok);
+    CHECK(cc.len == 4);
+    CHECK_EQ_STR(cc.data[1], "-O2");
+    CHECK_EQ_STR(cc.data[2], "-g");
+    CHECK_EQ_STR(cc.data[3], "main.c");
+
+    Cmd empty = { 0 }, fresh = { 0 };
+    CHECK(cmd_extend(&cc, &empty));
+    CHECK(cc.len == 4);
+    CHECK(cmd_extend(&fresh, &empty));
+    CHECK(fresh.len == 0 && fresh.data == NULL);
+
+    test_fail_alloc_after(0);
+    CHECK(!cmd_extend(&fresh, &flags));
+    test_fail_alloc_after(-1);
+    CHECK(fresh.len == 0 && fresh.data == NULL && fresh.capacity == 0);
+    arr_free(&flags);
+    arr_free(&cc);
+}
+
 TEST(render_quotes_what_the_shell_would_split) {
     Cmd c = { 0 };
     REQUIRE(cmd_append(&c, "cc", "-o", "a b", "it's", "", "$HOME", "x=1,y"));
@@ -223,6 +251,7 @@ int main(int argc, char **argv) {
     test_init(argc, argv);
     RUN(run_and_report);
     RUN(signals_missing_programs_and_empty_commands);
+    RUN(extend_appends_another_cmd);
     RUN(render_quotes_what_the_shell_would_split);
     RUN(redirects_streams_to_files);
     RUN(capture_appends_stdout);

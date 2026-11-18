@@ -1456,6 +1456,17 @@ typedef Arr(const char *) Cmd;
                 sizeof((const char *const[]){ __VA_ARGS__ }) /                 \
                     sizeof(const char *))
 
+/** Append every argument of @p more to @p c, such as a list of flags that
+ *  several commands share.
+ *  @param c  The Cmd to grow.
+ *  @param more  The arguments to append, borrowed as @p c borrows them. It
+ *  may be empty.
+ *  @return False when out of memory. @p c is then unchanged.
+ *  @pre @p more is not @p c. An assert checks it.
+ *  @par Example
+ *  @snippet{trimleft} test_proc.c extend */
+MULE_NODISCARD bool cmd_extend(Cmd *c, const Cmd *more);
+
 /** Append @p c to @p out as a shell command line, quoting each argument
  *  that needs it, so it can be pasted into a shell.
  *  @return False when out of memory. @p out is then unchanged. */
@@ -3785,6 +3796,7 @@ void args_free(Args *a) {
 /* --- src/proc/proc.c --- */
 
 
+#include <assert.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <stdio.h>
@@ -3803,6 +3815,12 @@ bool cmd_append_(Cmd *c, const char *const *args, size_t n) {
     memcpy(c->data + c->len, args, n * sizeof *args);
     c->len += n;
     return true;
+}
+
+bool cmd_extend(Cmd *c, const Cmd *more) {
+    assert(c != more);
+    /* An empty Cmd has null data, which memcpy may not read from. */
+    return more->len == 0 || cmd_append_(c, more->data, more->len);
 }
 
 /* True when the shell reads `a` as itself without quotes. */
@@ -4274,8 +4292,7 @@ void build_rebuild_self(int argc, char **argv, const char *source,
         if (compiler == NULL || compiler[0] == '\0') compiler = "cc";
         ok = cmd_append(&cc, compiler, "-Wall", "-Wextra", "-MMD", "-MF",
                         str_cstr(&dep), "-o", str_cstr(&exe));
-        for (size_t i = 0; ok && flags != NULL && i < flags->len; i++)
-            ok = cmd_append(&cc, flags->data[i]);
+        ok = ok && (flags == NULL || cmd_extend(&cc, flags));
         ok = ok && cmd_append(&cc, source);
         if (!ok) log_fatal("rebuild %s: out of memory", source);
 
