@@ -23,6 +23,11 @@ jobs:
       - name: Lower mmap randomisation for AddressSanitizer
         run: sudo sysctl vm.mmap_rnd_bits=28
       - run: $CC --version
+      # gutenberg.org goes down at times, so keep the book between runs.
+      - uses: actions/cache@v6
+        with:
+          path: data/pg2554.txt
+          key: book-pg2554
       - run: $CC -Isrc -o build build.c
       - run: ./build ci
 
@@ -31,6 +36,11 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - run: cc --version
+      # gutenberg.org goes down at times, so keep the book between runs.
+      - uses: actions/cache@v6
+        with:
+          path: data/pg2554.txt
+          key: book-pg2554
       - run: cc -Isrc -o build build.c
       - run: ./build ci
 
