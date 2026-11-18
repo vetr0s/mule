@@ -4,6 +4,9 @@
  */
 #include "mule.h"
 
+/* System headers come after mule.h, as the README asks. */
+#include <sys/types.h>
+
 typedef Arr(int) IntArr;
 
 int consumer_header_only(void);
@@ -30,5 +33,12 @@ int consumer_header_only(void) {
     Err err = { 0 };
     err_set(&err, ERR_INVALID, 0, "consumer");
     failed |= err.kind != ERR_INVALID;
+
+    /* Platform headers such as Cocoa use the BSD types, which a bare
+     * _POSIX_C_SOURCE hides. */
+#if defined(__APPLE__) || defined(__linux__)
+    u_char byte = 1;
+    failed |= byte != 1;
+#endif
     return failed;
 }
