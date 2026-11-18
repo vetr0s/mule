@@ -99,7 +99,8 @@ MULE_NODISCARD bool build_prepare(const char *out, const char *depfile,
  *  or @p source cannot be found from the current directory.
  *
  *  The program is stale when its depfile, `.build/<name>.d` beside it, is
- *  missing or lists a newer file. It compiles with `$CC`, or `cc`, and
+ *  missing or lists a newer file. It then logs that it is rebuilding before
+ *  the compile command. It compiles with `$CC`, or `cc`, and
  *  `-Wall -Wextra -MMD`. The old program waits in `.build/<name>.old`, and
  *  goes back in place when the compile fails, which exits with status 1.
  *  @param argc  main's argc. Unused, and kept so the call reads like main.
