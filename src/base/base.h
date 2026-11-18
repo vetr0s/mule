@@ -8,6 +8,9 @@
  *   - `_POSIX_C_SOURCE` set to 200809L, unless the program set it first.
  *     It only takes effect before the first system header, so include MULE
  *     before any of them.
+ *   - `_DARWIN_C_SOURCE` on macOS and `_DEFAULT_SOURCE` on Linux, so the
+ *     platform's own types and calls stay visible to the headers that need
+ *     them, such as Cocoa's.
  *   - `<stdbool.h>`, `<stddef.h>` and `<stdint.h>`.
  *   - `ckd_add`, `ckd_sub` and `ckd_mul` for overflow-checked arithmetic.
  *     They come from C23's `<stdckdint.h>` when the compiler has it, and
@@ -41,6 +44,14 @@
 /* Feature macros only take effect before the first system header. */
 #ifndef _POSIX_C_SOURCE
 #define _POSIX_C_SOURCE 200809L
+#endif
+/* Alone, _POSIX_C_SOURCE hides the BSD types, such as u_char, that Cocoa and
+ * other system headers use. These keep the platform's extensions visible. */
+#if defined(__APPLE__) && !defined(_DARWIN_C_SOURCE)
+#define _DARWIN_C_SOURCE
+#endif
+#if defined(__linux__) && !defined(_DEFAULT_SOURCE)
+#define _DEFAULT_SOURCE
 #endif
 
 #include <stdbool.h>
